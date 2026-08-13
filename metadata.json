@@ -1,0 +1,6 @@
+{
+  "name": "TVB Go 訪客預約系統",
+  "description": "TVB Go App 訪客預約及邀請管理端，支援員工為到訪客戶進行登記預約、泊車申請、生成電子邀請函/QR碼，並提供『待到訪』、『進行中』及『已結束/取消』之預約狀態紀錄與模擬核銷管理。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
