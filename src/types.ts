@@ -4,6 +4,7 @@
  */
 
 export enum BookingStatus {
+  PENDING = 'PENDING',
   UPCOMING = 'UPCOMING',
   CHECKED_IN = 'CHECKED_IN',
   COMPLETED = 'COMPLETED',
@@ -12,7 +13,8 @@ export enum BookingStatus {
 
 export interface VisitorInfo {
   name: string;
-  idNumber: string; // 證件號
+  idNumber?: string; // 證件號 (選填)
+  email?: string; // 郵箱
 }
 
 export type PurposeCode = 'C' | 'D' | 'F' | 'I' | 'M' | 'N' | 'S' | 'V';
@@ -27,9 +29,15 @@ export interface PurposeOption {
 export interface Booking {
   id: string;
   visitorName: string;
+  visitorType?: 'SINGLE' | 'MULTI' | 'MULTI_SHARED' | 'MULTI_INDIVIDUAL' | 'TEAM';
+  totalVisitorsCount?: number;
   company?: string;
   visitDateTime: string;
+  visitMode?: 'SINGLE_VISIT' | 'MULTI_PASS';
+  startDateTime?: string;
+  endDateTime?: string;
   licensePlate?: string;
+  licensePlates?: string[];
   purpose: PurposeCode;
   destination: string;
   notes?: string;
@@ -43,11 +51,14 @@ export interface Booking {
   approvalNotes?: string;
   isWalkIn?: boolean;
   associatedBookingId?: string;
+  hostEmployeeId?: string;
   hostEmployeeName?: string;
   hostEmployeeDept?: string;
   contactPerson?: string;
   responsibleDept?: string;
   contactPhone?: string;
+  clientTier?: 'NORMAL' | 'VIP';
+  visitorIdCard?: string; // 門禁放行登記之證件號碼 (HKID / Passport / Mainland Travel Permit)
   visitors?: VisitorInfo[];
 }
 

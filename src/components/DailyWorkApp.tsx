@@ -23,6 +23,7 @@ interface DailyWorkAppProps {
   wifis: WifiRule[];
   gpsConfig: GpsConfig;
   onOpenVisitorBooking: () => void;
+  onOpenVisitorRecords?: () => void;
   triggerSound: (freq: number, type: OscillatorType, duration: number) => void;
 }
 
@@ -33,6 +34,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   wifis,
   gpsConfig,
   onOpenVisitorBooking,
+  onOpenVisitorRecords,
   triggerSound
 }) => {
   // Bottom Tab State (Default & ONLY clickable functional tab: 'DAILY_WORK')
@@ -573,7 +575,21 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 </span>
               </button>
 
-              {/* 5. 考勤 (玫瑰/靛藍色系) */}
+              {/* 5. 我的預約 / 紀錄 (藍紫色系) */}
+              <button
+                type="button"
+                onClick={onOpenVisitorRecords || onOpenVisitorBooking}
+                className="bg-sky-50/90 dark:bg-sky-950/40 hover:bg-sky-100/90 dark:hover:bg-sky-900/60 border border-sky-200/60 dark:border-sky-900/50 rounded-2xl py-4.5 px-3 flex flex-col items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer shadow-2xs group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-600 text-white flex items-center justify-center shadow-md shadow-sky-500/25 group-hover:scale-105 transition-transform">
+                  <FileText size={26} className="stroke-[2.2]" />
+                </div>
+                <span className="text-xs font-black text-sky-950 dark:text-sky-100 tracking-tight">
+                  預約記錄
+                </span>
+              </button>
+
+              {/* 6. 考勤 (玫瑰/靛藍色系) */}
               <button
                 type="button"
                 onClick={() => setSubModule('CLOCK_IN')}

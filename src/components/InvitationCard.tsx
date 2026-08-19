@@ -3,10 +3,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Booking } from '../types';
-import { getPurposeOption } from '../data/mockData';
-import { QrCode, MapPin, Calendar, Car, ShieldAlert, Download, Mail, ArrowLeft, HeartHandshake, CheckCircle2, Share2, Image } from 'lucide-react';
+import { getPurposeOption, getVisitorTypeLabel } from '../data/mockData';
+import { 
+  QrCode, ArrowLeft, CheckCircle2, Download, Mail, Send, X, 
+  ChevronLeft, ChevronRight, User, Users, Shield, Building 
+} from 'lucide-react';
 
 interface InvitationCardProps {
   booking: Booking;
@@ -15,502 +18,424 @@ interface InvitationCardProps {
   onSimulateCheckOut?: (id: string) => void;
 }
 
-export const InvitationCard: React.FC<InvitationCardProps> = ({ booking, onBack, onSimulateCheckIn, onSimulateCheckOut }) => {
+export const InvitationCard: React.FC<InvitationCardProps> = ({
+  booking,
+  onBack,
+}) => {
   const purposeOpt = getPurposeOption(booking.purpose);
-  const [showShareModal, setShowShareModal] = React.useState(false);
-  const [isGenerating, setIsGenerating] = React.useState(false);
-  const [copied, setCopied] = React.useState(false);
-  const [savedToAlbum, setSavedToAlbum] = React.useState(false);
-  const [shareSuccess, setShareSuccess] = React.useState<string | null>(null);
+  const [savedSuccess, setSavedSuccess] = useState<string | null>(null);
+  const [emailSentSuccess, setEmailSentSuccess] = useState<string | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [selectedVisitorIndex, setSelectedVisitorIndex] = useState(0);
 
-  const formatDateTime = (dtStr: string) => {
-    const dt = new Date(dtStr);
-    if (isNaN(dt.getTime())) return dtStr;
-    const year = dt.getFullYear();
-    const month = String(dt.getMonth() + 1).padStart(2, '0');
-    const date = String(dt.getDate()).padStart(2, '0');
-    const hours = String(dt.getHours()).padStart(2, '0');
-    const minutes = String(dt.getMinutes()).padStart(2, '0');
-    return `${year}.${month}.${date} ${hours}:${minutes}`;
+  const isTeam = booking.visitorType === 'TEAM';
+  const isMultiShared = booking.visitorType === 'MULTI_SHARED';
+  const isMultiIndiv = booking.visitorType === 'MULTI' || booking.visitorType === 'MULTI_INDIVIDUAL';
+
+  const categoryLabel = getVisitorTypeLabel(booking.visitorType);
+
+  // Visitor List
+  const visitorsList = (booking.visitors && booking.visitors.length > 0)
+    ? booking.visitors
+    : [{ name: booking.visitorName, email: booking.contactEmail }];
+
+  const currentVisitor = visitorsList[selectedVisitorIndex] || visitorsList[0];
+  const [targetEmail, setTargetEmail] = useState(currentVisitor.email || booking.contactEmail || '');
+
+  // Keep target email synced when switching selected visitor
+  React.useEffect(() => {
+    setTargetEmail(currentVisitor.email || booking.contactEmail || '');
+  }, [selectedVisitorIndex, currentVisitor, booking.contactEmail]);
+
+  const handlePrevVisitor = () => {
+    setSelectedVisitorIndex((prev) => (prev > 0 ? prev - 1 : visitorsList.length - 1));
+  };
+
+  const handleNextVisitor = () => {
+    setSelectedVisitorIndex((prev) => (prev < visitorsList.length - 1 ? prev + 1 : 0));
+  };
+
+  const handleSaveImage = (allMembers = false) => {
+    if (allMembers && isMultiIndiv) {
+      setSavedSuccess(`已成功保存全體 ${visitorsList.length} 位成員之獨立電子通行證圖片！`);
+    } else {
+      setSavedSuccess(`已成功保存【${currentVisitor.name}】的電子通行證圖片至相簿！`);
+    }
+    setTimeout(() => {
+      setSavedSuccess(null);
+    }, 3500);
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 overflow-y-auto">
-      {/* Header bar */}
-      <div className="sticky top-0 z-10 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 py-3.5 flex items-center gap-3">
-        <button
-          onClick={onBack}
-          type="button"
-          className="p-1 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div>
-          <h1 className="text-sm font-bold text-slate-950 dark:text-slate-50">電子邀請函 / 通行證</h1>
-          <p className="text-[10px] text-slate-400 font-medium">請分享電子通行證給訪客</p>
+    <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 overflow-hidden relative">
+      {/* 1. Header Bar: 返回 | 電子通行證 */}
+      <div className="shrink-0 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between shadow-2xs z-10">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onBack}
+            type="button"
+            className="flex items-center gap-1 p-1 px-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 transition-colors cursor-pointer text-xs font-bold"
+          >
+            <ArrowLeft size={16} />
+            <span>返回</span>
+          </button>
+          <div>
+            <h1 className="text-sm font-black text-slate-950 dark:text-slate-50">電子通行證</h1>
+          </div>
         </div>
+
+        <span className={`px-2.5 py-0.5 text-[10.5px] font-black rounded-lg border ${
+          isMultiIndiv
+            ? 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+            : isMultiShared
+            ? 'bg-blue-50 dark:bg-blue-950/80 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+            : isTeam
+            ? 'bg-purple-50 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800'
+            : 'bg-sky-50 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-800'
+        }`}>
+          {categoryLabel}
+        </span>
       </div>
 
-      {/* Ticket Container */}
-      <div className="p-4 flex-1 space-y-4 max-w-md mx-auto w-full pb-20">
+      {/* Main Content Area (Scrollable) */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 max-w-md mx-auto w-full">
         
-        {/* Success toast */}
-        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/40 p-3 rounded-xl flex items-start gap-2.5">
-          <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
-          <div>
-            <h3 className="text-xs font-bold text-emerald-800 dark:text-emerald-400">已成功生成邀請 (Invitation Generated)</h3>
-            <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-0.5 leading-relaxed">
-              預約成功！請使用下方的「分享邀請函圖片」按鈕，直接將專屬二維碼通行證分享給訪客，以便快速放行。
+        {/* Notice Banner */}
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-900/50 p-3.5 rounded-2xl flex items-start gap-3 shadow-2xs">
+          <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-xs font-black text-emerald-900 dark:text-emerald-300">
+              已生成【{categoryLabel}】通行證
+            </h3>
+            <p className="text-[11px] text-emerald-700 dark:text-emerald-400 leading-relaxed font-medium">
+              {isMultiIndiv
+                ? '「多人分行」模式：每位成員均擁有獨立電子通行證，使用下方左右箭頭切換查看與分享！' 
+                : isMultiShared
+                ? '「多人同行」模式：共用一張電子通行證核銷入場，已列出全體同行訪客名單。'
+                : '預約成功！出示專屬 QR Code 或下載圖片即可掃碼核銷進入電視城。'
+              }
             </p>
           </div>
         </div>
 
-        {/* Boarding-Pass style Card */}
-        <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-md border border-slate-200/80 dark:border-slate-800 overflow-hidden relative">
+        {/* 多人分行：左右切換選卡列 */}
+        {isMultiIndiv && visitorsList.length > 1 && (
+          <div className="bg-white dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
+            <div className="flex items-center justify-between font-bold text-slate-700 dark:text-slate-300">
+              <button
+                type="button"
+                onClick={handlePrevVisitor}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer transition-all flex items-center justify-center shrink-0"
+                title="上一位訪客"
+              >
+                <ChevronLeft size={20} />
+              </button>
+
+              <div className="text-center px-2">
+                <span className="text-sm font-black text-blue-600 dark:text-blue-400 block truncate">
+                  {currentVisitor.name}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleNextVisitor}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer transition-all flex items-center justify-center shrink-0"
+                title="下一位訪客"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Save Toast feedback */}
+        {savedSuccess && (
+          <div className="p-3 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg animate-bounce">
+            <CheckCircle2 size={16} />
+            <span>{savedSuccess}</span>
+          </div>
+        )}
+
+        {/* Email Sent Toast feedback */}
+        {emailSentSuccess && (
+          <div className="p-3 bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg animate-bounce">
+            <CheckCircle2 size={16} />
+            <span>已成功將電子通行證發送至 {emailSentSuccess}！</span>
+          </div>
+        )}
+
+        {/* 訪客通行證 卡片 */}
+        <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-sm border border-slate-200/90 dark:border-slate-800 overflow-hidden">
           
-          {/* TVB Logo Top Section */}
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 text-center relative">
-            <div className="absolute top-3 left-4 flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-blue-500 via-green-500 to-red-500" />
-              <span className="text-[10px] font-black tracking-widest text-slate-300">TVB</span>
-            </div>
-            <div className="absolute top-3.5 right-4">
-              <span className="text-[9px] font-bold text-slate-400 uppercase bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700">
-                VISITOR PASS
+          {/* Card Header */}
+          <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-4 text-center relative">
+            <h2 className="text-base font-black tracking-wide">TVB 電子通行證</h2>
+            <p className="text-[10px] text-blue-100 font-medium mt-0.5">TVB Electronic Visitor Pass</p>
+            {isMultiIndiv && (
+              <span className="absolute top-3 right-3 px-2 py-0.5 bg-amber-400 text-slate-950 font-black text-[9.5px] rounded-md shadow-2xs">
+                成員 {selectedVisitorIndex + 1} 專屬卡
               </span>
-            </div>
-            
-            <h2 className="text-sm font-black tracking-wide mt-3">電視城訪客通行證</h2>
-            <p className="text-[9px] text-indigo-200 uppercase tracking-widest mt-0.5">TVB City Electronic Visitor Pass</p>
+            )}
           </div>
 
-          {/* Booking Code Bar */}
-          <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border-b border-dashed border-slate-200 dark:border-slate-800/80 flex justify-between items-center text-[10px] text-slate-500 font-mono">
-            <span>PASS ID: {booking.invitationCode}</span>
-            <span>STATUS: ACTIVE</span>
+          {/* PASS ID & Active status */}
+          <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-900/60 border-b border-dashed border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs font-mono">
+            <span className="font-bold text-slate-700 dark:text-slate-300">
+              PASS ID: {booking.invitationCode}{isMultiIndiv ? `-${selectedVisitorIndex + 1}` : ''}
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              狀態 Active
+            </span>
           </div>
 
           {/* QR Code Section */}
-          <div className="p-6 flex flex-col items-center justify-center bg-white dark:bg-slate-950 text-center">
-            
-            {/* Visual QR Wrapper */}
-            <div className="relative p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner mb-3">
-              <div className="w-36 h-36 flex items-center justify-center bg-white p-2 rounded-lg relative">
-                {/* Simulated QR block layout */}
-                <QrCode size={120} className="text-slate-950" />
-                
-                {/* Overlay TVB logo in center */}
+          <div className="p-5 flex flex-col items-center justify-center bg-white dark:bg-slate-950 text-center border-b border-slate-100 dark:border-slate-800">
+            {/* Displayed Visitor Name Banner */}
+            <div className="mb-3 px-3.5 py-1.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900 rounded-xl text-blue-900 dark:text-blue-200 text-xs font-black flex items-center gap-1.5 shadow-2xs">
+              <User size={14} className="text-blue-600 dark:text-blue-400" />
+              <span>持證者姓名：{isMultiIndiv ? currentVisitor.name : booking.visitorName}</span>
+            </div>
+
+            {/* Visual QR Block */}
+            <div className="p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner mb-2.5">
+              <div className="w-36 h-36 flex items-center justify-center bg-white p-2 rounded-xl relative">
+                <QrCode size={128} className="text-slate-950" />
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-slate-950 flex items-center justify-center border-2 border-white shadow-md">
-                  <span className="text-[10px] font-black tracking-wider text-white">TVB</span>
+                  <span className="text-[9px] font-black tracking-wider text-white">TVB</span>
                 </div>
               </div>
             </div>
-
-            <p className="text-[11px] font-bold text-slate-900 dark:text-slate-50">核銷通行條碼 (Entry Scanner Code)</p>
-            <p className="text-[9px] text-slate-400 mt-1 max-w-[80%] leading-relaxed">
-              到訪時請將此條碼出示於閘口或前台保安終端，進行核銷即可通行。
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium max-w-[90%] leading-relaxed">
+              {isMultiIndiv 
+                ? '到訪時請持證者出示此個人條碼，於閘口或安保終端獨立掃碼入場。'
+                : '到訪時請將此條碼出示於閘口或前台安保終端掃碼入場。'
+              }
             </p>
           </div>
 
-          {/* Separator Punch Holes */}
-          <div className="relative flex items-center justify-between h-4 bg-white dark:bg-slate-950">
-            <div className="w-4 h-4 bg-slate-100 dark:bg-slate-900 rounded-full -ml-2 border-r border-slate-200 dark:border-slate-800"></div>
-            <div className="flex-1 border-t border-dashed border-slate-200 dark:border-slate-800"></div>
-            <div className="w-4 h-4 bg-slate-100 dark:bg-slate-900 rounded-full -mr-2 border-l border-slate-200 dark:border-slate-800"></div>
-          </div>
-
-          {/* Passenger Information details */}
-          <div className="p-4 space-y-3 bg-white dark:bg-slate-950 text-xs">
+          {/* Details Section */}
+          <div className="p-4 space-y-3.5 bg-white dark:bg-slate-950 text-xs">
             
-            <div className="grid grid-cols-2 gap-y-3 gap-x-4">
-              
-              <div className="col-span-2 border-b border-slate-100 dark:border-slate-800 pb-2">
-                <span className="text-[10px] font-medium text-slate-400 block mb-1">已登記訪客名單 / Registered Visitors</span>
-                <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
-                  {((booking.visitors && booking.visitors.length > 0) ? booking.visitors : [{ name: booking.visitorName, idNumber: '' }]).map((v, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-xs p-1.5 bg-slate-50 dark:bg-slate-900 rounded-lg">
-                      <span className="font-bold text-slate-800 dark:text-slate-200">
-                        {idx + 1}. {v.name}
-                      </span>
-                      <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
-                        {v.idNumber ? `證件：${v.idNumber}` : <span className="text-slate-300 dark:text-slate-600 italic font-normal">未登記證件</span>}
-                      </span>
+            {/* 多人同行 (共用卡) 或 團隊：顯示全體成員名單 */}
+            {(isMultiShared || isTeam) && (
+              <div className="bg-slate-50 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-xs">
+                  <span className="text-blue-600 dark:text-blue-400 font-black">
+                    {categoryLabel}成員名單
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-bold">
+                    共{booking.totalVisitorsCount || visitorsList.length}人
+                  </span>
+                </div>
+
+                <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800 space-y-1.5">
+                  {isTeam ? (
+                    <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      1. {booking.visitorName} <span className="text-[10px] font-normal text-slate-400">(領隊代表帶隊)</span>
                     </div>
-                  ))}
+                  ) : (
+                    visitorsList.map((v, idx) => (
+                      <div 
+                        key={idx} 
+                        className="text-xs p-1.5 rounded-lg font-bold flex items-center justify-between bg-white dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 text-slate-800 dark:text-slate-200"
+                      >
+                        <span>{idx + 1}. {v.name}</span>
+                        {v.email && (
+                          <span className="text-[10px] font-normal font-mono text-slate-500">{v.email}</span>
+                        )}
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
+            )}
 
-              <div className="col-span-2">
-                <span className="text-[10px] font-medium text-slate-400 block">到訪性質 / Category</span>
-                <span className="mt-0.5 inline-flex items-center px-1.5 py-0.5 text-[10px] font-bold rounded bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30">
+            {/* 多人分行：訪客資訊只顯示單個人 (當前切換到的成員) */}
+            {isMultiIndiv && (
+              <div className="bg-slate-50 dark:bg-slate-900/80 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-2">
+                <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-xs">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-black flex items-center gap-1">
+                    <User size={13} />
+                    <span>持證訪客個人資訊</span>
+                  </span>
+                </div>
+
+                <div className="pt-1.5 border-t border-slate-200/60 dark:border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 font-medium">姓名：</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100">{currentVisitor.name}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-400 font-medium">電郵信箱：</span>
+                    <span className="font-mono text-slate-800 dark:text-slate-200">{currentVisitor.email || booking.contactEmail || '未填寫'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Common Key-Value Rows */}
+            <div className="divide-y divide-slate-100 dark:divide-slate-800/80 space-y-2.5 text-xs">
+              
+              {/* 到訪性質 */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="font-bold text-slate-500 dark:text-slate-400">到訪性質</span>
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${purposeOpt.color} ${purposeOpt.bgColor}`}>
                   {purposeOpt.label}
                 </span>
               </div>
 
-              <div className="col-span-2">
-                <span className="text-[10px] font-medium text-slate-400 block">預約到訪時間 / Booking Time</span>
-                <span className="font-bold text-blue-600 dark:text-blue-400 block mt-0.5 flex items-center gap-1">
-                  <Calendar size={12} />
-                  {formatDateTime(booking.visitDateTime)}
+              {/* 預約到訪時間 */}
+              <div className="flex items-center justify-between pt-2.5">
+                <span className="font-bold text-slate-500 dark:text-slate-400">預約到訪時間</span>
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-[11px]">
+                  {booking.visitDateTime}
                 </span>
               </div>
 
-              <div className="col-span-2">
-                <span className="text-[10px] font-medium text-slate-400 block">目的地 / Destination</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300 block mt-0.5 flex items-center gap-1">
-                  <MapPin size={12} className="text-slate-400 shrink-0" />
-                  <span className="truncate">{booking.destination}</span>
+              {/* 到訪模式 */}
+              <div className="flex items-center justify-between pt-2.5">
+                <span className="font-bold text-slate-500 dark:text-slate-400">到訪模式</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">
+                  {booking.visitMode === 'MULTI_PASS' ? '有效期內多次訪問' : '單次訪問'}
                 </span>
               </div>
 
-              <div>
-                <span className="text-[10px] font-medium text-slate-400 block">公司名稱 / Company</span>
-                <span className="font-semibold text-slate-700 dark:text-slate-300 block mt-0.5 truncate">
-                  {booking.company || '— 登記為個人訪客 —'}
+              {/* 目的地 */}
+              <div className="flex items-center justify-between pt-2.5">
+                <span className="font-bold text-slate-500 dark:text-slate-400">目的地</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-right truncate max-w-[200px]">
+                  {booking.destination}
                 </span>
               </div>
 
-              <div>
-                <span className="text-[10px] font-medium text-slate-400 block">車牌號碼 / Vehicle Plate</span>
-                <span className="font-bold text-slate-800 dark:text-slate-200 block mt-0.5 flex items-center gap-1">
-                  <Car size={12} className="text-slate-400" />
-                  <span>{booking.licensePlate || '未預約泊車位'}</span>
+              {/* 公司名稱 */}
+              <div className="flex items-center justify-between pt-2.5">
+                <span className="font-bold text-slate-500 dark:text-slate-400">公司名稱</span>
+                <span className="font-bold text-slate-800 dark:text-slate-200 text-right truncate max-w-[200px]">
+                  {booking.company || '無'}
+                </span>
+              </div>
+
+              {/* 車牌號碼 */}
+              <div className="flex items-center justify-between pt-2.5">
+                <span className="font-bold text-slate-500 dark:text-slate-400">車牌號碼</span>
+                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
+                  {booking.licensePlate || '未預約泊車'}
                 </span>
               </div>
 
             </div>
 
-            {booking.notes && (
-              <div className="mt-4 p-2 bg-slate-50 dark:bg-slate-900/60 rounded-lg border border-slate-100 dark:border-slate-800 text-[10px] text-slate-500 leading-normal">
-                <strong className="font-bold text-slate-700 dark:text-slate-300">備註：</strong>
-                {booking.notes}
-              </div>
-            )}
-
-            {/* Parking Instructions and Copy confirmation */}
-            {booking.licensePlate && (
-              <div className="mt-2.5 p-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-100/60 dark:border-amber-900/30 rounded-lg text-[10px] text-amber-800 dark:text-amber-400 space-y-1">
-                <p className="font-bold">⚠️ 停車與入廠指引：</p>
-                <p className="leading-relaxed">
-                  1. 車牌：每間公司只可安排兩個泊車位，並需提供車牌號碼。已為 <strong>{booking.licensePlate}</strong> 成功配額。<br />
-                  2. 入廠時請遵從現場保安人員指揮，停放於地下訪客指定車位。
-                </p>
-              </div>
-            )}
-
           </div>
 
-          {/* Card Safety Rules Footer */}
-          <div className="p-3.5 bg-slate-100 dark:bg-slate-900 text-[10px] text-slate-500 leading-relaxed border-t border-slate-200 dark:border-slate-800 flex gap-2 items-start">
-            <ShieldAlert size={14} className="text-slate-400 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-slate-700 dark:text-slate-300">訪客安全須知 / Visitor Regulations</p>
-              <p className="mt-0.5 text-slate-400">
-                本證僅限預約本人及車輛當天有效。進入電視城大樓範圍內，需全程佩戴由保安發放之訪客掛牌。禁止進入錄影管制區域及拍攝未授權布景。
-              </p>
-            </div>
-          </div>
-
-        </div>
-
-        {/* Share Invitation Image Operations Panel */}
-        <div className="space-y-3">
-          <button
-            onClick={() => {
-              setIsGenerating(true);
-              setTimeout(() => {
-                setIsGenerating(false);
-                setShowShareModal(true);
-              }, 800);
-            }}
-            type="button"
-            className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-black shadow-md hover:shadow-lg cursor-pointer transition-all active:scale-[0.98]"
-          >
-            <Share2 size={16} />
-            <span>📲 分享邀請函圖片 (Share Image Pass)</span>
-          </button>
-
-          {/* Quick simulator shortcut if pending */}
-          {onSimulateCheckIn && booking.status === 'UPCOMING' && (
-            <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-xl">
-              <div className="flex items-center justify-between gap-2">
-                <div className="space-y-0.5">
-                  <p className="text-[10px] font-bold text-blue-800 dark:text-blue-400">🚪 快速測試：模擬保安掃碼</p>
-                  <p className="text-[9px] text-blue-600 dark:text-blue-500">
-                    一鍵將此訪客從『待到訪』轉變為『進行中』
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    onSimulateCheckIn(booking.id);
-                    onBack();
-                  }}
-                  type="button"
-                  className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded-lg shadow-sm cursor-pointer"
-                >
-                  模擬簽到
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Quick simulator shortcut if checked in */}
-          {onSimulateCheckOut && booking.status === 'CHECKED_IN' && (
-            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-xl">
-              <div className="flex items-center justify-between gap-2">
-                <div className="space-y-0.5">
-                  <p className="text-[10px] font-bold text-amber-800 dark:text-amber-400">🚪 快速測試：模擬訪客簽出</p>
-                  <p className="text-[9px] text-amber-600 dark:text-amber-500">
-                    一鍵將此訪客從在大樓狀態變更為『已結束/已取消』
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    onSimulateCheckOut(booking.id);
-                    onBack();
-                  }}
-                  type="button"
-                  className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-bold rounded-lg shadow-sm cursor-pointer"
-                >
-                  模擬簽出
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Location map footer */}
-        <div className="bg-white dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 text-center space-y-2">
-          <div className="flex items-center justify-center gap-1 text-xs font-bold text-slate-800 dark:text-slate-200">
-            <MapPin size={14} className="text-red-500" />
-            <span>TVB 電視城電視廣播有限公司</span>
-          </div>
-          <p className="text-[10px] text-slate-400">
-            香港九龍將軍澳工業邨駿才街 77 號 (77 Chun Choi Street, Tseung Kwan O)
-          </p>
-          <div className="h-24 bg-slate-100 dark:bg-slate-900 rounded-lg relative overflow-hidden flex items-center justify-center border border-slate-200/50 dark:border-slate-800">
-            {/* Draw a styled minimal mock map */}
-            <div className="absolute inset-0 opacity-20 pointer-events-none">
-              {/* Fake road networks lines */}
-              <div className="absolute top-4 left-0 w-full h-1.5 bg-slate-400 rotate-12"></div>
-              <div className="absolute top-12 left-0 w-full h-1 bg-slate-400 -rotate-6"></div>
-              <div className="absolute top-0 left-1/3 w-2 h-full bg-slate-400"></div>
-              <div className="absolute top-0 left-2/3 w-1 h-full bg-slate-400"></div>
-              <div className="absolute top-8 left-10 w-20 h-10 bg-slate-400 rounded-lg"></div>
-            </div>
-            {/* Center Pin */}
-            <div className="relative flex flex-col items-center">
-              <div className="w-3.5 h-3.5 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white shadow-md animate-bounce">
-                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-              </div>
-              <span className="text-[9px] bg-slate-950 text-white px-1.5 py-0.5 rounded font-black mt-1 shadow-sm">
-                TVB CITY
-              </span>
-            </div>
-          </div>
         </div>
 
       </div>
 
-      {/* Loading Overlay */}
-      {isGenerating && (
-        <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-xs z-50 flex flex-col items-center justify-center text-white space-y-3">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs font-bold text-slate-200">正在生成高清通行證圖片...</p>
+      {/* 固定在螢幕底部的操作按鈕欄 (Sticky Footer Action Bar) */}
+      <div className="shrink-0 sticky bottom-0 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 p-3 shadow-lg z-20 space-y-2">
+        <div className="grid grid-cols-2 gap-2 max-w-md mx-auto w-full">
+          <button
+            onClick={() => handleSaveImage(false)}
+            type="button"
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white rounded-xl text-xs font-black shadow-md transition-all cursor-pointer"
+          >
+            <Download size={15} />
+            <span className="truncate">保存當前電子通行證</span>
+          </button>
+
+          <button
+            onClick={() => setShowEmailModal(true)}
+            type="button"
+            className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white rounded-xl text-xs font-black shadow-md transition-all cursor-pointer"
+          >
+            <Mail size={15} />
+            <span className="truncate">發送電郵</span>
+          </button>
         </div>
-      )}
 
-      {/* Share Image Preview Modal */}
-      {showShareModal && (
-        <div className="absolute inset-0 bg-slate-950/95 z-50 flex flex-col overflow-y-auto p-4 text-white">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-4 shrink-0">
-            <h3 className="text-xs font-bold tracking-wider flex items-center gap-1 text-slate-300">
-              <Share2 size={14} className="text-blue-500" />
-              <span>邀請函圖片分享與預覽</span>
-            </h3>
+        {isMultiIndiv && visitorsList.length > 1 && (
+          <div className="max-w-md mx-auto w-full">
             <button
-              onClick={() => {
-                setShowShareModal(false);
-                setSavedToAlbum(false);
-                setShareSuccess(null);
-                setCopied(false);
-              }}
-              className="text-slate-400 hover:text-white font-bold text-xs bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 cursor-pointer"
+              onClick={() => handleSaveImage(true)}
+              type="button"
+              className="w-full flex items-center justify-center gap-1.5 py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 text-white rounded-xl text-[11px] font-bold transition-all cursor-pointer border border-slate-700"
             >
-              關閉
+              <Download size={13} />
+              <span>一鍵保存全部通行證</span>
             </button>
           </div>
+        )}
+      </div>
 
-          {/* Success Alerts */}
-          {savedToAlbum && (
-            <div className="p-2.5 bg-emerald-950/40 border border-emerald-900 text-emerald-400 rounded-xl text-[10px] font-bold mb-3 flex items-center gap-1.5 animate-pulse">
-              <CheckCircle2 size={14} />
-              <span>已成功保存通行證邀請圖片至手機相簿！</span>
-            </div>
-          )}
-
-          {shareSuccess && (
-            <div className="p-2.5 bg-blue-950/40 border border-blue-900 text-blue-400 rounded-xl text-[10px] font-bold mb-3 flex items-center gap-1.5">
-              <CheckCircle2 size={14} />
-              <span>{shareSuccess}</span>
-            </div>
-          )}
-
-          {copied && (
-            <div className="p-2.5 bg-blue-950/40 border border-blue-900 text-blue-400 rounded-xl text-[10px] font-bold mb-3 flex items-center gap-1.5">
-              <CheckCircle2 size={14} />
-              <span>已複製預約純文字詳情，可直接貼上傳送！</span>
-            </div>
-          )}
-
-          {/* HD Pass Card Image (Visual Representation for sharing) */}
-          <div className="bg-white text-slate-900 rounded-2xl p-4 space-y-4 shadow-2xl border-4 border-blue-600/30 shrink-0 select-none">
-            
-            {/* TVB Branding Card Header */}
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-200">
-              <div className="flex items-center gap-1.5">
-                <div className="w-5.5 h-5.5 rounded-full bg-gradient-to-tr from-blue-500 via-green-500 to-red-500" />
-                <span className="text-xs font-black tracking-widest text-slate-900">TVB CITY</span>
-              </div>
-              <span className="text-[9px] bg-blue-600 text-white font-bold px-1.5 py-0.5 rounded uppercase">
-                電子通行證
-              </span>
-            </div>
-
-            {/* QR Code */}
-            <div className="flex flex-col items-center justify-center py-2 bg-slate-50 rounded-xl border border-slate-100">
-              <div className="p-2 bg-white rounded-lg border border-slate-200 relative mb-1.5 shadow-sm">
-                <QrCode size={110} className="text-slate-950" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded bg-slate-950 flex items-center justify-center border border-white">
-                  <span className="text-[7px] font-black text-white">TVB</span>
-                </div>
-              </div>
-              <p className="text-[9px] font-bold text-slate-500 tracking-wider">PASS ID: {booking.invitationCode}</p>
-            </div>
-
-            {/* Complete Card Attributes */}
-            <div className="space-y-2.5 text-xs">
-              <div className="border-b border-slate-100 pb-2 space-y-1.5">
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">已登記訪客名單 (證件號)</span>
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {((booking.visitors && booking.visitors.length > 0) ? booking.visitors : [{ name: booking.visitorName, idNumber: '' }]).map((v, idx) => (
-                    <div key={idx} className="flex justify-between items-center text-xs p-1 bg-slate-50 rounded">
-                      <span className="font-extrabold text-slate-900">
-                        {idx + 1}. {v.name}
-                      </span>
-                      <span className="font-mono text-[9px] text-slate-500 font-semibold">
-                        {v.idNumber ? `證件: ${v.idNumber}` : '未填寫'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="border-b border-slate-100 pb-2">
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">到訪性質</span>
-                <span className="font-extrabold text-blue-600 text-xs block mt-0.5">
-                  {purposeOpt.label}
-                </span>
-              </div>
-
-              <div className="border-b border-slate-100 pb-2">
-                <span className="text-[9px] font-bold text-slate-400 block uppercase">到訪日期與時間</span>
-                <span className="font-extrabold text-slate-900 block mt-0.5 text-xs flex items-center gap-1">
-                  <Calendar size={12} className="text-blue-500" />
-                  {formatDateTime(booking.visitDateTime)}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 border-b border-slate-100 pb-2">
-                <div>
-                  <span className="text-[9px] font-bold text-slate-400 block uppercase">目的地</span>
-                  <span className="font-bold text-slate-800 truncate block mt-0.5">
-                    {booking.destination}
-                  </span>
+      {/* Send Email Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl p-5 space-y-4 relative animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl text-emerald-600">
+                  <Mail size={18} />
                 </div>
                 <div>
-                  <span className="text-[9px] font-bold text-slate-400 block uppercase">車牌號碼</span>
-                  <span className="font-bold text-slate-800 block mt-0.5">
-                    {booking.licensePlate || '未預約泊車'}
-                  </span>
+                  <h3 className="text-xs font-black text-slate-900 dark:text-slate-100">發送電子通行證至電郵</h3>
+                  <p className="text-[10px] text-slate-400">發送【{isMultiIndiv ? currentVisitor.name : booking.visitorName}】持證條碼至目標信箱</p>
                 </div>
               </div>
-
-              {booking.notes && (
-                <div className="p-2 bg-slate-50 rounded-lg text-[9px] text-slate-500 border border-slate-200 leading-relaxed">
-                  <span className="font-bold text-slate-700 block">備註：</span>
-                  {booking.notes}
-                </div>
-              )}
-            </div>
-
-            {/* Instruction Footer */}
-            <div className="text-[8px] text-slate-400 leading-normal pt-2 border-t border-slate-100 flex gap-1.5">
-              <ShieldAlert size={12} className="text-slate-400 shrink-0" />
-              <span>本通行證由員工代為辦理。到訪時向將軍澳電視城一樓前台或保安掃描即可核銷。</span>
-            </div>
-
-          </div>
-
-          {/* Action options */}
-          <div className="mt-5 space-y-2 pb-8">
-            <button
-              onClick={() => {
-                setSavedToAlbum(true);
-                setShareSuccess(null);
-                setCopied(false);
-                setTimeout(() => setSavedToAlbum(false), 3000);
-              }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-colors shadow-md"
-            >
-              <Download size={14} />
-              <span>💾 儲存通行證圖片至相簿 (Save Image)</span>
-            </button>
-
-            <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => {
-                  setShareSuccess('已呼叫系統分享，成功將通行證圖片發送給 WeChat 聯絡人！');
-                  setSavedToAlbum(false);
-                  setCopied(false);
-                  setTimeout(() => setShareSuccess(null), 3500);
-                }}
-                className="flex items-center justify-center gap-1 py-2 bg-slate-900 hover:bg-slate-850 text-slate-200 border border-slate-800 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <span>💬 分享至 WeChat</span>
-              </button>
-              <button
-                onClick={() => {
-                  setShareSuccess('已呼叫系統分享，成功將通行證圖片發送給 WhatsApp 聯絡人！');
-                  setSavedToAlbum(false);
-                  setCopied(false);
-                  setTimeout(() => setShareSuccess(null), 3500);
-                }}
-                className="flex items-center justify-center gap-1 py-2 bg-slate-900 hover:bg-slate-850 text-slate-200 border border-slate-800 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
-              >
-                <span>💬 分享至 WhatsApp</span>
+                <X size={18} />
               </button>
             </div>
 
-            <button
-              onClick={() => {
-                const visitorNamesText = booking.visitors && booking.visitors.length > 0
-                  ? booking.visitors.map((v, i) => `${i + 1}. ${v.name} (${v.idNumber || '未登記證件'})`).join(', ')
-                  : booking.visitorName;
-                const text = `【TVB 電視城訪客通行證】\n訪客名單：${visitorNamesText}\n到訪日期與時間：${formatDateTime(booking.visitDateTime)}\n到訪性質：${purposeOpt.label}\n目的地：${booking.destination}\n車牌號碼：${booking.licensePlate || '未預約泊車'}\n備註：${booking.notes || '無'}\n預約編號：${booking.invitationCode}`;
-                navigator.clipboard.writeText(text);
-                setCopied(true);
-                setSavedToAlbum(false);
-                setShareSuccess(null);
-                setTimeout(() => setCopied(false), 3000);
-              }}
-              className="w-full py-2 bg-slate-900 hover:bg-slate-850 text-slate-300 border border-slate-800 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
-            >
-              <span>📋 複製純文字到剪貼簿 (Copy Text)</span>
-            </button>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!targetEmail.trim()) return;
+              const sentAddr = targetEmail.trim();
+              setShowEmailModal(false);
+              setEmailSentSuccess(sentAddr);
+              setTimeout(() => setEmailSentSuccess(null), 4000);
+            }} className="space-y-3">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  接收電子郵件地址 <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={targetEmail}
+                  onChange={(e) => setTargetEmail(e.target.value)}
+                  placeholder="請輸入訪客電郵地址"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer"
+                >
+                  取消
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center gap-1.5 shadow-md"
+                >
+                  <Send size={14} />
+                  <span>確認發送</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
+
     </div>
   );
 };

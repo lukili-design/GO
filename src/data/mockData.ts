@@ -28,6 +28,21 @@ export const getPurposeOption = (code: PurposeCode): PurposeOption => {
   return PURPOSE_OPTIONS.find(opt => opt.code === code) || PURPOSE_OPTIONS[7];
 };
 
+export const getVisitorTypeLabel = (type?: string): string => {
+  switch (type) {
+    case 'MULTI_SHARED':
+      return '多人同行';
+    case 'MULTI':
+    case 'MULTI_INDIVIDUAL':
+      return '多人分行';
+    case 'TEAM':
+      return '團隊訪客';
+    case 'SINGLE':
+    default:
+      return '個人訪客';
+  }
+};
+
 // Initial Attendance Location Configuration
 export const INITIAL_BEACONS: BeaconRule[] = [
   {
@@ -362,94 +377,260 @@ export const INITIAL_MONTHLY_DETAILS: MonthlyReportDetail[] = [
 
 export const INITIAL_BOOKINGS: Booking[] = [
   {
-    id: 'B001',
-    visitorName: '王大同',
-    company: '騰訊香港 (Tencent HK)',
-    visitDateTime: '2026-07-25T10:00',
-    licensePlate: '粵Z A888港',
-    purpose: 'M',
-    destination: '7樓 行政會議室 A (7F Boardroom A)',
-    notes: '討論下半年廣告合作事宜，預計需要 2 小時。',
-    contactEmail: 'xiaoming.zhang@tencent.com',
-    status: BookingStatus.UPCOMING,
-    createdAt: '2026-07-20T14:30:00',
-    invitationCode: 'TVB-8392-XM7',
-    hostEmployeeName: '王小明 (Siu Ming Wong)',
-    hostEmployeeDept: '綜藝節目部 (Variety Dept)',
-    contactPerson: 'May Tang',
-    responsibleDept: 'New Media Group',
-    contactPhone: '91946190',
-    visitors: [
-      { name: '王大同', idNumber: '3043344343' },
-      { name: '張曉明', idNumber: '3432424234' }
-    ]
-  },
-  {
-    id: 'B002',
+    id: 'B000-PENDING-SINGLE',
     visitorName: '李偉強 (Lee Wai Keung)',
+    visitorType: 'SINGLE',
+    totalVisitorsCount: 1,
+    clientTier: 'NORMAL',
     company: 'DHL 快捷速遞 (DHL Express)',
-    visitDateTime: '2026-07-21T15:30',
+    visitDateTime: '2026.07.21 15:30',
+    visitMode: 'SINGLE_VISIT',
     licensePlate: 'JD 9381',
     purpose: 'D',
     destination: '地下 收發處 (G/F Mailroom)',
     notes: '緊急宣傳物料運送。',
-    contactEmail: 'wk.lee@dhl.com',
-    status: BookingStatus.UPCOMING,
-    createdAt: '2026-07-21T09:15:00',
-    invitationCode: 'TVB-1029-LK4',
-    hostEmployeeName: '溫家偉 (Alan Wan)',
-    hostEmployeeDept: '製作部 (Production Dept)',
-    contactPerson: 'May Tang',
-    responsibleDept: 'New Media Group',
-    contactPhone: '91946190'
-  },
-  {
-    id: 'B006',
-    visitorName: '王大同',
-    company: '阿里影業 (Alibaba Pictures)',
-    visitDateTime: '2026-07-23T14:00',
-    licensePlate: '粵Z B666港',
-    purpose: 'M',
-    destination: '8樓 總裁辦公室 (8F Executive Suite)',
-    notes: '合拍電視劇項目意向書簽約儀式。',
-    contactEmail: 'yl.ma@alibaba-pictures.com',
-    status: BookingStatus.UPCOMING,
-    createdAt: '2026-07-21T11:00:00',
-    invitationCode: 'TVB-9981-ML8',
-    hostEmployeeName: '李麗華 (Lai Wah Lee)',
-    hostEmployeeDept: '藝員管理部 (Talent Relations)',
-    contactPerson: 'May Tang',
-    responsibleDept: 'New Media Group',
-    contactPhone: '91946190',
+    contactEmail: 'lee.wk@dhl.com',
+    status: BookingStatus.PENDING,
+    createdAt: '2026-07-21T09:00:00',
+    invitationCode: 'TVB-8821-PENDING',
+    hostEmployeeName: '陳莉莉 (Lily Chan)',
+    hostEmployeeDept: '綜藝節目部',
     visitors: [
-      { name: '王大同', idNumber: '3043344343' },
-      { name: '張曉明', idNumber: '3432424234' }
+      { name: '李偉強 (Lee Wai Keung)', email: 'lee.wk@dhl.com' }
     ]
   },
   {
-    id: 'B007',
-    visitorName: '霍建華 (Wallace Huo)',
-    company: '華傑工作室 (HJH Studio)',
-    visitDateTime: '2026-07-24T16:30',
-    licensePlate: 'AB 8888',
-    purpose: 'I',
-    destination: '3樓 藝員甄選室 (3F Audition Room)',
-    notes: '特邀嘉賓出席台慶劇面試及角色檔期洽談。',
-    contactEmail: 'wallace@hjhstudio.com',
-    status: BookingStatus.UPCOMING,
-    createdAt: '2026-07-21T12:30:00',
-    invitationCode: 'TVB-7729-WH5',
+    id: 'B001-PENDING-MULTI',
+    visitorName: '李偉強 (Lee Wai Keung)',
+    visitorType: 'MULTI',
+    totalVisitorsCount: 2,
+    clientTier: 'VIP',
+    company: 'DHL 快捷速遞 (DHL Express)',
+    visitDateTime: '2026.07.21 15:30-2026.08.20 15:30',
+    visitMode: 'MULTI_PASS',
+    startDateTime: '2026-07-21T15:30',
+    endDateTime: '2026-08-20T15:30',
+    licensePlate: '粵Z A888港, JD 9381',
+    purpose: 'D',
+    destination: '地下 收發處 (G/F Mailroom)',
+    notes: '一個月內常規節目快遞派送。',
+    contactEmail: 'lee.wk@dhl.com',
+    status: BookingStatus.PENDING,
+    createdAt: '2026-07-20T14:30:00',
+    invitationCode: 'TVB-8392-XM7',
+    hostEmployeeName: '陳莉莉 (Lily Chan)',
+    hostEmployeeDept: '綜藝節目部',
+    visitors: [
+      { name: '李偉強 (Lee Wai Keung)', email: 'lee.wk@dhl.com' },
+      { name: '王大同', email: 'datong.wong@dhl.com' }
+    ]
+  },
+  {
+    id: 'B002-PENDING-TEAM',
+    visitorName: '李偉強 (Lee Wai Keung)',
+    visitorType: 'TEAM',
+    totalVisitorsCount: 3,
+    clientTier: 'NORMAL',
+    company: 'DHL 快捷速遞 (DHL Express)',
+    visitDateTime: '2026.07.21 15:30-2026.08.20 15:30',
+    visitMode: 'MULTI_PASS',
+    startDateTime: '2026-07-21T15:30',
+    endDateTime: '2026-08-20T15:30',
+    licensePlate: 'AB 8888, CD 6666',
+    purpose: 'D',
+    destination: '一號錄影廠與電視城物流區',
+    notes: '團隊參觀與設備搬運。',
+    contactEmail: 'lee.wk@dhl.com',
+    status: BookingStatus.PENDING,
+    createdAt: '2026-07-21T09:15:00',
+    invitationCode: 'TVB-1029-TEAM3',
+    hostEmployeeName: '陳莉莉 (Lily Chan)',
+    hostEmployeeDept: '綜藝節目部',
+    visitors: [
+      { name: '李偉強 (Lee Wai Keung)', email: 'lee.wk@dhl.com' }
+    ]
+  },
+  {
+    id: 'B008-PENDING-VIP',
+    visitorName: '郭建國 (Kin Kwok Kwok)',
+    visitorType: 'SINGLE',
+    totalVisitorsCount: 1,
+    clientTier: 'VIP',
+    company: '聲威音樂 (Soundway Music HK)',
+    visitDateTime: '2026.08.19 14:00',
+    visitMode: 'SINGLE_VISIT',
+    licensePlate: 'VIP 8888',
+    purpose: 'M',
+    destination: '7樓 藝員及唱片事業部 (7F Music Dept)',
+    notes: '新歌合作與台慶表演商效洽談會議。',
+    contactEmail: 'kinkwok.kwok@soundway.com',
+    status: BookingStatus.PENDING,
+    createdAt: '2026-08-18T08:30:00',
+    invitationCode: 'TVB-7701-VIP',
+    hostEmployeeName: '黃美玲 (May Wong)',
+    hostEmployeeDept: '藝員管理部',
+    hostEmployeeId: 'EMP005',
+    visitors: [
+      { name: '郭建國 (Kin Kwok Kwok)', email: 'kinkwok.kwok@soundway.com' }
+    ]
+  },
+  {
+    id: 'B009-PENDING-VENDOR',
+    visitorName: '周國強 (Kwok Keung Chow)',
+    visitorType: 'MULTI',
+    totalVisitorsCount: 2,
+    clientTier: 'NORMAL',
+    company: '華星音響工程公司',
+    visitDateTime: '2026.08.19 09:00',
+    visitMode: 'SINGLE_VISIT',
+    licensePlate: 'WF 3321',
+    purpose: 'C',
+    destination: '二號錄影廠 音響控制室',
+    notes: '大型現場節目收音控制台年度例行保養與測試。',
+    contactEmail: 'kkchow@wasing-eng.com',
+    status: BookingStatus.PENDING,
+    createdAt: '2026-08-18T09:10:00',
+    invitationCode: 'TVB-3321-ENG',
     hostEmployeeName: '王小明 (Siu Ming Wong)',
-    hostEmployeeDept: '綜藝節目部 (Variety Dept)',
-    contactPerson: 'May Tang',
-    responsibleDept: 'New Media Group',
-    contactPhone: '91946190'
+    hostEmployeeDept: '工程及設施部',
+    hostEmployeeId: 'EMP001',
+    visitors: [
+      { name: '周國強 (Kwok Keung Chow)', email: 'kkchow@wasing-eng.com' },
+      { name: '陳國華', email: 'kwchan@wasing-eng.com' }
+    ]
+  },
+  {
+    id: 'B010-PENDING-INTERVIEW',
+    visitorName: '許詠詩 (Wing Sze Hui)',
+    visitorType: 'SINGLE',
+    totalVisitorsCount: 1,
+    clientTier: 'NORMAL',
+    company: '香港大學新聞及傳媒研究中心',
+    visitDateTime: '2026.08.20 10:30',
+    visitMode: 'SINGLE_VISIT',
+    purpose: 'I',
+    destination: '4樓 新聞部編輯室 (4F Newsroom)',
+    notes: '秋季新聞實習生面試與採訪實驗室試音。',
+    contactEmail: 'wingsze.hui@hku.hk',
+    status: BookingStatus.PENDING,
+    createdAt: '2026-08-18T10:00:00',
+    invitationCode: 'TVB-4012-INT',
+    hostEmployeeName: '李麗華 (Lai Wah Lee)',
+    hostEmployeeDept: '新聞及公共事務部',
+    hostEmployeeId: 'EMP003',
+    visitors: [
+      { name: '許詠詩 (Wing Sze Hui)', email: 'wingsze.hui@hku.hk' }
+    ]
+  },
+  {
+    id: 'B011-PENDING-AUDIT',
+    visitorName: '麥永安 (Wing On Mak)',
+    visitorType: 'TEAM',
+    totalVisitorsCount: 4,
+    clientTier: 'VIP',
+    company: '畢馬威會計師事務所 (KPMG)',
+    visitDateTime: '2026.08.20 09:30-2026.08.22 18:00',
+    visitMode: 'MULTI_PASS',
+    startDateTime: '2026-08-20T09:30',
+    endDateTime: '2026-08-22T18:00',
+    licensePlate: 'KM 8888, KM 9999',
+    purpose: 'V',
+    destination: '6樓 董事局審計會議室 (6F Boardroom)',
+    notes: 'Q3 企業資產與合規性專項審核小組入場。',
+    contactEmail: 'wingon.mak@kpmg.com.hk',
+    status: BookingStatus.PENDING,
+    createdAt: '2026-08-18T11:20:00',
+    invitationCode: 'TVB-6088-KPMG',
+    hostEmployeeName: '張志強 (Chi Keung Cheung)',
+    hostEmployeeDept: '財務及合規部',
+    hostEmployeeId: 'EMP004',
+    visitors: [
+      { name: '麥永安 (Wing On Mak)', email: 'wingon.mak@kpmg.com.hk' }
+    ]
+  },
+  {
+    id: 'B001-UPCOMING',
+    visitorName: '李偉強 (Lee Wai Keung)',
+    visitorType: 'MULTI',
+    totalVisitorsCount: 2,
+    clientTier: 'VIP',
+    company: 'DHL 快捷速遞 (DHL Express)',
+    visitDateTime: '2026.07.21 15:30-2026.08.20 15:30',
+    visitMode: 'MULTI_PASS',
+    startDateTime: '2026-07-21T15:30',
+    endDateTime: '2026-08-20T15:30',
+    licensePlate: '粵Z A888港, JD 9381',
+    purpose: 'D',
+    destination: '地下 收發處 (G/F Mailroom)',
+    notes: '一個月內常規節目快遞派送。',
+    contactEmail: 'lee.wk@dhl.com',
+    status: BookingStatus.UPCOMING,
+    createdAt: '2026-07-20T14:30:00',
+    invitationCode: 'TVB-8392-XM7',
+    hostEmployeeName: '陳莉莉 (Lily Chan)',
+    hostEmployeeDept: '綜藝節目部',
+    visitors: [
+      { name: '李偉強 (Lee Wai Keung)', email: 'lee.wk@dhl.com' },
+      { name: '王大同', email: 'datong.wong@dhl.com' }
+    ]
+  },
+  {
+    id: 'B007-SHARED-UPCOMING',
+    visitorName: '張家豪 (Ka Ho Cheung)',
+    visitorType: 'MULTI_SHARED',
+    totalVisitorsCount: 3,
+    clientTier: 'VIP',
+    company: '創世紀音響媒體有限公司',
+    visitDateTime: '2026.08.19 10:00',
+    visitMode: 'SINGLE_VISIT',
+    licensePlate: 'GEN 8888',
+    purpose: 'M',
+    destination: '一號錄影廠 音樂控制室',
+    notes: '「多人同行」共用通行證核銷測試卡片（共用二維碼）',
+    contactEmail: 'kaho.cheung@genesis-audio.com',
+    status: BookingStatus.UPCOMING,
+    createdAt: '2026-08-19T09:00:00',
+    invitationCode: 'TVB-8888-SHARED',
+    hostEmployeeName: '陳大文 (Tai Man Chan)',
+    hostEmployeeDept: '綜藝節目部',
+    visitors: [
+      { name: '張家豪 (Ka Ho Cheung)', email: 'kaho.cheung@genesis-audio.com' },
+      { name: '林偉強 (Wai Keung Lam)', email: 'waikeung.lam@genesis-audio.com' },
+      { name: '黃志明 (Chi Ming Wong)', email: 'chiming.wong@genesis-audio.com' }
+    ]
+  },
+  {
+    id: 'B008-INDIV-UPCOMING',
+    visitorName: '陳永康 (Wing Hong Chan)',
+    visitorType: 'MULTI',
+    totalVisitorsCount: 2,
+    clientTier: 'VIP',
+    company: '先鋒傳媒娛樂公司',
+    visitDateTime: '2026.08.19 14:00',
+    visitMode: 'SINGLE_VISIT',
+    licensePlate: 'PNR 9999',
+    purpose: 'M',
+    destination: '7樓 藝員及唱片事業部',
+    notes: '「多人分行」獨立個人通行證核銷測試卡片（獨立二維碼）',
+    contactEmail: 'winghong.chan@pioneer-ent.com',
+    status: BookingStatus.UPCOMING,
+    createdAt: '2026-08-19T08:30:00',
+    invitationCode: 'TVB-9999-INDIV',
+    hostEmployeeName: '黃美玲 (May Wong)',
+    hostEmployeeDept: '藝員管理部',
+    visitors: [
+      { name: '陳永康 (Wing Hong Chan)', email: 'winghong.chan@pioneer-ent.com' },
+      { name: '趙德明 (Tak Ming Chiu)', email: 'takming.chiu@pioneer-ent.com' }
+    ]
   },
   {
     id: 'B003',
     visitorName: '陳美玲 (Chan May Ling)',
+    visitorType: 'SINGLE',
+    totalVisitorsCount: 1,
     company: '羅兵咸永道會計師事務所 (PwC HK)',
-    visitDateTime: '2026-07-21T09:30',
+    visitDateTime: '2026.07.21 09:30',
+    visitMode: 'SINGLE_VISIT',
     licensePlate: '',
     purpose: 'M',
     destination: '5樓 財務審計部 (5F Audit Dept)',
@@ -459,18 +640,20 @@ export const INITIAL_BOOKINGS: Booking[] = [
     createdAt: '2026-07-20T10:00:00',
     checkedInAt: '2026-07-21T09:28:00',
     invitationCode: 'TVB-4482-CL2',
-    associatedBookingId: 'EM-4482-99',
     hostEmployeeName: '陳大文 (Tai Man Chan)',
     hostEmployeeDept: '財務部 (Finance Dept)',
-    contactPerson: 'May Tang',
-    responsibleDept: 'New Media Group',
-    contactPhone: '91946190'
+    visitors: [
+      { name: '陳美玲 (Chan May Ling)', email: 'mayling.chan@pwc.com' }
+    ]
   },
   {
     id: 'B004',
     visitorName: '王大同 (Wong Tai Tung)',
+    visitorType: 'SINGLE',
+    totalVisitorsCount: 1,
     company: '順豐速運 (SF Express)',
-    visitDateTime: '2026-07-20T11:00',
+    visitDateTime: '2026.07.20 11:00',
+    visitMode: 'SINGLE_VISIT',
     licensePlate: 'SF 8899',
     purpose: 'D',
     destination: '2樓 行政大堂 (2F Admin Lobby)',
@@ -481,18 +664,20 @@ export const INITIAL_BOOKINGS: Booking[] = [
     checkedInAt: '2026-07-20T10:55:00',
     checkedOutAt: '2026-07-20T11:40:00',
     invitationCode: 'TVB-2918-WD1',
-    associatedBookingId: 'EM-2918-05',
     hostEmployeeName: '劉偉傑 (Wai Kit Lau)',
-    hostEmployeeDept: '總經理辦公室 (General Manager Office)',
-    contactPerson: 'May Tang',
-    responsibleDept: 'New Media Group',
-    contactPhone: '91946190'
+    hostEmployeeDept: '總經理辦公室',
+    visitors: [
+      { name: '王大同 (Wong Tai Tung)', email: 'datong.wong@sf.express.com' }
+    ]
   },
   {
     id: 'B005',
     visitorName: '林志豪 (Lam Chi Ho)',
+    visitorType: 'SINGLE',
+    totalVisitorsCount: 1,
     company: '星輝工程有限公司 (Starry Engineering)',
-    visitDateTime: '2026-07-19T08:30',
+    visitDateTime: '2026.07.19 08:30',
+    visitMode: 'SINGLE_VISIT',
     licensePlate: 'GD 5240',
     purpose: 'C',
     destination: '電視城一號錄影廠 (Studio 1)',
@@ -502,9 +687,54 @@ export const INITIAL_BOOKINGS: Booking[] = [
     createdAt: '2026-07-18T16:20:00',
     invitationCode: 'TVB-5012-LH9',
     hostEmployeeName: '陸浩宇 (Howard Luk)',
-    hostEmployeeDept: '工程及設施部 (Engineering Dept)',
-    contactPerson: 'May Tang',
-    responsibleDept: 'New Media Group',
-    contactPhone: '91946190'
+    hostEmployeeDept: '工程及設施部',
+    visitors: [
+      { name: '林志豪 (Lam Chi Ho)', email: 'chiho.lam@starryeng.com.hk' }
+    ]
+  },
+  {
+    id: 'B006-REJECTED',
+    visitorName: '張偉民 (Cheung Wai Man)',
+    visitorType: 'SINGLE',
+    totalVisitorsCount: 1,
+    company: '港島地產顧問公司',
+    visitDateTime: '2026.07.18 14:00',
+    visitMode: 'SINGLE_VISIT',
+    licensePlate: 'HK 9988',
+    purpose: 'S',
+    destination: '行政大樓 7樓',
+    notes: '未有預先登記對接員工，經核查後拒絕批核入場。',
+    contactEmail: 'waiman.cheung@hkre.com',
+    status: BookingStatus.CANCELLED,
+    approvalNotes: 'REJECTED',
+    createdAt: '2026-07-18T10:00:00',
+    invitationCode: 'TVB-9988-REJ',
+    hostEmployeeName: '胡家寶 (Ka Po Wu)',
+    hostEmployeeDept: '行政部',
+    visitors: [
+      { name: '張偉民 (Cheung Wai Man)', email: 'waiman.cheung@hkre.com' }
+    ]
+  },
+  {
+    id: 'B007-CANCELLED',
+    visitorName: '郭兆強 (Kwok Siu Keung)',
+    visitorType: 'SINGLE',
+    totalVisitorsCount: 1,
+    company: '電訊盈科 (PCCW)',
+    visitDateTime: '2026.07.17 11:30',
+    visitMode: 'SINGLE_VISIT',
+    licensePlate: 'PC 1020',
+    purpose: 'I',
+    destination: '網絡數據中心',
+    notes: '訪客行程變更，申請人自行取消預約。',
+    contactEmail: 'siukeung.kwok@pccw.com',
+    status: BookingStatus.CANCELLED,
+    createdAt: '2026-07-16T15:00:00',
+    invitationCode: 'TVB-1020-CAN',
+    hostEmployeeName: '林世榮 (Sai Wing Lam)',
+    hostEmployeeDept: '資訊科技部',
+    visitors: [
+      { name: '郭兆強 (Kwok Siu Keung)', email: 'siukeung.kwok@pccw.com' }
+    ]
   }
 ];
