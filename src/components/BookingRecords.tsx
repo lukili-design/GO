@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Booking, BookingStatus } from '../types';
 import { getPurposeOption, getVisitorTypeLabel } from '../data/mockData';
-import { ArrowLeft, Search, Calendar, Share2, Clock, CheckCircle, XCircle, Repeat, Ticket, Crown, HelpCircle, BookOpen, X, Users, User, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Search, Calendar, Share2, Clock, CheckCircle, XCircle, Repeat, Ticket, Crown, Users, User } from 'lucide-react';
 
 interface BookingRecordsProps {
   bookings: Booking[];
@@ -24,11 +24,9 @@ export const BookingRecords: React.FC<BookingRecordsProps> = ({
   onCancelBooking,
   onViewPass,
 }) => {
-  // Rules modal state
-  const [showRulesModal, setShowRulesModal] = useState(false);
-  // Check if booking approval is required globally
+  // Check if booking approval is required in CMS config
   const isApprovalRequired = typeof window !== 'undefined'
-    ? localStorage.getItem('tvb_booking_approval_required') === 'true'
+    ? localStorage.getItem('tvb_booking_approval_required') !== 'false'
     : true;
 
   // Tabs: 'PENDING' | 'UPCOMING' | 'CHECKED_IN' | 'HISTORY'
@@ -37,7 +35,7 @@ export const BookingRecords: React.FC<BookingRecordsProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Ensure activeTab is not PENDING if approval is turned off
+  // If approval is disabled, switch off PENDING tab
   React.useEffect(() => {
     if (!isApprovalRequired && activeTab === 'PENDING') {
       setActiveTab('UPCOMING');
@@ -45,8 +43,8 @@ export const BookingRecords: React.FC<BookingRecordsProps> = ({
   }, [isApprovalRequired, activeTab]);
 
   // Count helper
-  const pendingBookings = bookings.filter(b => b.status === BookingStatus.PENDING);
-  const upcomingBookings = bookings.filter(b => b.status === BookingStatus.UPCOMING);
+  const pendingBookings = bookings.filter(b => b.status === BookingStatus.PENDING || b.isPendingApproval);
+  const upcomingBookings = bookings.filter(b => b.status === BookingStatus.UPCOMING && !b.isPendingApproval);
   const checkedInBookings = bookings.filter(b => b.status === BookingStatus.CHECKED_IN);
   const historyBookings = bookings.filter(
     b => b.status === BookingStatus.COMPLETED || b.status === BookingStatus.CANCELLED
@@ -94,18 +92,9 @@ export const BookingRecords: React.FC<BookingRecordsProps> = ({
             <p className="text-[10px] text-slate-400 font-medium">預約管理與紀錄追蹤</p>
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={() => setShowRulesModal(true)}
-          className="px-2.5 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800/60 text-[11px] font-bold flex items-center gap-1 hover:bg-blue-100 cursor-pointer transition-all shrink-0"
-        >
-          <BookOpen size={13} />
-          <span>頁面規則說明</span>
-        </button>
       </div>
 
-      {/* Tabs list with counts (動態渲染: 待審核僅於啟用時顯示) */}
+      {/* Tabs list with counts (待審核 Tab 依 CMS 開啟狀態動態顯示) */}
       <div className={`bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 p-2 grid ${
         isApprovalRequired ? 'grid-cols-4' : 'grid-cols-3'
       } gap-1`}>
@@ -428,145 +417,6 @@ export const BookingRecords: React.FC<BookingRecordsProps> = ({
           })
         )}
       </div>
-
-      {/* 需求與頁面規則說明 Modal */}
-      {showRulesModal && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl p-5 space-y-4 relative animate-in fade-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
-            
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                  <BookOpen size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100">「我的預約」需求與頁面規則說明</h3>
-                  <p className="text-[10px] text-slate-400">流程規範與 4 種訪客類型完整定義</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowRulesModal(false)}
-                className="p-1 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Modal Scrollable Body */}
-            <div className="flex-1 overflow-y-auto space-y-4 pr-1 text-xs text-slate-700 dark:text-slate-300">
-              
-              {/* Section 1: 我的預約頁面 Tab 與狀態流程規則 */}
-              <div className="space-y-2">
-                <h4 className="font-black text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                  <ShieldCheck size={14} />
-                  <span>一、「我的預約」Tab 與頁面狀態流程規則</span>
-                </h4>
-                <div className="space-y-2 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80 text-[11px] leading-relaxed">
-                  <p><strong className="text-amber-600 dark:text-amber-400">1. 待審核 Tab：</strong> 提交預約後等待內部員工/主管審核。在此狀態下可隨時「取消預約」。</p>
-                  <p><strong className="text-blue-600 dark:text-blue-400">2. 待到訪 Tab：</strong> 審核通過或免審核生效之預約。<strong>僅此 Tab 具備「🎫 查看通行證」按鈕</strong>，可供下載、分享或發送電郵。</p>
-                  <p><strong className="text-emerald-600 dark:text-emerald-400">3. 進行中 Tab：</strong> 訪客已於現場閘口/安保終端掃碼核銷入場，正在廠區內訪問中。</p>
-                  <p><strong className="text-slate-500">4. 歷史 Tab：</strong> 訪客已簽退離場（Completed）或已取消（Cancelled）之歷史紀錄。</p>
-                </div>
-              </div>
-
-              {/* Section 2: 系統 4 種訪客類型完整定義與區別 (放在規則說明下方) */}
-              <div className="space-y-2">
-                <h4 className="font-black text-slate-900 dark:text-slate-100 text-xs flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
-                  <Users size={14} />
-                  <span>二、系統 4 種訪客類型完整定義與區別</span>
-                </h4>
-                
-                <div className="space-y-2.5 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800/80">
-                  
-                  {/* 個人訪客 */}
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-1">
-                      <div className="font-black text-sky-700 dark:text-sky-300 flex items-center gap-1 text-xs">
-                        <User size={13} />
-                        <span>1. 個人訪客</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-sky-600 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded-full">
-                        1 人單獨到訪
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug pt-0.5">
-                      <strong className="text-slate-400 font-normal">通行證與核銷機制：</strong>
-                      生成 1 張 個人專屬通行證。
-                    </p>
-                  </div>
-
-                  {/* 多人同行 */}
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-1">
-                      <div className="font-black text-indigo-700 dark:text-indigo-300 flex items-center gap-1 text-xs">
-                        <Users size={13} />
-                        <span>2. 多人同行</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full">
-                        多人同時同行到訪
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug pt-0.5">
-                      <strong className="text-slate-400 font-normal">通行證與核銷機制：</strong>
-                      共用 1 張電子通行證，展示所有成員名單，由代表出示條碼一次性核銷同行進入。
-                    </p>
-                  </div>
-
-                  {/* 多人分行 */}
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-1">
-                      <div className="font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-1 text-xs">
-                        <Users size={13} />
-                        <span>3. 多人分行</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full">
-                        多人不同時間 / 分頭到訪
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug pt-0.5">
-                      <strong className="text-slate-400 font-normal">通行證與核銷機制：</strong>
-                      系統為每位成員生成專屬獨立通行證（如 PASS-B002-1, PASS-B002-2），可單獨下載圖片或發送電郵給個人，各自獨立掃碼入場。
-                    </p>
-                  </div>
-
-                  {/* 團隊訪客 */}
-                  <div className="p-2.5 bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-1">
-                      <div className="font-black text-purple-700 dark:text-purple-300 flex items-center gap-1 text-xs">
-                        <Crown size={13} />
-                        <span>4. 團隊訪客</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/60 px-2 py-0.5 rounded-full">
-                        團體/劇組同列進出
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug pt-0.5">
-                      <strong className="text-slate-400 font-normal">通行證與核銷機制：</strong>
-                      僅需填寫領隊資訊與總人數，生成 1 張團體通行證，由領隊統一帶隊核銷入場。
-                    </p>
-                  </div>
-
-                </div>
-              </div>
-
-            </div>
-
-            {/* Modal Footer */}
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowRulesModal(false)}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all cursor-pointer shadow-md"
-              >
-                我知道了
-              </button>
-            </div>
-
-          </div>
-        </div>
-      )}
     </div>
   );
 };

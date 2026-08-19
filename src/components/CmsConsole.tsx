@@ -284,6 +284,22 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
     }
   };
 
+  // Helper for visitor type badge styling
+  const getVisitorTypeBadgeStyle = (type?: string) => {
+    switch (type) {
+      case 'MULTI_SHARED':
+        return 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200/60 dark:border-purple-800/60';
+      case 'MULTI':
+      case 'MULTI_INDIVIDUAL':
+        return 'bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-300 border-teal-200/60 dark:border-teal-800/60';
+      case 'TEAM':
+        return 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200/60 dark:border-amber-800/60';
+      case 'SINGLE':
+      default:
+        return 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-800/60';
+    }
+  };
+
   const getVisitModeLabel = (mode?: string) => {
     if (mode === 'MULTI_PASS') return '有效期內多次訪問';
     return '單次訪問';
@@ -414,8 +430,8 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
     return b.status === BookingStatus.CANCELLED && !isRejectedBooking(b);
   };
 
-  // Visitor records for CMS Visitor Tab
-  const visitorTabBookings = filteredBookings;
+  // Visitor records for CMS Visitor Tab - Only scanned/checked-in records
+  const visitorTabBookings = filteredBookings.filter(b => !!b.checkedInAt || b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED);
 
   // Appointment Records for CMS Appointment Tab with Approval Filtering
   const appointmentTabBookings = filteredBookings.filter(b => {
@@ -1010,14 +1026,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                     }`}
                   >
                     <Sliders size={15} className="text-emerald-500 shrink-0" />
-                    <span className="flex-1 text-left flex items-center justify-between min-w-0">
-                      <span className="truncate">審核與白名單配置</span>
-                      <span className={`px-1.5 py-0.2 text-[9px] font-black rounded shrink-0 ml-1 ${
-                        isBookingApprovalRequired ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
-                      }`}>
-                        {isBookingApprovalRequired ? '需審核' : '免審核'}
-                      </span>
-                    </span>
+                    <span className="flex-1 text-left">審核與白名單配置</span>
                   </button>
 
                   <button
@@ -1180,42 +1189,38 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
           {activeCmsTab === 'VISITORS' && (
             <div className="space-y-6">
               
-              {/* Header Title & Summary Cards */}
+              {/* Header Title */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-slate-50">訪客記錄列表</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">即時追蹤訪客登記狀態、核銷紀錄與客戶類型</p>
+                  <p className="text-xs text-slate-400 mt-0.5">即時追蹤現場已掃碼核銷之訪客記錄、在館狀態與客戶類型</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleExportCSV}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
-                >
-                  <Download size={14} />
-                  <span>匯出 CSV 報表</span>
-                </button>
               </div>
 
               {/* KPI Summary Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="bg-white dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">總訪客預約數</div>
-                  <div className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">{totalBookings}</div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">已掃碼核銷總數</div>
+                  <div className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">
+                    {bookings.filter(b => !!b.checkedInAt || b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED).length}
+                  </div>
                 </div>
                 <div className="bg-amber-500/10 dark:bg-amber-950/20 p-4 rounded-2xl border border-amber-200/50 dark:border-amber-900/40 shadow-2xs">
                   <div className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
                     <Crown size={12} className="fill-current" />
                     <span>VIP 客戶數</span>
                   </div>
-                  <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1">{vipBookingsCount}</div>
+                  <div className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1">
+                    {bookings.filter(b => (!!b.checkedInAt || b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED) && b.clientTier === 'VIP').length}
+                  </div>
                 </div>
                 <div className="bg-emerald-500/10 dark:bg-emerald-950/20 p-4 rounded-2xl border border-emerald-200/50 dark:border-emerald-900/40 shadow-2xs">
                   <div className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">在大樓內 / 進行中</div>
                   <div className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{insideBuildingCount}</div>
                 </div>
                 <div className="bg-blue-500/10 dark:bg-blue-950/20 p-4 rounded-2xl border border-blue-200/50 dark:border-blue-900/40 shadow-2xs">
-                  <div className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-wider">待到訪預約</div>
-                  <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1">{upcomingCount}</div>
+                  <div className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-wider">已完成訪問</div>
+                  <div className="text-xl font-black text-blue-600 dark:text-blue-400 mt-1">{completedCount}</div>
                 </div>
               </div>
 
@@ -1310,7 +1315,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
 
                               {/* 2. 訪客類型 */}
                               <td className="p-3.5 text-center whitespace-nowrap">
-                                <span className="inline-flex px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 text-[10px] font-bold rounded-md">
+                                <span className={`inline-flex px-2 py-0.5 border text-[10px] font-bold rounded-md ${getVisitorTypeBadgeStyle(b.visitorType)}`}>
                                   {getVisitorTypeLabel(b.visitorType)}
                                 </span>
                               </td>
@@ -1444,7 +1449,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
 
                 {/* Footer counters */}
                 <div className="p-3.5 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
-                  <span>顯示 {filteredBookings.length} / 共 {totalBookings} 筆記錄</span>
+                  <span>顯示 {visitorTabBookings.length} / 共 {bookings.filter(b => !!b.checkedInAt || b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED).length} 筆已掃碼核銷記錄</span>
                 </div>
               </div>
 
@@ -1466,14 +1471,6 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">查看與審核用戶端 APP 提交之訪客預約，發放入場放行權限</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleExportCSV}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-xs cursor-pointer flex items-center gap-1.5 transition-all"
-                >
-                  <Download size={14} />
-                  <span>匯出預約 CSV 報表</span>
-                </button>
               </div>
 
               {/* Advanced 8-Condition Filter Toolbar */}
@@ -1732,7 +1729,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
 
                               {/* 3. 訪客類型 */}
                               <td className="p-3.5 text-center whitespace-nowrap">
-                                <span className="inline-flex px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 text-[10px] font-bold rounded-md">
+                                <span className={`inline-flex px-2 py-0.5 border text-[10px] font-bold rounded-md ${getVisitorTypeBadgeStyle(b.visitorType)}`}>
                                   {getVisitorTypeLabel(b.visitorType)}
                                 </span>
                               </td>
@@ -1818,24 +1815,23 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                                 {b.contactEmail || '-'}
                               </td>
 
-                              {/* 13. 到訪狀態 */}
+                              {/* 13. 到訪狀態 (分為：待到訪 進行中 歷史 已取消) */}
                               <td className="p-3.5 text-center whitespace-nowrap">
-                                {isPending ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 rounded-full border border-amber-300 dark:border-amber-800">
-                                    <Clock size={11} className="animate-spin" />
-                                    <span>PENDING 待到訪</span>
-                                  </span>
-                                ) : b.status === BookingStatus.CHECKED_IN ? (
+                                {b.status === BookingStatus.CHECKED_IN ? (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 rounded-full border border-blue-300 dark:border-blue-800">
                                     <span>🟢 進行中</span>
                                   </span>
-                                ) : b.status === BookingStatus.UPCOMING ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 rounded-full border border-emerald-300 dark:border-emerald-800">
-                                    <span>📅 待到訪</span>
+                                ) : b.status === BookingStatus.COMPLETED ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700">
+                                    <span>📜 歷史</span>
+                                  </span>
+                                ) : b.status === BookingStatus.CANCELLED || isRejectedBooking(b) ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 rounded-full border border-rose-300 dark:border-rose-800">
+                                    <span>🚫 已取消</span>
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700">
-                                    <span>🚫 已取消</span>
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 rounded-full border border-cyan-300 dark:border-cyan-800">
+                                    <span>📅 待到訪</span>
                                   </span>
                                 )}
                               </td>
@@ -2483,7 +2479,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                     <Bell className="text-amber-500" size={20} />
                     <span>Push 通知配置中心</span>
                   </h3>
-                  <p className="text-xs text-slate-400 mt-1">分別設定「訪客到達前 X 分鐘提醒 Push」與「訪客抵達即時 Push」之開啟/關閉狀態、提前時間 X、標題與內文。</p>
+                  <p className="text-xs text-slate-400 mt-1">分別設定「訪客到達前 X 分鐘提醒 Push」與「訪客抵達即時 Push」之開啟/關閉狀態、提醒時間、標題與內容。</p>
                 </div>
 
                 <div className="flex items-center gap-2.5">
@@ -2560,10 +2556,10 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                   </div>
 
                   <div className="space-y-4">
-                    {/* Advance Time X */}
+                    {/* 提醒時間 */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1">
-                        <span>提醒時間 X (到達前分鐘數)</span>
+                        <span>提醒時間</span>
                         <span className="text-amber-500 font-bold">*</span>
                       </label>
                       <select
@@ -2572,7 +2568,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                           setPushPreArrivalMinutes(Number(e.target.value));
                           triggerSound(600, 'sine', 0.05);
                         }}
-                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 cursor-pointer"
                       >
                         <option value={15}>提前 15 分鐘提醒</option>
                         <option value={30}>提前 30 分鐘提醒 (預設)</option>
@@ -2582,19 +2578,22 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                       </select>
                     </div>
 
-                    {/* Push Title */}
+                    {/* 標題 (兩行展示/編輯) */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">標題</label>
-                      <input
-                        type="text"
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">標題</label>
+                        <span className="text-[10px] text-slate-400">支援兩行展示</span>
+                      </div>
+                      <textarea
+                        rows={2}
                         value={pushPreArrivalTitle}
                         onChange={(e) => setPushPreArrivalTitle(e.target.value)}
-                        placeholder="請輸入標題..."
-                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        placeholder="請輸入標題 (兩行展示)..."
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 leading-relaxed resize-y"
                       />
                     </div>
 
-                    {/* Push Body */}
+                    {/* 內容 */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">內容</label>
                       <textarea
@@ -2602,7 +2601,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                         value={pushPreArrivalBody}
                         onChange={(e) => setPushPreArrivalBody(e.target.value)}
                         placeholder="請輸入內容..."
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 leading-relaxed resize-y"
                       ></textarea>
                     </div>
                   </div>
@@ -2641,19 +2640,22 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                   </div>
 
                   <div className="space-y-4">
-                    {/* Push Title */}
+                    {/* 標題 (兩行展示/編輯) */}
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">標題</label>
-                      <input
-                        type="text"
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">標題</label>
+                        <span className="text-[10px] text-slate-400">支援兩行展示</span>
+                      </div>
+                      <textarea
+                        rows={2}
                         value={pushArrivalTitle}
                         onChange={(e) => setPushArrivalTitle(e.target.value)}
-                        placeholder="請輸入標題..."
-                        className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        placeholder="請輸入標題 (兩行展示)..."
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 leading-relaxed resize-y"
                       />
                     </div>
 
-                    {/* Push Body */}
+                    {/* 內容 */}
                     <div>
                       <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">內容</label>
                       <textarea
@@ -2661,7 +2663,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                         value={pushArrivalBody}
                         onChange={(e) => setPushArrivalBody(e.target.value)}
                         placeholder="請輸入內容..."
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        className="w-full p-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 leading-relaxed resize-y"
                       ></textarea>
                     </div>
                   </div>
@@ -2893,21 +2895,21 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                 </div>
 
                 <div className="mt-1">
-                  {viewingBooking.status === BookingStatus.UPCOMING ? (
-                    <span className="inline-flex text-[10.5px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-3 py-1 rounded-full border border-blue-200/30">
-                      ● 待到訪 (隨時生效中)
-                    </span>
-                  ) : viewingBooking.status === BookingStatus.CHECKED_IN ? (
-                    <span className="inline-flex text-[10.5px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-200/30 animate-pulse">
-                      ● 進行中 (已核銷簽入在大樓內)
+                  {viewingBooking.status === BookingStatus.CHECKED_IN ? (
+                    <span className="inline-flex text-[10.5px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-3 py-1 rounded-full border border-blue-200/30">
+                      🟢 進行中 (在大樓內)
                     </span>
                   ) : viewingBooking.status === BookingStatus.COMPLETED ? (
-                    <span className="inline-flex text-[10.5px] font-black text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/30">
-                      ● 已結束 (已辦理離場)
+                    <span className="inline-flex text-[10.5px] font-black text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/30">
+                      📜 歷史
+                    </span>
+                  ) : viewingBooking.status === BookingStatus.CANCELLED || isRejectedBooking(viewingBooking) ? (
+                    <span className="inline-flex text-[10.5px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 px-3 py-1 rounded-full border border-rose-200/30">
+                      🚫 已取消
                     </span>
                   ) : (
-                    <span className="inline-flex text-[10.5px] font-black text-rose-500 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 px-3 py-1 rounded-full border border-rose-200/30">
-                      ● 已取消 (無效登記)
+                    <span className="inline-flex text-[10.5px] font-black text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 px-3 py-1 rounded-full border border-cyan-200/30">
+                      📅 待到訪
                     </span>
                   )}
                 </div>
@@ -2955,7 +2957,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                     <div className="grid grid-cols-2 gap-3.5">
                       <div>
                         <span className="text-slate-400 block text-[10px]">訪客類型</span>
-                        <span className="inline-flex px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 text-[10px] font-bold rounded-md">
+                        <span className={`inline-flex px-2 py-0.5 border text-[10px] font-bold rounded-md ${getVisitorTypeBadgeStyle(viewingBooking.visitorType)}`}>
                           {getVisitorTypeLabel(viewingBooking.visitorType)}
                         </span>
                       </div>
@@ -3060,7 +3062,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
 
             {/* Modal Actions */}
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-100 dark:border-slate-850 flex flex-col sm:flex-row items-center justify-between gap-3">
-              {(viewingBooking.status === BookingStatus.PENDING || viewingBooking.isPendingApproval) ? (
+              {activeCmsTab === 'EMPLOYEES' && (viewingBooking.status === BookingStatus.PENDING || viewingBooking.isPendingApproval) ? (
                 <div className="flex gap-2 w-full sm:w-auto">
                   <button
                     onClick={() => {

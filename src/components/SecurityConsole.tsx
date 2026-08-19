@@ -212,7 +212,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
   const [appointmentsTimeRange, setAppointmentsTimeRange] = useState<'TODAY' | 'ALL'>('TODAY');
   const [scanLogsSearchTerm, setScanLogsSearchTerm] = useState('');
   const [appointmentsSearchTerm, setAppointmentsSearchTerm] = useState('');
-  const [appointmentsStatusFilter, setAppointmentsStatusFilter] = useState<'ALL' | 'UPCOMING' | 'CHECKED_IN' | 'PENDING' | 'CANCELLED'>('ALL');
+  const [appointmentsStatusFilter, setAppointmentsStatusFilter] = useState<'ALL' | 'UPCOMING' | 'CHECKED_IN' | 'HISTORY_CANCELLED'>('ALL');
 
   // Viewing Details Modal State
   const [viewingSecurityBooking, setViewingSecurityBooking] = useState<Booking | GateScanRecord | null>(null);
@@ -460,10 +460,9 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
   // Calculate Analytics Data for Selected Scope
   const totalAppointmentsCount = scopedBookings.length;
-  const checkedInCount = scopedBookings.filter(b => b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED).length;
-  const pendingArrivalCount = scopedBookings.filter(b => b.status === BookingStatus.UPCOMING).length;
-  const pendingApprovalCount = scopedBookings.filter(b => b.isPendingApproval || b.status === BookingStatus.PENDING).length;
-  const cancelledCount = scopedBookings.filter(b => b.status === BookingStatus.CANCELLED).length;
+  const pendingArrivalCount = scopedBookings.filter(b => b.status === BookingStatus.UPCOMING || b.isPendingApproval || b.status === BookingStatus.PENDING).length;
+  const inProgressCount = scopedBookings.filter(b => b.status === BookingStatus.CHECKED_IN).length;
+  const historyCancelledCount = scopedBookings.filter(b => b.status === BookingStatus.COMPLETED || b.status === BookingStatus.CANCELLED).length;
 
   return (
     <div className="space-y-6">
@@ -600,30 +599,6 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                 <Scan size={16} className="shrink-0" />
                 <span className="whitespace-nowrap">🎯 觸發掃碼槍核驗</span>
               </button>
-            </div>
-
-            {/* Quick Presets Chips for Testing */}
-            <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-850 flex-wrap">
-              <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">快速選擇今日待核銷訪客模擬掃碼：</span>
-              {bookings.filter(b => b.status === BookingStatus.UPCOMING || b.isPendingApproval).slice(0, 5).map(b => (
-                <button
-                  type="button"
-                  key={b.id}
-                  onClick={() => {
-                    setSelectedBookingId(b.id);
-                    setScanInputCode(b.invitationCode);
-                    handleTriggerScannerSearch(b.invitationCode);
-                  }}
-                  className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer border whitespace-nowrap shrink-0 ${
-                    selectedBookingId === b.id
-                      ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 border-blue-300 font-mono'
-                      : 'bg-slate-100 dark:bg-slate-850 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-200'
-                  }`}
-                >
-                  <span className="font-mono text-blue-500 mr-1 whitespace-nowrap">{b.invitationCode}</span>
-                  <span className="whitespace-nowrap">{b.visitorName.split(' ')[0]}</span>
-                </button>
-              ))}
             </div>
           </div>
 
@@ -925,7 +900,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                 </div>
 
                 {/* Primary Action Button */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2">
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                   <button
                     type="button"
                     onClick={handleConfirmClearance}
@@ -934,10 +909,6 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                     <UserCheck size={18} className="shrink-0" />
                     <span className="whitespace-nowrap">確認核銷放行並登記證件</span>
                   </button>
-
-                  <div className="text-[10px] text-slate-400 text-center font-mono">
-                    執勤員: {operatorGuard}
-                  </div>
                 </div>
 
               </div>
@@ -1123,8 +1094,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
                         {/* 14. 執勤門崗 */}
                         <td className="p-3.5 text-slate-500 whitespace-nowrap">
-                          <div>{log.gateLocation}</div>
-                          <div className="text-[10px] text-slate-400 font-mono">{log.operatorGuard}</div>
+                          {log.gateLocation}
                         </td>
 
                         {/* 15. 到訪狀態 */}
@@ -1203,13 +1173,13 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
           </div>
 
           {/* Top Analytics Dashboard Cards Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             
             {/* Card 1: Total Appointments */}
             <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
               <div className="flex items-center justify-between text-slate-400 mb-2">
                 <span className="text-xs font-bold">
-                  {appointmentsTimeRange === 'TODAY' ? '今日預約總數' : '全部預約總數'}
+                  {appointmentsTimeRange === 'TODAY' ? '今日全部預約' : '全部預約總數'}
                 </span>
                 <Calendar size={18} className="text-blue-500" />
               </div>
@@ -1221,52 +1191,40 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
               </div>
             </div>
 
-            {/* Card 2: Checked In Count */}
+            {/* Card 2: Pending Arrival */}
             <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
               <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">已核銷入場</span>
-                <CheckCircle2 size={18} className="text-emerald-500" />
+                <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">待到訪</span>
+                <Clock size={18} className="text-cyan-500" />
               </div>
-              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
-                {checkedInCount}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">已完成安保證件登記與放行</div>
-            </div>
-
-            {/* Card 3: Pending Arrival */}
-            <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
-              <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">待抵達放行</span>
-                <Clock size={18} className="text-blue-500" />
-              </div>
-              <div className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">
+              <div className="text-2xl font-black text-cyan-600 dark:text-cyan-400 font-mono">
                 {pendingArrivalCount}
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">等候門崗掃碼核銷</div>
+              <div className="text-[10px] text-slate-400 mt-1">等候門崗掃碼核銷放行</div>
             </div>
 
-            {/* Card 4: VIP / Pending Approval */}
+            {/* Card 3: In Progress (Inside Building) */}
             <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
               <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-bold text-amber-600 dark:text-amber-400">VIP/待審核</span>
-                <AlertTriangle size={18} className="text-amber-500" />
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">進行中 (在大樓內)</span>
+                <CheckCircle2 size={18} className="text-blue-500" />
               </div>
-              <div className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
-                {pendingApprovalCount}
+              <div className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono">
+                {inProgressCount}
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">需進行特殊審核或VIP接引</div>
+              <div className="text-[10px] text-slate-400 mt-1">已完成安保掃碼核銷放行</div>
             </div>
 
-            {/* Card 5: Cancelled / Overdue */}
-            <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs col-span-2 lg:col-span-1">
+            {/* Card 4: History / Cancelled */}
+            <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
               <div className="flex items-center justify-between text-slate-400 mb-2">
-                <span className="text-xs font-bold text-rose-500">已取消/逾期</span>
-                <XCircle size={18} className="text-rose-500" />
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">歷史/已取消</span>
+                <XCircle size={18} className="text-slate-500" />
               </div>
-              <div className="text-2xl font-black text-rose-500 font-mono">
-                {cancelledCount}
+              <div className="text-2xl font-black text-slate-600 dark:text-slate-300 font-mono">
+                {historyCancelledCount}
               </div>
-              <div className="text-[10px] text-slate-400 mt-1">作廢或取消行程</div>
+              <div className="text-[10px] text-slate-400 mt-1">已完成訪問或已取消之預約</div>
             </div>
 
           </div>
@@ -1283,13 +1241,13 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                 <p className="text-xs text-slate-400 mt-0.5">點擊「詳情」可查看預約資訊與已登記訪客名單</p>
               </div>
 
-              {/* Status Filter Tabs */}
+              {/* Status Filter Tabs: 全部, 待到訪, 進行中, 歷史/已取消 */}
               <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 text-xs gap-1 overflow-x-auto">
                 <button
                   type="button"
                   onClick={() => setAppointmentsStatusFilter('ALL')}
                   className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                    appointmentsStatusFilter === 'ALL' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-2xs' : 'text-slate-500'
+                    appointmentsStatusFilter === 'ALL' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-2xs' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   全部 ({scopedBookings.length})
@@ -1299,7 +1257,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   type="button"
                   onClick={() => setAppointmentsStatusFilter('UPCOMING')}
                   className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                    appointmentsStatusFilter === 'UPCOMING' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-2xs' : 'text-slate-500'
+                    appointmentsStatusFilter === 'UPCOMING' ? 'bg-white dark:bg-slate-800 text-cyan-600 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
                   待到訪 ({pendingArrivalCount})
@@ -1309,10 +1267,20 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   type="button"
                   onClick={() => setAppointmentsStatusFilter('CHECKED_IN')}
                   className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
-                    appointmentsStatusFilter === 'CHECKED_IN' ? 'bg-white dark:bg-slate-800 text-emerald-600 shadow-2xs' : 'text-slate-500'
+                    appointmentsStatusFilter === 'CHECKED_IN' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
                   }`}
                 >
-                  進行中 ({checkedInCount})
+                  進行中 ({inProgressCount})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAppointmentsStatusFilter('HISTORY_CANCELLED')}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                    appointmentsStatusFilter === 'HISTORY_CANCELLED' ? 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 shadow-2xs font-black' : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  歷史/已取消 ({historyCancelledCount})
                 </button>
               </div>
             </div>
@@ -1355,7 +1323,8 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   {scopedBookings
                     .filter(b => {
                       if (appointmentsStatusFilter === 'UPCOMING') return b.status === BookingStatus.UPCOMING || b.isPendingApproval || b.status === BookingStatus.PENDING;
-                      if (appointmentsStatusFilter === 'CHECKED_IN') return b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED;
+                      if (appointmentsStatusFilter === 'CHECKED_IN') return b.status === BookingStatus.CHECKED_IN;
+                      if (appointmentsStatusFilter === 'HISTORY_CANCELLED') return b.status === BookingStatus.COMPLETED || b.status === BookingStatus.CANCELLED;
                       return true;
                     })
                     .filter(b => {
@@ -1454,13 +1423,13 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
                         {/* 14. 到訪狀態 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          {b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED ? (
+                          {b.status === BookingStatus.CHECKED_IN ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 rounded-full border border-blue-300 dark:border-blue-800 whitespace-nowrap">
                               🟢 進行中
                             </span>
-                          ) : b.status === BookingStatus.CANCELLED ? (
+                          ) : (b.status === BookingStatus.COMPLETED || b.status === BookingStatus.CANCELLED) ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700 whitespace-nowrap">
-                              🚫 已取消
+                              {b.status === BookingStatus.COMPLETED ? '📜 歷史/已完成' : '🚫 歷史/已取消'}
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 rounded-full border border-cyan-300 dark:border-cyan-800 whitespace-nowrap">
@@ -1524,24 +1493,20 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                 {'status' in viewingSecurityBooking ? (
                   viewingSecurityBooking.status === BookingStatus.CHECKED_IN ? (
                     <span className="px-3 py-1 bg-blue-600 text-white font-black text-xs rounded-full shadow-2xs">
-                      🟢 進行中
+                      🟢 進行中 (在大樓內)
                     </span>
-                  ) : viewingSecurityBooking.status === BookingStatus.UPCOMING ? (
-                    <span className="px-3 py-1 bg-cyan-600 text-white font-black text-xs rounded-full shadow-2xs">
-                      📅 待到訪
-                    </span>
-                  ) : viewingSecurityBooking.isPendingApproval || viewingSecurityBooking.status === BookingStatus.PENDING ? (
-                    <span className="px-3 py-1 bg-amber-500 text-white font-black text-xs rounded-full shadow-2xs">
-                      PENDING 待到訪
+                  ) : (viewingSecurityBooking.status === BookingStatus.COMPLETED || viewingSecurityBooking.status === BookingStatus.CANCELLED) ? (
+                    <span className="px-3 py-1 bg-slate-600 text-white font-black text-xs rounded-full shadow-2xs">
+                      {viewingSecurityBooking.status === BookingStatus.COMPLETED ? '📜 歷史/已完成' : '🚫 歷史/已取消'}
                     </span>
                   ) : (
-                    <span className="px-3 py-1 bg-slate-500 text-white font-black text-xs rounded-full shadow-2xs">
-                      🚫 已取消
+                    <span className="px-3 py-1 bg-cyan-600 text-white font-black text-xs rounded-full shadow-2xs">
+                      📅 待到訪
                     </span>
                   )
                 ) : (
                   <span className="px-3 py-1 bg-blue-600 text-white font-black text-xs rounded-full shadow-2xs">
-                    🟢 進行中 (已核銷放行)
+                    🟢 進行中 (已掃碼放行)
                   </span>
                 )}
 

@@ -11,7 +11,7 @@ import {
   Users, User, Building, Car, Calendar, Mail, MapPin, 
   Plus, Trash2, Crown, Search, Eye, QrCode, X, Clock, 
   CheckCircle2, RotateCcw, AlertCircle, Sparkles, Laptop, 
-  Check, FileText, Send, ArrowRight, ShieldCheck, ChevronRight, Download
+  Check, FileText, Send, ArrowRight, ShieldCheck, ChevronRight, ChevronLeft, Download
 } from 'lucide-react';
 
 interface PcVisitorPortalProps {
@@ -64,15 +64,13 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitSuccessMsg, setSubmitSuccessMsg] = useState<string | null>(null);
 
-  // Live preview share states
-  const [pcSaveSuccessMsg, setPcSaveSuccessMsg] = useState(false);
-  const [pcEmailModalOpen, setPcEmailModalOpen] = useState(false);
-  const [pcTargetEmail, setPcTargetEmail] = useState('');
-  const [pcEmailSentSuccess, setPcEmailSentSuccess] = useState<string | null>(null);
-
   // RECORDS STATES (TAB 2)
   const [recordsFilter, setRecordsFilter] = useState<'ALL' | 'PENDING' | 'UPCOMING' | 'CHECKED_IN' | 'CANCELLED'>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStartDateTime, setFilterStartDateTime] = useState('');
+  const [filterEndDateTime, setFilterEndDateTime] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [viewingDetailBooking, setViewingDetailBooking] = useState<Booking | null>(null);
   const [viewingPassBooking, setViewingPassBooking] = useState<Booking | null>(null);
 
@@ -287,6 +285,29 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
     }];
   };
 
+  // Helper to parse date string into timestamp for range comparison
+  const parseBookingTimestamp = (dateStr?: string, isEnd = false): number | null => {
+    if (!dateStr) return null;
+    let target = dateStr.trim();
+    if (target.includes('至')) {
+      const parts = target.split('至');
+      target = isEnd ? parts[1].trim() : parts[0].trim();
+    }
+    // Normalize dots to dashes: 2026.08.18 -> 2026-08-18
+    target = target.replace(/\./g, '-');
+    // Format YYYY-MM-DD HH:mm or YYYY-MM-DD HH:mm:ss
+    if (!target.includes('T')) {
+      const sp = target.split(' ');
+      if (sp.length === 2) {
+        const timePart = sp[1].split(':');
+        const formattedTime = timePart.length === 2 ? `${sp[1]}:${isEnd ? '59' : '00'}` : sp[1];
+        target = `${sp[0]}T${formattedTime}`;
+      }
+    }
+    const ts = new Date(target).getTime();
+    return isNaN(ts) ? null : ts;
+  };
+
   // Filter My Appointments
   const filteredBookings = bookings.filter((b) => {
     // Status filter
@@ -300,6 +321,29 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
       if (b.status !== BookingStatus.CANCELLED && b.status !== BookingStatus.COMPLETED) return false;
     }
 
+    // 開始時間 (年-月-日 時:分:秒) 篩選
+    if (filterStartDateTime) {
+      const startFilterTs = new Date(filterStartDateTime.replace(' ', 'T')).getTime();
+      if (!isNaN(startFilterTs)) {
+        const bookingEndTs = parseBookingTimestamp(b.endDateTime, true) || 
+                             parseBookingTimestamp(b.visitDateTime, true) || 
+                             parseBookingTimestamp(b.startDateTime, true) ||
+                             parseBookingTimestamp(b.createdAt, true);
+        if (bookingEndTs && bookingEndTs < startFilterTs) return false;
+      }
+    }
+
+    // 結束時間 (年-月-日 時:分:秒) 篩選
+    if (filterEndDateTime) {
+      const endFilterTs = new Date(filterEndDateTime.replace(' ', 'T')).getTime();
+      if (!isNaN(endFilterTs)) {
+        const bookingStartTs = parseBookingTimestamp(b.startDateTime, false) || 
+                               parseBookingTimestamp(b.visitDateTime, false) || 
+                               parseBookingTimestamp(b.createdAt, false);
+        if (bookingStartTs && bookingStartTs > endFilterTs) return false;
+      }
+    }
+
     // Search filter
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
@@ -309,12 +353,21 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
         b.invitationCode.toLowerCase().includes(term) ||
         (b.hostEmployeeName && b.hostEmployeeName.toLowerCase().includes(term)) ||
         b.id.toLowerCase().includes(term) ||
-        (b.destination && b.destination.toLowerCase().includes(term))
+        (b.destination && b.destination.toLowerCase().includes(term)) ||
+        (b.licensePlate && b.licensePlate.toLowerCase().includes(term))
       );
     }
 
     return true;
   });
+
+  const totalRecords = filteredBookings.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const paginatedBookings = filteredBookings.slice(
+    (safeCurrentPage - 1) * pageSize,
+    safeCurrentPage * pageSize
+  );
 
   return (
     <div className="flex-1 bg-slate-100 dark:bg-slate-950 flex flex-col min-h-0 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
@@ -393,12 +446,9 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
 
         {/* ==================== TAB 1: CREATE VISITOR APPOINTMENT ==================== */}
         {activeTab === 'CREATE' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="max-w-4xl mx-auto bg-white dark:bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
             
-            {/* Left Form (8 Cols) */}
-            <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
-              
-              <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
                 <h3 className="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <User className="text-blue-600" size={18} />
                   <span>填寫訪客到訪資料與行程配置</span>
@@ -874,214 +924,6 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
                 </div>
 
               </form>
-            </div>
-
-            {/* Right Side: Live Invitation Preview Card (4 Cols) */}
-            <div className="lg:col-span-4 space-y-4 sticky top-6">
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <h4 className="text-xs font-black text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
-                    <QrCode size={16} className="text-blue-600" />
-                    <span>電子通行證 即時預覽</span>
-                  </h4>
-                  <span className="text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-full">
-                    LIVE PREVIEW
-                  </span>
-                </div>
-
-                {/* 訪客通行證 卡片 (完全對齊 APP InvitationCard 樣式與欄位) */}
-                <div className="bg-white dark:bg-slate-950 rounded-2xl shadow-sm border border-slate-200/90 dark:border-slate-800 overflow-hidden">
-                  
-                  {/* Card Header: 訪客通行證 */}
-                  <div className="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white p-3.5 text-center relative">
-                    <h2 className="text-sm font-black tracking-wide">訪客通行證</h2>
-                    <p className="text-[9px] text-blue-100 font-medium mt-0.5">TVB Electronic Visitor Pass</p>
-                    {clientTier === 'VIP' && (
-                      <span className="absolute top-2.5 right-2.5 px-2 py-0.5 bg-amber-500 text-white text-[9px] font-black rounded-md shadow-xs flex items-center gap-1">
-                        <Crown size={10} className="fill-white" />
-                        <span>VIP</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* PASS ID & 狀態 Active */}
-                  <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-900/60 border-b border-dashed border-slate-200 dark:border-slate-800 flex justify-between items-center text-xs font-mono">
-                    <span className="font-bold text-slate-700 dark:text-slate-300 text-[11px]">
-                      PASS ID: TVB-888888
-                    </span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                      狀態 Active
-                    </span>
-                  </div>
-
-                  {/* QR Code Section */}
-                  <div className="p-4 flex flex-col items-center justify-center bg-white dark:bg-slate-950 text-center border-b border-slate-100 dark:border-slate-800">
-                    <div className="p-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-inner mb-2">
-                      <div className="w-28 h-28 flex items-center justify-center bg-white p-2 rounded-xl relative">
-                        <QrCode size={96} className="text-slate-950" />
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-md bg-slate-950 flex items-center justify-center border-2 border-white shadow-xs">
-                          <span className="text-[7px] font-black tracking-wider text-white">TVB</span>
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
-                      到訪時請將此條碼出示於閘口或前台保安終端，進行核銷即可通行。
-                    </p>
-                  </div>
-
-                  {/* Details Section */}
-                  <div className="p-3.5 space-y-3 bg-white dark:bg-slate-950 text-xs">
-                    
-                    {/* 訪客列表 (個人訪客 / 多人訪客 / 團隊訪客) */}
-                    <div className="bg-slate-50 dark:bg-slate-900/80 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 space-y-1.5">
-                      <div className="flex items-center justify-between font-bold text-slate-900 dark:text-slate-100 text-xs">
-                        <span className="text-blue-600 dark:text-blue-400 font-black">
-                          {visitorCategory === 'TEAM' ? '團隊訪客' : visitorCategory === 'MULTI' ? '多人訪客' : '個人訪客'}
-                        </span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold">
-                          共{visitorCategory === 'SINGLE' ? 1 : visitorCategory === 'MULTI' ? multiVisitors.length : (Number(teamTotalCount) || 1)}人
-                        </span>
-                      </div>
-
-                      <div className="pt-1 border-t border-slate-200/60 dark:border-slate-800 space-y-1">
-                        {visitorCategory === 'TEAM' ? (
-                          <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200">
-                            1. {teamLeaderName || '團隊領隊'} <span className="text-[9px] font-normal text-slate-400">(領隊代表)</span>
-                          </div>
-                        ) : visitorCategory === 'MULTI' ? (
-                          multiVisitors.map((v, idx) => (
-                            <div key={idx} className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                              <span>{idx + 1}. {v.name || `訪客 #${idx + 1}`}</span>
-                              {v.email && (
-                                <span className="text-[9px] font-normal text-slate-400 font-mono truncate max-w-[120px]">{v.email}</span>
-                              )}
-                            </div>
-                          ))
-                        ) : (
-                          <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                            <span>1. {singleName || '張小明'}</span>
-                            {singleEmail && (
-                              <span className="text-[9px] font-normal text-slate-400 font-mono truncate max-w-[120px]">{singleEmail}</span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Detailed Key-Value Rows (與 APP InvitationCard 欄位完全對齊) */}
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800/80 space-y-2 text-[11px]">
-                      
-                      {/* 到訪性質 */}
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">到訪性質</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${getPurposeOption(purpose).color} ${getPurposeOption(purpose).bgColor}`}>
-                          {getPurposeOption(purpose).label}
-                        </span>
-                      </div>
-
-                      {/* 預約到訪時間 */}
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">預約到訪時間</span>
-                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-[10px]">
-                          {visitMode === 'SINGLE_VISIT' ? singleVisitDateTime : `${startDateTime}`}
-                        </span>
-                      </div>
-
-                      {/* 到訪模式 */}
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">到訪模式</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200 text-[11px]">
-                          {visitMode === 'MULTI_PASS' ? '有效期內多次訪問' : '單次訪問'}
-                        </span>
-                      </div>
-
-                      {/* 目的地 */}
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">目的地</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200 text-right truncate max-w-[160px]">
-                          {destination}
-                        </span>
-                      </div>
-
-                      {/* 公司名稱 */}
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">公司名稱</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200 text-right truncate max-w-[160px]">
-                          {company.trim() || '無'}
-                        </span>
-                      </div>
-
-                      {/* 車牌號碼 */}
-                      <div className="flex items-center justify-between pt-2">
-                        <span className="font-bold text-slate-500 dark:text-slate-400">車牌號碼</span>
-                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">
-                          {licensePlates.filter(p => p.trim()).join(', ') || '未預約泊車'}
-                        </span>
-                      </div>
-
-                      {/* 備註 */}
-                      <div className="flex items-start justify-between pt-2 gap-2">
-                        <span className="font-bold text-slate-500 dark:text-slate-400 shrink-0">備註</span>
-                        <span className="text-slate-700 dark:text-slate-300 text-right leading-relaxed truncate max-w-[160px]">
-                          {notes.trim() || '無'}
-                        </span>
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-                {/* Preview Share Buttons: 保存通行證圖片 & 發送電郵 */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPcSaveSuccessMsg(true);
-                      setTimeout(() => setPcSaveSuccessMsg(false), 3500);
-                    }}
-                    className="py-2 px-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-xs transition-all"
-                  >
-                    <Download size={14} />
-                    <span>保存通行證圖片</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPcTargetEmail(visitorCategory === 'SINGLE' ? singleEmail : visitorCategory === 'MULTI' ? (multiVisitors[0]?.email || '') : teamLeaderEmail);
-                      setPcEmailModalOpen(true);
-                    }}
-                    className="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer flex items-center justify-center gap-1.5 shadow-xs transition-all"
-                  >
-                    <Mail size={14} />
-                    <span>發送電郵</span>
-                  </button>
-                </div>
-
-                {/* Feedback Toasts */}
-                {pcSaveSuccessMsg && (
-                  <div className="p-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-md animate-bounce">
-                    <CheckCircle2 size={15} />
-                    <span>已成功保存電子通行證圖片！</span>
-                  </div>
-                )}
-
-                {pcEmailSentSuccess && (
-                  <div className="p-2.5 bg-emerald-600 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 shadow-md animate-bounce">
-                    <CheckCircle2 size={15} />
-                    <span>已發送電子通行證至 {pcEmailSentSuccess}！</span>
-                  </div>
-                )}
-
-                <p className="text-[10px] text-slate-400 text-center leading-relaxed">
-                  提交預約後，系統將直接在列表中生成完整預約記錄，並可立即發送或匯出電子通行證。
-                </p>
-              </div>
-            </div>
-
           </div>
         )}
 
@@ -1107,20 +949,20 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
             {/* Master Table Header Controls & Filters */}
             <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
                   <h3 className="text-base font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <FileText className="text-blue-600" size={18} />
                     <span>訪客預約記錄看板</span>
                   </h3>
-                  <p className="text-xs text-slate-400 mt-0.5">點擊「詳情」查看訪客細節，下載或點擊「發送電郵」發送電子通行證</p>
+                  <p className="text-xs text-slate-400 mt-0.5">點擊「詳情」查看訪客細節，核准後可下載或發送電子通行證</p>
                 </div>
 
                 {/* Status Filter Buttons */}
-                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs gap-1 overflow-x-auto">
+                <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs gap-1 overflow-x-auto max-w-full">
                   <button
                     type="button"
-                    onClick={() => setRecordsFilter('ALL')}
+                    onClick={() => { setRecordsFilter('ALL'); setCurrentPage(1); }}
                     className={`px-3.5 py-1.5 rounded-xl font-bold cursor-pointer transition-all whitespace-nowrap ${
                       recordsFilter === 'ALL' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-2xs' : 'text-slate-500'
                     }`}
@@ -1130,7 +972,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setRecordsFilter('PENDING')}
+                    onClick={() => { setRecordsFilter('PENDING'); setCurrentPage(1); }}
                     className={`px-3.5 py-1.5 rounded-xl font-bold cursor-pointer transition-all whitespace-nowrap ${
                       recordsFilter === 'PENDING' ? 'bg-white dark:bg-slate-900 text-amber-600 shadow-2xs' : 'text-slate-500'
                     }`}
@@ -1140,7 +982,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setRecordsFilter('UPCOMING')}
+                    onClick={() => { setRecordsFilter('UPCOMING'); setCurrentPage(1); }}
                     className={`px-3.5 py-1.5 rounded-xl font-bold cursor-pointer transition-all whitespace-nowrap ${
                       recordsFilter === 'UPCOMING' ? 'bg-white dark:bg-slate-900 text-blue-600 shadow-2xs' : 'text-slate-500'
                     }`}
@@ -1150,7 +992,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setRecordsFilter('CHECKED_IN')}
+                    onClick={() => { setRecordsFilter('CHECKED_IN'); setCurrentPage(1); }}
                     className={`px-3.5 py-1.5 rounded-xl font-bold cursor-pointer transition-all whitespace-nowrap ${
                       recordsFilter === 'CHECKED_IN' ? 'bg-white dark:bg-slate-900 text-emerald-600 shadow-2xs' : 'text-slate-500'
                     }`}
@@ -1160,7 +1002,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => setRecordsFilter('CANCELLED')}
+                    onClick={() => { setRecordsFilter('CANCELLED'); setCurrentPage(1); }}
                     className={`px-3.5 py-1.5 rounded-xl font-bold cursor-pointer transition-all whitespace-nowrap ${
                       recordsFilter === 'CANCELLED' ? 'bg-white dark:bg-slate-900 text-slate-600 shadow-2xs' : 'text-slate-500'
                     }`}
@@ -1170,16 +1012,96 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
                 </div>
               </div>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="搜尋訪客姓名、公司、邀請碼、對接員工、目的地..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
-                />
-                <Search size={16} className="absolute left-3.5 top-3 text-slate-400" />
+              {/* Filters Bar: Search + 開始時間 (年月日時分秒) + 結束時間 (年月日時分秒) + [重置] [搜尋] 按鈕 */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+                {/* Search Bar (4 cols) */}
+                <div className="md:col-span-4 space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400">關鍵字搜尋</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setCurrentPage(1);
+                          triggerSound(650, 'sine', 0.04);
+                        }
+                      }}
+                      placeholder="搜尋姓名、公司、邀請碼、車牌..."
+                      className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:border-blue-500"
+                    />
+                    <Search size={15} className="absolute left-3 top-2.5 text-slate-400" />
+                  </div>
+                </div>
+
+                {/* Start DateTime Filter (3 cols) */}
+                <div className="md:col-span-3 space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <Calendar size={12} className="text-blue-500" />
+                    <span>開始時間 (年月日時分秒)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="datetime-local"
+                      step="1"
+                      value={filterStartDateTime}
+                      onChange={(e) => { setFilterStartDateTime(e.target.value); setCurrentPage(1); }}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                      title="開始時間 (年-月-日 時:分:秒)"
+                    />
+                  </div>
+                </div>
+
+                {/* End DateTime Filter (3 cols) */}
+                <div className="md:col-span-3 space-y-1">
+                  <label className="block text-[11px] font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                    <Clock size={12} className="text-purple-500" />
+                    <span>結束時間 (年月日時分秒)</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="datetime-local"
+                      step="1"
+                      value={filterEndDateTime}
+                      onChange={(e) => { setFilterEndDateTime(e.target.value); setCurrentPage(1); }}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-mono font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500 cursor-pointer"
+                      title="結束時間 (年-月-日 時:分:秒)"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons: [重置] [搜尋] (2 cols) */}
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm('');
+                      setFilterStartDateTime('');
+                      setFilterEndDateTime('');
+                      setCurrentPage(1);
+                      triggerSound(500, 'sine', 0.05);
+                    }}
+                    className="flex-1 py-2 px-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 border border-slate-200/60 dark:border-slate-700"
+                    title="清空所有篩選條件"
+                  >
+                    <RotateCcw size={13} />
+                    <span>重置</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentPage(1);
+                      triggerSound(700, 'triangle', 0.05);
+                    }}
+                    className="flex-1 py-2 px-2.5 bg-blue-600 hover:bg-blue-550 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 shadow-xs hover:shadow"
+                    title="執行搜尋篩選"
+                  >
+                    <Search size={13} />
+                    <span>搜尋</span>
+                  </button>
+                </div>
               </div>
 
               {/* Desktop Table */}
@@ -1204,169 +1126,181 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
                   </thead>
 
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
-                    {filteredBookings.length > 0 ? (
-                      filteredBookings.map((b) => (
-                        <tr key={b.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
-                          
-                          {/* 1. 預約 ID */}
-                          <td className="p-3.5 font-mono font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                            #{b.id}
-                          </td>
+                    {paginatedBookings.length > 0 ? (
+                      paginatedBookings.map((b) => {
+                        const isPending = b.status === BookingStatus.PENDING || b.isPendingApproval;
 
-                          {/* 2. 訪客類型 */}
-                          <td className="p-3.5 text-center whitespace-nowrap">
-                            <span className="inline-flex px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 text-[10px] font-bold rounded-md">
-                              {getVisitorTypeLabel(b.visitorType)}
-                            </span>
-                          </td>
+                        return (
+                          <tr key={b.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
+                            
+                            {/* 1. 預約 ID */}
+                            <td className="p-3.5 font-mono font-bold text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                              #{b.id}
+                            </td>
 
-                          {/* 3. 訪客姓名 */}
-                          <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
-                            <div className="flex items-center gap-1.5">
-                              <span>{b.visitorName}</span>
-                              <span className="text-[10px] text-blue-500 font-mono">({b.invitationCode})</span>
-                            </div>
-                          </td>
-
-                          {/* 4. 客戶等級 */}
-                          <td className="p-3.5 text-center whitespace-nowrap">
-                            {b.clientTier === 'VIP' ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-800 text-[10.5px] font-bold rounded-md">
-                                👑 VIP客戶
+                            {/* 2. 訪客類型 */}
+                            <td className="p-3.5 text-center whitespace-nowrap">
+                              <span className="inline-flex px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 text-[10px] font-bold rounded-md">
+                                {getVisitorTypeLabel(b.visitorType)}
                               </span>
-                            ) : (
-                              <span className="inline-flex px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10.5px] font-semibold rounded-md border border-slate-200 dark:border-slate-700">
-                                普通客戶
+                            </td>
+
+                            {/* 3. 訪客姓名 */}
+                            <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5">
+                                <span>{b.visitorName}</span>
+                                <span className="text-[10px] text-blue-500 font-mono">({b.invitationCode})</span>
+                              </div>
+                            </td>
+
+                            {/* 4. 客戶等級 */}
+                            <td className="p-3.5 text-center whitespace-nowrap">
+                              {b.clientTier === 'VIP' ? (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-800 text-[10.5px] font-bold rounded-md">
+                                  👑 VIP客戶
+                                </span>
+                              ) : (
+                                <span className="inline-flex px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10.5px] font-semibold rounded-md border border-slate-200 dark:border-slate-700">
+                                  普通客戶
+                                </span>
+                              )}
+                            </td>
+
+                            {/* 5. 公司名稱 */}
+                            <td className="p-3.5 text-slate-600 dark:text-slate-300 font-semibold whitespace-nowrap">
+                              {b.company || <span className="text-slate-400 italic">個人代表</span>}
+                            </td>
+
+                            {/* 6. 到訪模式 */}
+                            <td className="p-3.5 text-center whitespace-nowrap">
+                              <span className="inline-flex px-2 py-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 text-[10px] font-bold rounded-md border border-purple-200/50">
+                                {getVisitModeLabel(b.visitMode)}
                               </span>
-                            )}
-                          </td>
+                            </td>
 
-                          {/* 5. 公司名稱 */}
-                          <td className="p-3.5 text-slate-600 dark:text-slate-300 font-semibold whitespace-nowrap">
-                            {b.company || <span className="text-slate-400 italic">個人代表</span>}
-                          </td>
+                            {/* 7. 到訪日期與時間 */}
+                            <td className="p-3.5 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                              {b.visitDateTime}
+                            </td>
 
-                          {/* 6. 到訪模式 */}
-                          <td className="p-3.5 text-center whitespace-nowrap">
-                            <span className="inline-flex px-2 py-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 text-[10px] font-bold rounded-md border border-purple-200/50">
-                              {getVisitModeLabel(b.visitMode)}
-                            </span>
-                          </td>
+                            {/* 8. 目的地 */}
+                            <td className="p-3.5 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              {b.destination || '電視城主樓'}
+                            </td>
 
-                          {/* 7. 到訪日期與時間 */}
-                          <td className="p-3.5 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                            {b.visitDateTime}
-                          </td>
+                            {/* 9. 車牌號碼 */}
+                            <td className="p-3.5 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                              {b.licensePlate || <span className="text-slate-400 font-sans italic">無</span>}
+                            </td>
 
-                          {/* 8. 目的地 */}
-                          <td className="p-3.5 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                            {b.destination || '電視城主樓'}
-                          </td>
-
-                          {/* 9. 車牌號碼 */}
-                          <td className="p-3.5 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                            {b.licensePlate || <span className="text-slate-400 font-sans italic">無</span>}
-                          </td>
-
-                          {/* 10. 到訪性質 */}
-                          <td className="p-3.5 text-center whitespace-nowrap">
-                            <span className={`inline-block px-2 py-0.5 text-[10.5px] font-bold rounded-lg ${getPurposeOption(b.purpose).bgColor} ${getPurposeOption(b.purpose).color}`}>
-                              {getPurposeOption(b.purpose).label}
-                            </span>
-                          </td>
-
-                          {/* 11. 登記證件號碼 */}
-                          <td className="p-3.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                            {b.visitorIdCard || <span className="text-slate-400 font-sans italic">未核銷錄入</span>}
-                          </td>
-
-                          {/* 12. 到訪狀態 */}
-                          <td className="p-3.5 text-center whitespace-nowrap">
-                            {b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 rounded-full border border-blue-300 dark:border-blue-800 whitespace-nowrap">
-                                🟢 進行中
+                            {/* 10. 到訪性質 */}
+                            <td className="p-3.5 text-center whitespace-nowrap">
+                              <span className={`inline-block px-2 py-0.5 text-[10.5px] font-bold rounded-lg ${getPurposeOption(b.purpose).bgColor} ${getPurposeOption(b.purpose).color}`}>
+                                {getPurposeOption(b.purpose).label}
                               </span>
-                            ) : b.status === BookingStatus.CANCELLED ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700 whitespace-nowrap">
-                                🚫 已取消
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 rounded-full border border-cyan-300 dark:border-cyan-800 whitespace-nowrap">
-                                📅 待到訪
-                              </span>
-                            )}
-                          </td>
+                            </td>
 
-                          {/* 13. 管理操作 */}
-                          <td className="p-3.5 text-center whitespace-nowrap">
-                            <div className="flex items-center justify-center gap-1.5">
-                              {/* 1. 詳情 */}
-                              <button
-                                type="button"
-                                onClick={() => setViewingDetailBooking(b)}
-                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1 transition-all shrink-0"
-                              >
-                                <Eye size={13} />
-                                <span>詳情</span>
-                              </button>
+                            {/* 11. 登記證件號碼 */}
+                            <td className="p-3.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                              {b.visitorIdCard || <span className="text-slate-400 font-sans italic">未核銷錄入</span>}
+                            </td>
 
-                              {/* 2. 下載電子通行證 */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const isMultiIndiv = b.visitorType === 'MULTI' || b.visitorType === 'MULTI_INDIVIDUAL';
-                                  if (isMultiIndiv) {
-                                    setDownloadSelectorBooking(b);
-                                  } else {
-                                    const msg = `已成功下載【${b.visitorName}】之電子通行證圖片！`;
-                                    setDownloadSuccessToast(msg);
-                                    setTimeout(() => setDownloadSuccessToast(null), 3500);
-                                  }
-                                }}
-                                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1 transition-all shrink-0"
-                                title="下載電子通行證圖片"
-                              >
-                                <Download size={13} />
-                                <span>下載電子通行證</span>
-                              </button>
+                            {/* 12. 到訪狀態 */}
+                            <td className="p-3.5 text-center whitespace-nowrap">
+                              {isPending ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 rounded-full border border-amber-300 dark:border-amber-800 whitespace-nowrap">
+                                  ⏳ 待審核
+                                </span>
+                              ) : b.status === BookingStatus.CHECKED_IN || b.status === BookingStatus.COMPLETED ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 rounded-full border border-blue-300 dark:border-blue-800 whitespace-nowrap">
+                                  🟢 進行中
+                                </span>
+                              ) : b.status === BookingStatus.CANCELLED ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700 whitespace-nowrap">
+                                  🚫 已取消
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 rounded-full border border-cyan-300 dark:border-cyan-800 whitespace-nowrap">
+                                  📅 待到訪
+                                </span>
+                              )}
+                            </td>
 
-                              {/* 3. 發送電郵 */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const isMultiIndiv = b.visitorType === 'MULTI' || b.visitorType === 'MULTI_INDIVIDUAL';
-                                  if (isMultiIndiv) {
-                                    setEmailSelectorBooking(b);
-                                  } else {
-                                    const targetEmail = b.contactEmail || b.visitors?.[0]?.email || 'visitor@example.com';
-                                    setSingleEmailConfirmBooking({ booking: b, email: targetEmail });
-                                  }
-                                }}
-                                className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1 transition-all shrink-0"
-                                title="發送電子通行證至電郵"
-                              >
-                                <Mail size={13} />
-                                <span>發送電郵</span>
-                              </button>
-
-                              {b.status === BookingStatus.UPCOMING && (
+                            {/* 13. 管理操作 */}
+                            <td className="p-3.5 text-center whitespace-nowrap">
+                              <div className="flex items-center justify-center gap-1.5">
+                                {/* 1. 詳情 */}
                                 <button
                                   type="button"
-                                  onClick={() => {
-                                    if (window.confirm(`確定要取消訪客 ${b.visitorName} 的這筆預約嗎？`)) {
-                                      onCancelBooking(b.id);
-                                    }
-                                  }}
-                                  className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 text-xs font-bold rounded-xl cursor-pointer transition-all shrink-0"
+                                  onClick={() => setViewingDetailBooking(b)}
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1 transition-all shrink-0"
                                 >
-                                  取消
+                                  <Eye size={13} />
+                                  <span>詳情</span>
                                 </button>
-                              )}
-                            </div>
-                          </td>
 
-                        </tr>
-                      ))
+                                {/* 2. 下載電子通行證 (待審核狀態不提供) */}
+                                {!isPending && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const isMultiIndiv = b.visitorType === 'MULTI' || b.visitorType === 'MULTI_INDIVIDUAL';
+                                      if (isMultiIndiv) {
+                                        setDownloadSelectorBooking(b);
+                                      } else {
+                                        const msg = `已成功下載【${b.visitorName}】之電子通行證圖片！`;
+                                        setDownloadSuccessToast(msg);
+                                        setTimeout(() => setDownloadSuccessToast(null), 3500);
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/60 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1 transition-all shrink-0"
+                                    title="下載電子通行證圖片"
+                                  >
+                                    <Download size={13} />
+                                    <span>下載電子通行證</span>
+                                  </button>
+                                )}
+
+                                {/* 3. 發送電郵 (待審核狀態不提供) */}
+                                {!isPending && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const isMultiIndiv = b.visitorType === 'MULTI' || b.visitorType === 'MULTI_INDIVIDUAL';
+                                      if (isMultiIndiv) {
+                                        setEmailSelectorBooking(b);
+                                      } else {
+                                        const targetEmail = b.contactEmail || b.visitors?.[0]?.email || 'visitor@example.com';
+                                        setSingleEmailConfirmBooking({ booking: b, email: targetEmail });
+                                      }
+                                    }}
+                                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1 transition-all shrink-0"
+                                    title="發送電子通行證至電郵"
+                                  >
+                                    <Mail size={13} />
+                                    <span>發送電郵</span>
+                                  </button>
+                                )}
+
+                                {b.status === BookingStatus.UPCOMING && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (window.confirm(`確定要取消訪客 ${b.visitorName} 的這筆預約嗎？`)) {
+                                        onCancelBooking(b.id);
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/40 text-xs font-bold rounded-xl cursor-pointer transition-all shrink-0"
+                                  >
+                                    取消
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+
+                          </tr>
+                        );
+                      })
                     ) : (
                       <tr>
                         <td colSpan={13} className="p-8 text-center text-slate-400 font-bold">
@@ -1377,6 +1311,73 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination Controls */}
+              {totalRecords > 0 && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
+                  <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-medium">
+                    <span>顯示第 {(safeCurrentPage - 1) * pageSize + 1} 至 {Math.min(safeCurrentPage * pageSize, totalRecords)} 筆，共 {totalRecords} 筆</span>
+                    <span className="text-slate-300 dark:text-slate-700">|</span>
+                    <div className="flex items-center gap-1">
+                      <span>每頁</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                      <span>筆</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {/* Previous Button */}
+                    <button
+                      type="button"
+                      disabled={safeCurrentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded-xl transition-all cursor-pointer"
+                      title="上一頁"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {/* Page Numbers */}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-8 h-8 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center justify-center ${
+                          pageNum === safeCurrentPage
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ))}
+
+                    {/* Next Button */}
+                    <button
+                      type="button"
+                      disabled={safeCurrentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      className="p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 dark:text-slate-300 rounded-xl transition-all cursor-pointer"
+                      title="下一頁"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
 
             </div>
 
@@ -1543,17 +1544,20 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
                 關閉
               </button>
 
-              <button
-                type="button"
-                onClick={() => {
-                  setViewingPassBooking(viewingDetailBooking);
-                  setViewingDetailBooking(null);
-                }}
-                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-550 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
-              >
-                <QrCode size={14} />
-                <span>檢視電子通行證</span>
-              </button>
+              {/* 待審核狀態不顯示「檢視電子通行證」 */}
+              {!(viewingDetailBooking.status === BookingStatus.PENDING || viewingDetailBooking.isPendingApproval) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setViewingPassBooking(viewingDetailBooking);
+                    setViewingDetailBooking(null);
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-550 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                >
+                  <QrCode size={14} />
+                  <span>檢視電子通行證</span>
+                </button>
+              )}
             </div>
 
           </div>
@@ -1579,72 +1583,6 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
                 onBack={() => setViewingPassBooking(null)}
               />
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* PC Live Preview Email Modal */}
-      {pcEmailModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full border border-slate-200 dark:border-slate-800 shadow-2xl p-5 space-y-4 relative animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl text-emerald-600">
-                  <Mail size={18} />
-                </div>
-                <div>
-                  <h3 className="text-xs font-black text-slate-900 dark:text-slate-100">發送電子通行證至電郵</h3>
-                  <p className="text-[10px] text-slate-400">系統將發送帶有 QR Code 的通行證至目標信箱</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPcEmailModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (!pcTargetEmail.trim()) return;
-              const addr = pcTargetEmail.trim();
-              setPcEmailModalOpen(false);
-              setPcEmailSentSuccess(addr);
-              setTimeout(() => setPcEmailSentSuccess(null), 4000);
-            }} className="space-y-3">
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  接收電子郵件地址 <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={pcTargetEmail}
-                  onChange={(e) => setPcTargetEmail(e.target.value)}
-                  placeholder="請輸入訪客電郵地址"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPcEmailModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer"
-                >
-                  取消
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs cursor-pointer flex items-center gap-1.5 shadow-md"
-                >
-                  <Send size={14} />
-                  <span>確認發送</span>
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

@@ -13,6 +13,7 @@ import { CmsConsole } from './CmsConsole';
 import { SecurityConsole } from './SecurityConsole';
 import { DailyWorkApp } from './DailyWorkApp';
 import { PcVisitorPortal } from './PcVisitorPortal';
+import { SystemRequirementsDoc } from './SystemRequirementsDoc';
 import { 
   Smartphone, Mail, Shield, RefreshCw, CheckCircle, Clock, Trash2, 
   ArrowRight, MapPin, Sparkles, Building, User, Info, SmartphoneIcon, 
@@ -473,8 +474,8 @@ export const WorkspaceShell: React.FC = () => {
               </div>
             </div>
 
-            {/* Layout Wrapper: Phone on left, Requirement Card on right */}
-            <div className="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-6 w-full max-w-5xl mx-auto">
+            {/* Layout Wrapper: Smartphone in center, Requirement Doc directly below */}
+            <div className="flex flex-col items-center justify-center gap-8 w-full max-w-5xl mx-auto">
               
               {/* Smartphone Frame Wrapper */}
               <div className="w-full max-w-[375px] h-[720px] bg-slate-950 rounded-[48px] p-3.5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] border-4 border-slate-800/90 relative flex flex-col shrink-0">
@@ -572,88 +573,9 @@ export const WorkspaceShell: React.FC = () => {
                 </div>
               </div>
 
-              {/* 📋 Phone Side Requirement / Spec Card */}
-              <div className="w-full lg:w-[460px] bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md space-y-4 text-xs">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center gap-2.5">
-                    <div className="p-2 bg-blue-600 text-white rounded-2xl shadow-xs">
-                      <Info size={18} />
-                    </div>
-                    <div>
-                      <h3 className="font-black text-slate-900 dark:text-slate-100 text-sm">
-                        📱 APP「我的預約」需求與頁面規則說明
-                      </h3>
-                      <p className="text-[11px] text-slate-400">產品規格與系統邏輯規範卡片</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  {/* 1. 待審核 */}
-                  <div className="p-3.5 bg-amber-50/90 dark:bg-amber-950/30 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-black text-amber-900 dark:text-amber-300 flex items-center gap-1.5 text-xs">
-                        <Clock size={14} className="text-amber-500 shrink-0" />
-                        <span>「待審核」Tab</span>
-                      </span>
-                      <span className="text-[10px] px-2 py-0.5 bg-amber-200/80 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 rounded-md font-bold">
-                        {localStorage.getItem('tvb_booking_approval_required') === 'true' ? '當前啟用中 (已顯示)' : '未開啟審核：不顯示此Tab'}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-medium">
-                      記錄待審核的預約記錄。若管理系統未開啟「需審核」功能，系統將自動隱藏此 Tab 標籤。
-                    </p>
-                  </div>
-
-                  {/* 2. 待到訪 */}
-                  <div className="p-3.5 bg-blue-50/90 dark:bg-blue-950/30 rounded-2xl border border-blue-200/80 dark:border-blue-900/40 space-y-1.5">
-                    <span className="font-black text-blue-900 dark:text-blue-300 flex items-center gap-1.5 text-xs">
-                      <Calendar size={14} className="text-blue-500 shrink-0" />
-                      <span>「待到訪」Tab</span>
-                    </span>
-                    <p className="text-[11px] text-blue-800 dark:text-blue-300 leading-relaxed font-medium">
-                      展示未來時間的預約，或今日尚未掃碼核銷的預約。用戶可在此「分享預約」或「取消預約」。
-                    </p>
-                    <div className="pt-2 border-t border-blue-200/60 dark:border-blue-900/50 space-y-1 text-[11px] text-blue-900 dark:text-blue-200 font-medium">
-                      <div className="font-bold text-blue-950 dark:text-blue-100">📌 分享預約方式：</div>
-                      <div>① <strong>保存圖片</strong>：下載電子通行證圖片，直接發給訪客。</div>
-                      <div>② <strong>發送電郵</strong>：預約時填寫電郵，審核成功後自動發送給用戶；若未收到，可於分享預約中點擊「重發電郵」。</div>
-                    </div>
-                  </div>
-
-                  {/* 3. 進行中 */}
-                  <div className="p-3.5 bg-emerald-50/90 dark:bg-emerald-950/30 rounded-2xl border border-emerald-200/80 dark:border-emerald-900/40 space-y-1.5">
-                    <span className="font-black text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5 text-xs">
-                      <CheckCircle size={14} className="text-emerald-500 shrink-0" />
-                      <span>「進行中」Tab</span>
-                    </span>
-                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed font-medium">
-                      訪客第一次掃碼後，狀態自動變更為「進行中」。
-                    </p>
-                    <div className="pt-2 border-t border-emerald-200/60 dark:border-emerald-900/50 space-y-1 text-[11px] text-emerald-900 dark:text-emerald-200 font-medium">
-                      <div>• <strong>單次訪問</strong>：以自然日計算，當天日期內可以掃碼進入。一旦掃碼成功，則二維碼自動失效。</div>
-                      <div>• <strong>有效期內多次訪問</strong>：以開始時間自然日計算，當天日期內可以掃碼進入且有效期內這個二維碼可以多次使用。</div>
-                      <div>• <strong>多人同行</strong>：適用於多人同時同行到訪，共用一個二維碼 + 多人訪客列表顯示。</div>
-                      <div>• <strong>多人分行</strong>：適用於多人不同行到訪，按照單人電子通行證顯示，可左右切換查看每個人的專屬通行證，訪客資訊只有單個人，保存圖片與發送電郵按鈕固定在螢幕底部。</div>
-                    </div>
-                  </div>
-
-                  {/* 4. 歷史/已取消 */}
-                  <div className="p-3.5 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-1.5">
-                    <span className="font-black text-slate-900 dark:text-slate-100 flex items-center gap-1.5 text-xs">
-                      <Trash2 size={14} className="text-slate-500 shrink-0" />
-                      <span>「歷史 / 已取消」Tab</span>
-                    </span>
-                    <p className="text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                      展示已過期的預約，或被手動取消的預約。
-                    </p>
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-1 text-[11px] text-slate-700 dark:text-slate-300 font-medium">
-                      <div>• <strong>單次訪問</strong>：以自然日計算，到了第二天自動變為歷史。</div>
-                      <div>• <strong>有效期內多次訪問</strong>：以結束日期和時間計算，過了結束日期和時間不可以掃碼進入。</div>
-                    </div>
-                  </div>
-                </div>
-
+              {/* 系統需求與架構規格說明文檔 (放在 APP 下方) */}
+              <div className="w-full">
+                <SystemRequirementsDoc />
               </div>
 
             </div>
