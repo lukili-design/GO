@@ -1026,7 +1026,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                     }`}
                   >
                     <Sliders size={15} className="text-emerald-500 shrink-0" />
-                    <span className="flex-1 text-left">審核與白名單配置</span>
+                    <span className="flex-1 text-left">白名單配置</span>
                   </button>
 
                   <button
@@ -1290,7 +1290,9 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                         <th className="p-3.5 whitespace-nowrap">聯絡電郵</th>
                         <th className="p-3.5 whitespace-nowrap">對接員工</th>
                         <th className="p-3.5 whitespace-nowrap">負責部門</th>
-                        <th className="p-3.5 whitespace-nowrap">掃碼時間</th>
+                        <th className="p-3.5 whitespace-nowrap">掃碼放行時間</th>
+                        <th className="p-3.5 whitespace-nowrap text-blue-600 dark:text-blue-400">掃碼簽出時間</th>
+                        <th className="p-3.5 text-center whitespace-nowrap">到訪狀態</th>
                         <th className="p-3.5 whitespace-nowrap">關聯預約 ID</th>
                         <th className="p-3.5 text-center whitespace-nowrap">操作</th>
                       </tr>
@@ -1298,7 +1300,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-850 text-xs">
                       {visitorTabBookings.length === 0 ? (
                         <tr>
-                          <td colSpan={16} className="p-12 text-center text-slate-400">
+                          <td colSpan={18} className="p-12 text-center text-slate-400">
                             <AlertCircle size={32} className="mx-auto mb-2.5 text-slate-300 dark:text-slate-700" />
                             <span className="font-bold">無符合條件的訪客記錄。</span>
                           </td>
@@ -1411,10 +1413,10 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                                 {b.responsibleDept || b.hostEmployeeDept || 'New Media Group'}
                               </td>
 
-                              {/* 14. 掃碼時間 */}
+                              {/* 14. 掃碼放行時間 */}
                               <td className="p-3.5 font-semibold whitespace-nowrap">
                                 {b.checkedInAt ? (
-                                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                                  <span className="text-emerald-600 dark:text-emerald-400 font-bold font-mono">
                                     {formatDateToStandard(b.checkedInAt)}
                                   </span>
                                 ) : (
@@ -1422,12 +1424,49 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                                 )}
                               </td>
 
-                              {/* 15. 關聯員工預約 ID */}
+                              {/* 15. 掃碼簽出時間 */}
+                              <td className="p-3.5 whitespace-nowrap">
+                                {b.checkedOutAt ? (
+                                  <span className="font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                                    {formatDateToStandard(b.checkedOutAt)}
+                                  </span>
+                                ) : (b.checkedInAt || b.status === BookingStatus.CHECKED_IN) ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 rounded-md text-[10px] font-bold whitespace-nowrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    在場中 (未簽出)
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400 italic font-mono">-</span>
+                                )}
+                              </td>
+
+                              {/* 16. 到訪狀態 (進行中 / 歷史/已簽退) */}
+                              <td className="p-3.5 text-center whitespace-nowrap">
+                                {b.checkedOutAt || b.status === BookingStatus.COMPLETED ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700 whitespace-nowrap">
+                                    📜 歷史/已簽退
+                                  </span>
+                                ) : (b.checkedInAt || b.status === BookingStatus.CHECKED_IN) ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 rounded-full border border-emerald-300 dark:border-emerald-800 whitespace-nowrap">
+                                    🟢 進行中
+                                  </span>
+                                ) : b.status === BookingStatus.CANCELLED ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-rose-700 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 rounded-full border border-rose-300 dark:border-rose-800 whitespace-nowrap">
+                                    🚫 歷史/已取消
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 rounded-full border border-cyan-300 dark:border-cyan-800 whitespace-nowrap">
+                                    📅 待到訪
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* 17. 關聯員工預約 ID */}
                               <td className="p-3.5 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
                                 {b.associatedBookingId || '-'}
                               </td>
 
-                              {/* 操作 */}
+                              {/* 18. 操作 */}
                               <td className="p-3.5 text-center">
                                 <button
                                   onClick={() => {
@@ -2131,7 +2170,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
             </div>
           )}
 
-          {/* WHITELIST: 審核與白名單配置 */}
+          {/* WHITELIST: 白名單配置 */}
           {activeCmsTab === 'WHITELIST' && (
             <div className="space-y-6">
               
@@ -2139,7 +2178,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
               <div className="bg-white dark:bg-slate-950 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xs">
                 <h3 className="text-base font-black text-slate-900 dark:text-slate-50 flex items-center gap-2">
                   <Sliders className="text-emerald-500" size={20} />
-                  <span>審核與白名單配置</span>
+                  <span>白名單配置</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">統一管理「訪客預約是否需要審核」之系統全域開關，以及「授權發起訪客邀請之員工白名單」。</p>
               </div>
@@ -2895,17 +2934,17 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                 </div>
 
                 <div className="mt-1">
-                  {viewingBooking.status === BookingStatus.CHECKED_IN ? (
-                    <span className="inline-flex text-[10.5px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-3 py-1 rounded-full border border-blue-200/30">
-                      🟢 進行中 (在大樓內)
-                    </span>
-                  ) : viewingBooking.status === BookingStatus.COMPLETED ? (
+                  {viewingBooking.checkedOutAt || viewingBooking.status === BookingStatus.COMPLETED ? (
                     <span className="inline-flex text-[10.5px] font-black text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full border border-slate-200/30">
-                      📜 歷史
+                      📜 歷史/已簽退
+                    </span>
+                  ) : (viewingBooking.checkedInAt || viewingBooking.status === BookingStatus.CHECKED_IN) ? (
+                    <span className="inline-flex text-[10.5px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-full border border-emerald-200/30">
+                      🟢 進行中 (在大樓內)
                     </span>
                   ) : viewingBooking.status === BookingStatus.CANCELLED || isRejectedBooking(viewingBooking) ? (
                     <span className="inline-flex text-[10.5px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 px-3 py-1 rounded-full border border-rose-200/30">
-                      🚫 已取消
+                      🚫 歷史/已取消
                     </span>
                   ) : (
                     <span className="inline-flex text-[10.5px] font-black text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/40 px-3 py-1 rounded-full border border-cyan-200/30">
@@ -3004,9 +3043,17 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                       </div>
                       {viewingBooking.checkedInAt && (
                         <div>
-                          <span className="text-slate-400 block text-[10px]">掃碼時間</span>
+                          <span className="text-slate-400 block text-[10px]">掃碼放行時間</span>
                           <strong className="text-emerald-600 dark:text-emerald-400 font-mono font-bold">
                             {formatDateToStandard(viewingBooking.checkedInAt)}
+                          </strong>
+                        </div>
+                      )}
+                      {viewingBooking.checkedOutAt && (
+                        <div>
+                          <span className="text-slate-400 block text-[10px]">掃碼簽出時間</span>
+                          <strong className="text-blue-600 dark:text-blue-400 font-mono font-bold">
+                            {formatDateToStandard(viewingBooking.checkedOutAt)}
                           </strong>
                         </div>
                       )}

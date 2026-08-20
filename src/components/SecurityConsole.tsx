@@ -11,7 +11,7 @@ import {
   AlertTriangle, UserCheck, ShieldAlert, FileText, CheckCircle, 
   XCircle, Filter, Calendar, MapPin, Building, Phone, Car, 
   CreditCard, ArrowRight, User, Sparkles, RefreshCw, BarChart3,
-  Layers, Lock, Users, Plus, Trash2, Eye, X
+  Layers, Lock, Users, Plus, Trash2, Eye, X, LogOut
 } from 'lucide-react';
 
 interface SecurityConsoleProps {
@@ -39,6 +39,8 @@ export interface GateScanRecord {
   licensePlate?: string;
   gateLocation: string;
   scannedAt: string;
+  checkedOutAt?: string;
+  status?: BookingStatus;
   operatorGuard: string;
   notes?: string;
 }
@@ -82,7 +84,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
   triggerSound,
 }) => {
   // Main Security Navigation Tab
-  // 'SCANNER' (掃碼核銷與證件登記) | 'SCAN_LOGS' (今日掃碼記錄) | 'APPOINTMENTS' (訪客預約記錄與看板)
+  // 'SCANNER' (掃碼核銷與證件登記) | 'SCAN_LOGS' (掃碼記錄) | 'APPOINTMENTS' (訪客預約記錄與看板)
   const [securityTab, setSecurityTab] = useState<'SCANNER' | 'SCAN_LOGS' | 'APPOINTMENTS'>('SCANNER');
 
   // Scanner Simulator State
@@ -99,7 +101,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
   const [securityNotes, setSecurityNotes] = useState('');
   const [scanToastMessage, setScanToastMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Today's Gate Scan Logs State
+  // Gate Scan Logs State (with check-in and check-out timestamps)
   const [scanLogs, setScanLogs] = useState<GateScanRecord[]>([
     {
       id: 'SCAN-1001',
@@ -119,6 +121,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
       licensePlate: '粵Z A888港',
       gateLocation: '第一門崗 (電視城正門)',
       scannedAt: '2026-08-18 09:15:22',
+      status: BookingStatus.CHECKED_IN,
       operatorGuard: '安保員 - 張志強',
       notes: '個人攝影裝備已辦理安保登記放行'
     },
@@ -140,6 +143,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
       licensePlate: 'TVB 8888',
       gateLocation: '行政大樓專用VIP門崗',
       scannedAt: '2026-08-18 10:42:09',
+      status: BookingStatus.CHECKED_IN,
       operatorGuard: '安保隊長 - 李國強',
       notes: 'VIP綠色通道直接放行'
     },
@@ -161,6 +165,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
       licensePlate: 'VIP 999',
       gateLocation: '第一門崗 (電視城正門)',
       scannedAt: '2026-08-18 11:30:00',
+      status: BookingStatus.CHECKED_IN,
       operatorGuard: '安保隊長 - 李國強',
       notes: '攜帶車輛證件通行'
     },
@@ -181,6 +186,8 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
       destination: '5樓 財務審計部 (5F Audit Dept)',
       gateLocation: '第一門崗 (電視城正門)',
       scannedAt: '2026-08-17 14:20:10',
+      checkedOutAt: '2026-08-17 18:05:30',
+      status: BookingStatus.COMPLETED,
       operatorGuard: '安保員 - 張志強',
       notes: '中期會計核查進場'
     },
@@ -202,6 +209,8 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
       licensePlate: 'SF 8899',
       gateLocation: '第一門崗 (電視城正門)',
       scannedAt: '2026-08-16 10:15:00',
+      checkedOutAt: '2026-08-16 11:20:00',
+      status: BookingStatus.COMPLETED,
       operatorGuard: '安保員 - 李大膽',
       notes: '快遞件簽收核銷放行'
     }
@@ -318,7 +327,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
     setMultiVisitorEntries(prev => prev.filter(item => item.id !== id));
   };
 
-  // Handler: Execute Barcode / QR Code Search
+  // Handler: Execute Barcode / QR Code Search (supports both Check-In and Check-Out)
   const handleTriggerScannerSearch = (codeToSearch?: string) => {
     const code = (codeToSearch || scanInputCode).trim().toUpperCase();
     if (!code) {
@@ -337,7 +346,24 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
     if (matched) {
       setSelectedBookingId(matched.id);
       setScanInputCode(matched.invitationCode);
-      setScanToastMessage({ type: 'success', text: `🎯 成功識別訪客通行證 [${matched.invitationCode}]：${matched.visitorName}` });
+
+      if (matched.status === BookingStatus.CHECKED_IN) {
+        setScanToastMessage({ 
+          type: 'success', 
+          text: `🎯 成功識別訪客通行證 [${matched.invitationCode}]：${matched.visitorName} (當前在場中，可進行掃碼簽出)` 
+        });
+      } else if (matched.status === BookingStatus.COMPLETED) {
+        setScanToastMessage({ 
+          type: 'success', 
+          text: `ℹ️ 訪客通行證 [${matched.invitationCode}]：${matched.visitorName} (此預約已於 ${matched.checkedOutAt || '稍早'} 簽出離場)` 
+        });
+      } else {
+        setScanToastMessage({ 
+          type: 'success', 
+          text: `🎯 成功識別訪客通行證 [${matched.invitationCode}]：${matched.visitorName} (待核銷入場)` 
+        });
+      }
+
       triggerSound(1000, 'sine', 0.15);
       setTimeout(() => triggerSound(1400, 'sine', 0.2), 100);
       setTimeout(() => setScanToastMessage(null), 3500);
@@ -348,7 +374,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
     }
   };
 
-  // Handler: Confirm Security Clearance & Save Multi-Visitor ID Credentials
+  // Handler: Confirm Security Clearance (Check-In) & Save Multi-Visitor ID Credentials
   const handleConfirmClearance = () => {
     if (!activeBooking) return;
 
@@ -376,7 +402,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
       onUpdateBookingIdCard(activeBooking.id, combinedIdCardsString);
     }
 
-    // 2. Append new record to Today's Scan Logs
+    // 2. Append new record to Scan Logs
     const newLogItem: GateScanRecord = {
       id: `SCAN-${Date.now().toString().slice(-6)}`,
       bookingId: activeBooking.id,
@@ -395,6 +421,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
       licensePlate: activeBooking.licensePlate,
       gateLocation,
       scannedAt: nowStr,
+      status: BookingStatus.CHECKED_IN,
       operatorGuard,
       notes: securityNotes.trim() || undefined
     };
@@ -407,10 +434,73 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
     setScanToastMessage({
       type: 'success',
-      text: `🎉 已成功放行訪客 [${activeBooking.visitorName}]！已核銷登記 ${validEntries.length} 位訪客證件號碼。`
+      text: `🎉 已成功掃碼放行訪客 [${activeBooking.visitorName}]！已核銷登記 ${validEntries.length} 位訪客證件號碼。`
     });
 
     setSecurityNotes('');
+
+    setTimeout(() => {
+      setScanToastMessage(null);
+    }, 5000);
+  };
+
+  // Handler: Confirm Visitor Check-Out (掃碼簽出離場)
+  const handleConfirmCheckOut = (targetBookingId?: string) => {
+    const bId = targetBookingId || activeBooking?.id;
+    if (!bId) return;
+
+    const target = bookings.find(b => b.id === bId) || activeBooking;
+    const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
+
+    // 1. Update Booking Status to COMPLETED (歷史 / 已完成離場)
+    onUpdateBookingStatus(bId, BookingStatus.COMPLETED, nowStr);
+
+    // 2. Update or Add to scanLogs with checkedOutAt timestamp
+    setScanLogs(prev => {
+      const exists = prev.some(l => l.bookingId === bId);
+      if (exists) {
+        return prev.map(l => 
+          l.bookingId === bId 
+            ? { ...l, checkedOutAt: nowStr, status: BookingStatus.COMPLETED } 
+            : l
+        );
+      } else {
+        const hostInfo = getHostEmployeeInfo(target.hostEmployeeName, target.hostEmployeeDept);
+        const newLog: GateScanRecord = {
+          id: `SCAN-${Date.now().toString().slice(-6)}`,
+          bookingId: target.id,
+          invitationCode: target.invitationCode,
+          visitorName: target.visitorName,
+          visitorType: target.visitorType,
+          clientTier: target.clientTier,
+          visitMode: target.visitMode,
+          company: target.company || '個人代表',
+          visitorIdCard: target.visitorIdCard || '安保掃碼簽出備案',
+          idCardType: idCardType,
+          hostEmployeeName: hostInfo.empName,
+          hostEmployeeDept: hostInfo.dept,
+          responsibleDept: target.responsibleDept || hostInfo.dept,
+          destination: target.destination || '電視城大樓',
+          licensePlate: target.licensePlate,
+          gateLocation,
+          scannedAt: target.checkedInAt || nowStr,
+          checkedOutAt: nowStr,
+          status: BookingStatus.COMPLETED,
+          operatorGuard,
+          notes: '安保掃碼簽出離場'
+        };
+        return [newLog, ...prev];
+      }
+    });
+
+    // Play Check-Out Sound & Toast
+    triggerSound(700, 'sine', 0.12);
+    setTimeout(() => triggerSound(950, 'sine', 0.25), 100);
+
+    setScanToastMessage({
+      type: 'success',
+      text: `👋 訪客 [${target.visitorName}] 已成功掃碼簽出離場！已記錄簽出時間：${nowStr}`
+    });
 
     setTimeout(() => {
       setScanToastMessage(null);
@@ -513,7 +603,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
             }`}
           >
             <FileText size={15} className="shrink-0" />
-            <span className="whitespace-nowrap">今日掃碼記錄</span>
+            <span className="whitespace-nowrap">掃碼記錄</span>
             <span className="px-1.5 py-0.2 bg-slate-800 text-slate-300 rounded-full text-[10px] font-mono font-bold whitespace-nowrap">
               {scanLogs.length}
             </span>
@@ -564,13 +654,13 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   <QrCode size={18} className="text-blue-500 shrink-0" />
                   <span>掃碼槍輸入區 (Barcode / QR Code Scanner Simulator)</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-0.5">使用硬體掃碼槍掃描訪客手機通行證 QR Code，或在下方直接輸入通行證代碼（例: TVB-8831-XM）</p>
+                <p className="text-xs text-slate-400 mt-0.5">使用硬體掃碼槍掃描訪客手機通行證 QR Code，或輸入代碼直接執行簽入與簽出</p>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 rounded-xl text-xs font-bold whitespace-nowrap shrink-0">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 rounded-xl text-xs font-bold whitespace-nowrap shrink-0">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                  <span>掃碼槍連線正常 (Scanner Ready)</span>
+                  <span>掃碼槍在線 (Ready)</span>
                 </span>
               </div>
             </div>
@@ -583,7 +673,9 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   value={scanInputCode}
                   onChange={(e) => setScanInputCode(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleTriggerScannerSearch();
+                    if (e.key === 'Enter') {
+                      handleTriggerScannerSearch();
+                    }
                   }}
                   placeholder="請掃描或輸入訪客通行證代碼 (例: TVB-8831-XM / B001)..."
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-2xl text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -594,7 +686,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
               <button
                 type="button"
                 onClick={() => handleTriggerScannerSearch()}
-                className="px-6 py-3 bg-blue-600 hover:bg-blue-550 text-white font-bold rounded-2xl text-xs cursor-pointer flex items-center justify-center gap-2 shadow-xs transition-all whitespace-nowrap shrink-0"
+                className="px-5 py-3 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-xs cursor-pointer flex items-center justify-center gap-2 shadow-xs transition-all whitespace-nowrap shrink-0"
               >
                 <Scan size={16} className="shrink-0" />
                 <span className="whitespace-nowrap">🎯 觸發掃碼槍核驗</span>
@@ -899,15 +991,26 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   </div>
                 </div>
 
-                {/* Primary Action Button */}
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+                {/* Primary Action Button Group */}
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-2.5">
                   <button
                     type="button"
                     onClick={handleConfirmClearance}
                     className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black rounded-2xl text-xs cursor-pointer shadow-md flex items-center justify-center gap-2 transition-all whitespace-nowrap shrink-0"
                   >
                     <UserCheck size={18} className="shrink-0" />
-                    <span className="whitespace-nowrap">確認核銷放行並登記證件</span>
+                    <span className="whitespace-nowrap">
+                      {activeBooking.status === BookingStatus.CHECKED_IN ? '🟢 簽入 (更新核銷放行與證件)' : '🟢 簽入 (確認核銷放行並登記證件)'}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleConfirmCheckOut()}
+                    className="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black rounded-2xl text-xs cursor-pointer shadow-md flex items-center justify-center gap-2 transition-all whitespace-nowrap shrink-0"
+                  >
+                    <LogOut size={18} className="shrink-0" />
+                    <span className="whitespace-nowrap">🔵 簽出 (掃碼簽出離場)</span>
                   </button>
                 </div>
 
@@ -934,9 +1037,9 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
               <div>
                 <h3 className="text-base font-black text-slate-900 dark:text-slate-50 flex items-center gap-2">
                   <FileText className="text-blue-500" size={20} />
-                  <span>{scanLogsTimeRange === 'TODAY' ? '今日到訪訪客掃碼放行記錄' : '全量到訪訪客掃碼放行記錄'} (Gate Scan Logs)</span>
+                  <span>{scanLogsTimeRange === 'TODAY' ? '今日訪客掃碼記錄 (含放行與簽出時間)' : '全量訪客掃碼記錄 (含放行與簽出時間)'} (Gate Scan Logs)</span>
                 </h3>
-                <p className="text-xs text-slate-400 mt-1">實時記錄安保門崗已完成掃碼核銷與證件登記之訪客放行日誌</p>
+                <p className="text-xs text-slate-400 mt-1">實時記錄安保門崗已完成掃碼核銷放行、登記證件以及離場掃碼簽出之完整日誌</p>
               </div>
 
               {/* Date Scope Filter Button Group */}
@@ -969,7 +1072,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                 </div>
 
                 <span className="px-3 py-1.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-xl border border-blue-200 dark:border-blue-900/40 whitespace-nowrap shrink-0">
-                  放行總計: {displayScanLogs.length} 人次
+                  記錄總計: {displayScanLogs.length} 條
                 </span>
               </div>
             </div>
@@ -995,6 +1098,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   <tr className="bg-slate-50 dark:bg-slate-900/80 border-b border-slate-100 dark:border-slate-800 text-[11px] font-black text-slate-400 uppercase tracking-wider">
                     <th className="p-3.5 whitespace-nowrap">預約 ID</th>
                     <th className="p-3.5 whitespace-nowrap">掃碼放行時間</th>
+                    <th className="p-3.5 whitespace-nowrap text-blue-600 dark:text-blue-400">掃碼簽出時間</th>
                     <th className="p-3.5 whitespace-nowrap">通行邀請代碼</th>
                     <th className="p-3.5 text-center whitespace-nowrap">訪客類型</th>
                     <th className="p-3.5 whitespace-nowrap">訪客姓名</th>
@@ -1011,7 +1115,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                     <th className="p-3.5 text-center whitespace-nowrap">安保操作</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-850 text-xs">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-855 text-xs">
                   {displayScanLogs.length > 0 ? (
                     displayScanLogs.map(log => (
                       <tr key={log.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-900/40 transition-colors">
@@ -1021,28 +1125,42 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                         </td>
 
                         {/* 2. 掃碼放行時間 */}
-                        <td className="p-3.5 font-mono text-slate-500 font-medium whitespace-nowrap">
+                        <td className="p-3.5 font-mono text-slate-600 dark:text-slate-300 font-medium whitespace-nowrap">
                           {log.scannedAt}
                         </td>
 
-                        {/* 3. 通行邀請代碼 */}
+                        {/* 3. 掃碼簽出時間 */}
+                        <td className="p-3.5 whitespace-nowrap">
+                          {log.checkedOutAt ? (
+                            <span className="font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                              {log.checkedOutAt}
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/50 rounded-md text-[10.5px] font-bold whitespace-nowrap">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              在場中 (未簽出)
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 4. 通行邀請代碼 */}
                         <td className="p-3.5 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                           {log.invitationCode}
                         </td>
 
-                        {/* 4. 訪客類型 */}
+                        {/* 5. 訪客類型 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
                           <span className="inline-flex px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50 text-[10px] font-bold rounded-md">
                             {getVisitorTypeLabel(log.visitorType)}
                           </span>
                         </td>
 
-                        {/* 5. 訪客姓名 */}
+                        {/* 6. 訪客姓名 */}
                         <td className="p-3.5 font-bold text-slate-900 dark:text-slate-100 whitespace-nowrap">
                           {log.visitorName}
                         </td>
 
-                        {/* 6. 客戶類型 */}
+                        {/* 7. 客戶類型 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
                           {log.clientTier === 'VIP' ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/10 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-800 text-[10.5px] font-bold rounded-md">
@@ -1055,72 +1173,91 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                           )}
                         </td>
 
-                        {/* 7. 登記證件號碼 */}
+                        {/* 8. 登記證件號碼 */}
                         <td className="p-3.5 font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                           {log.visitorIdCard}
                         </td>
 
-                        {/* 8. 公司名稱 */}
+                        {/* 9. 公司名稱 */}
                         <td className="p-3.5 text-slate-600 dark:text-slate-300 font-semibold whitespace-nowrap">
                           {log.company || <span className="text-slate-400 italic">個人代表</span>}
                         </td>
 
-                        {/* 9. 到訪模式 */}
+                        {/* 10. 到訪模式 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
                           <span className="inline-flex px-2 py-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 text-[10px] font-bold rounded-md">
                             {getVisitModeLabel(log.visitMode)}
                           </span>
                         </td>
 
-                        {/* 10. 車牌號碼 */}
+                        {/* 11. 車牌號碼 */}
                         <td className="p-3.5 font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {log.licensePlate || <span className="text-slate-400 font-sans italic">無</span>}
                         </td>
 
-                        {/* 11. 對接員工 */}
+                        {/* 12. 對接員工 */}
                         <td className="p-3.5 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                           {log.hostEmployeeName}
                         </td>
 
-                        {/* 12. 負責部門 */}
+                        {/* 13. 負責部門 */}
                         <td className="p-3.5 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                           {log.responsibleDept || log.hostEmployeeDept}
                         </td>
 
-                        {/* 13. 目的地 */}
+                        {/* 14. 目的地 */}
                         <td className="p-3.5 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
                           {log.destination}
                         </td>
 
-                        {/* 14. 執勤門崗 */}
+                        {/* 15. 執勤門崗 */}
                         <td className="p-3.5 text-slate-500 whitespace-nowrap">
                           {log.gateLocation}
                         </td>
 
-                        {/* 15. 到訪狀態 */}
+                        {/* 16. 到訪狀態 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 rounded-full border border-blue-300 dark:border-blue-800 whitespace-nowrap">
-                            🟢 進行中
-                          </span>
+                          {log.checkedOutAt || log.status === BookingStatus.COMPLETED ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700 whitespace-nowrap">
+                              📜 歷史/已簽退
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 rounded-full border border-emerald-300 dark:border-emerald-800 whitespace-nowrap">
+                              🟢 進行中
+                            </span>
+                          )}
                         </td>
 
-                        {/* 16. 安保操作 */}
+                        {/* 17. 安保操作 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => setViewingSecurityBooking(log)}
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1 mx-auto transition-all whitespace-nowrap shrink-0"
-                          >
-                            <Eye size={13} className="shrink-0" />
-                            <span className="whitespace-nowrap">詳情</span>
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            {!log.checkedOutAt && (
+                              <button
+                                type="button"
+                                onClick={() => handleConfirmCheckOut(log.bookingId)}
+                                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400 text-xs font-bold rounded-lg border border-blue-200 dark:border-blue-800 cursor-pointer flex items-center gap-1 transition-all whitespace-nowrap shrink-0"
+                                title="訪客離場簽出"
+                              >
+                                <LogOut size={12} />
+                                <span>簽出</span>
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setViewingSecurityBooking(log)}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl cursor-pointer flex items-center gap-1 transition-all whitespace-nowrap shrink-0"
+                            >
+                              <Eye size={13} className="shrink-0" />
+                              <span className="whitespace-nowrap">詳情</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={16} className="p-8 text-center text-slate-400 font-bold">
-                        暫無符合條件之掃碼放行記錄
+                      <td colSpan={17} className="p-8 text-center text-slate-400 font-bold">
+                        暫無符合條件之掃碼放行/簽出記錄
                       </td>
                     </tr>
                   )}
@@ -1423,13 +1560,17 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
                         {/* 14. 到訪狀態 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          {b.status === BookingStatus.CHECKED_IN ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 rounded-full border border-blue-300 dark:border-blue-800 whitespace-nowrap">
+                          {b.checkedOutAt || b.status === BookingStatus.COMPLETED ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700 whitespace-nowrap">
+                              📜 歷史/已簽退
+                            </span>
+                          ) : (b.checkedInAt || b.status === BookingStatus.CHECKED_IN) ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 rounded-full border border-emerald-300 dark:border-emerald-800 whitespace-nowrap">
                               🟢 進行中
                             </span>
-                          ) : (b.status === BookingStatus.COMPLETED || b.status === BookingStatus.CANCELLED) ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700 whitespace-nowrap">
-                              {b.status === BookingStatus.COMPLETED ? '📜 歷史/已完成' : '🚫 歷史/已取消'}
+                          ) : b.status === BookingStatus.CANCELLED ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 rounded-full border border-rose-300 dark:border-rose-800 whitespace-nowrap">
+                              🚫 歷史/已取消
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-cyan-700 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-950/50 rounded-full border border-cyan-300 dark:border-cyan-800 whitespace-nowrap">
@@ -1491,13 +1632,17 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
               <div className="flex items-center gap-3">
                 {/* Status Badge */}
                 {'status' in viewingSecurityBooking ? (
-                  viewingSecurityBooking.status === BookingStatus.CHECKED_IN ? (
-                    <span className="px-3 py-1 bg-blue-600 text-white font-black text-xs rounded-full shadow-2xs">
+                  viewingSecurityBooking.checkedOutAt || viewingSecurityBooking.status === BookingStatus.COMPLETED ? (
+                    <span className="px-3 py-1 bg-slate-600 text-white font-black text-xs rounded-full shadow-2xs">
+                      📜 歷史/已簽退
+                    </span>
+                  ) : (viewingSecurityBooking.checkedInAt || viewingSecurityBooking.status === BookingStatus.CHECKED_IN) ? (
+                    <span className="px-3 py-1 bg-emerald-600 text-white font-black text-xs rounded-full shadow-2xs">
                       🟢 進行中 (在大樓內)
                     </span>
-                  ) : (viewingSecurityBooking.status === BookingStatus.COMPLETED || viewingSecurityBooking.status === BookingStatus.CANCELLED) ? (
-                    <span className="px-3 py-1 bg-slate-600 text-white font-black text-xs rounded-full shadow-2xs">
-                      {viewingSecurityBooking.status === BookingStatus.COMPLETED ? '📜 歷史/已完成' : '🚫 歷史/已取消'}
+                  ) : viewingSecurityBooking.status === BookingStatus.CANCELLED ? (
+                    <span className="px-3 py-1 bg-rose-600 text-white font-black text-xs rounded-full shadow-2xs">
+                      🚫 歷史/已取消
                     </span>
                   ) : (
                     <span className="px-3 py-1 bg-cyan-600 text-white font-black text-xs rounded-full shadow-2xs">
@@ -1505,8 +1650,8 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                     </span>
                   )
                 ) : (
-                  <span className="px-3 py-1 bg-blue-600 text-white font-black text-xs rounded-full shadow-2xs">
-                    🟢 進行中 (已掃碼放行)
+                  <span className="px-3 py-1 bg-emerald-600 text-white font-black text-xs rounded-full shadow-2xs">
+                    🟢 進行中
                   </span>
                 )}
 
@@ -1585,9 +1730,16 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   </div>
 
                   <div>
-                    <span className="text-slate-400 block text-[10px]">到訪日期與時間</span>
+                    <span className="text-slate-400 block text-[10px]">掃碼放行時間</span>
                     <strong className="text-slate-800 dark:text-slate-200 font-mono font-bold block">
-                      {'scannedAt' in viewingSecurityBooking ? viewingSecurityBooking.scannedAt : ('visitDateTime' in viewingSecurityBooking ? viewingSecurityBooking.visitDateTime : '-')}
+                      {'scannedAt' in viewingSecurityBooking ? viewingSecurityBooking.scannedAt : ('checkedInAt' in viewingSecurityBooking ? viewingSecurityBooking.checkedInAt : ('visitDateTime' in viewingSecurityBooking ? viewingSecurityBooking.visitDateTime : '-'))}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-400 block text-[10px]">掃碼簽出時間</span>
+                    <strong className="text-blue-600 dark:text-blue-400 font-mono font-bold block">
+                      {'checkedOutAt' in viewingSecurityBooking && viewingSecurityBooking.checkedOutAt ? viewingSecurityBooking.checkedOutAt : ('status' in viewingSecurityBooking && viewingSecurityBooking.status === BookingStatus.CHECKED_IN ? '🟢 進行中 (在場未簽出)' : '未簽出')}
                     </strong>
                   </div>
 
@@ -1665,7 +1817,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-end gap-2">
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-end gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => setViewingSecurityBooking(null)}
@@ -1673,6 +1825,22 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
               >
                 關閉
               </button>
+
+              {/* Direct Check-out Action Button in Modal */}
+              {(!('checkedOutAt' in viewingSecurityBooking) || !viewingSecurityBooking.checkedOutAt) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const bId = 'bookingId' in viewingSecurityBooking ? viewingSecurityBooking.bookingId : viewingSecurityBooking.id;
+                    handleConfirmCheckOut(bId);
+                    setViewingSecurityBooking(null);
+                  }}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-550 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                >
+                  <LogOut size={14} />
+                  <span>辦理掃碼簽出 (離場)</span>
+                </button>
+              )}
 
               {'invitationCode' in viewingSecurityBooking && (
                 <button
@@ -1684,7 +1852,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                     setViewingSecurityBooking(null);
                     setSecurityTab('SCANNER');
                   }}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-550 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-550 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
                 >
                   <Scan size={14} />
                   <span>載入至掃碼核銷頁</span>
