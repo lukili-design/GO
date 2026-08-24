@@ -14,13 +14,23 @@ import { SecurityConsole } from './SecurityConsole';
 import { DailyWorkApp } from './DailyWorkApp';
 import { PcVisitorPortal } from './PcVisitorPortal';
 import { SystemRequirementsDoc } from './SystemRequirementsDoc';
+import { LoginPage } from './LoginPage';
 import { 
   Smartphone, Mail, Shield, RefreshCw, CheckCircle, Clock, Trash2, 
   ArrowRight, MapPin, Sparkles, Building, User, Info, SmartphoneIcon, 
-  ExternalLink, Laptop, Monitor, Sliders, Database, Calendar
+  ExternalLink, Laptop, Monitor, Sliders, Database, Calendar, LogOut
 } from 'lucide-react';
 
 export const WorkspaceShell: React.FC = () => {
+  // Authentication State
+  const [authUser, setAuthUser] = useState<string | null>(() => {
+    return localStorage.getItem('nmg_auth_user');
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem('nmg_auth_user');
+    setAuthUser(null);
+  };
   // Sound synthesizer for UI feedback
   const triggerSound = (freq: number, type: OscillatorType, duration: number) => {
     try {
@@ -290,6 +300,18 @@ export const WorkspaceShell: React.FC = () => {
   // Select an active email
   const currentEmailBooking = bookings.find((b) => b.id === selectedEmailId);
 
+  // If not authenticated, require login
+  if (!authUser) {
+    return (
+      <LoginPage
+        onLoginSuccess={(username) => {
+          setAuthUser(username);
+          localStorage.setItem('nmg_auth_user', username);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col">
       
@@ -322,6 +344,11 @@ export const WorkspaceShell: React.FC = () => {
             <span className="font-bold text-slate-600 dark:text-slate-400">雙端交互模擬器</span>
           </div>
 
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-lg text-xs">
+            <User size={13} className="text-blue-600 dark:text-blue-400" />
+            <span className="font-bold text-blue-700 dark:text-blue-300">帳號: {authUser}</span>
+          </div>
+
           <button
             onClick={handleResetData}
             type="button"
@@ -329,6 +356,16 @@ export const WorkspaceShell: React.FC = () => {
           >
             <RefreshCw size={13} />
             <span>重設範例資料</span>
+          </button>
+
+          <button
+            onClick={handleLogout}
+            type="button"
+            className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-lg text-xs font-bold text-rose-600 dark:text-rose-300 flex items-center gap-1 cursor-pointer transition-all"
+            title="登出系統"
+          >
+            <LogOut size={13} />
+            <span>登出</span>
           </button>
         </div>
       </header>
