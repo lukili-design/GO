@@ -32,7 +32,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
     <div className="min-h-screen w-full bg-white flex flex-col justify-center items-center p-4">
       <div className="w-full max-w-sm">
         <h1 className="text-xl font-bold text-slate-900 mb-6 text-center">
-          请登入账号
+          請登入帳號
         </h1>
 
         {errorMessage && (
@@ -44,13 +44,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              登入账号
+              登入帳號
             </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="请输入"
+              placeholder="請輸入"
               className="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-sm text-slate-900"
               autoFocus
             />
@@ -58,20 +58,20 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              登入密码
+              登入密碼
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="请输入"
+              placeholder="請輸入"
               className="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-blue-500 text-sm text-slate-900"
             />
           </div>
 
           <button
             type="submit"
-            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors"
+            className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-sm transition-colors cursor-pointer"
           >
             立即登入
           </button>

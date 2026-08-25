@@ -316,47 +316,29 @@ export const WorkspaceShell: React.FC = () => {
     <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col">
       
       {/* Top Main Navigation Header */}
-      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 shadow-sm flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-emerald-500 to-red-500 p-[2px] shadow-md">
-            <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[9px] flex items-center justify-center font-black text-sm text-slate-950 dark:text-white tracking-wider">
-              TVB
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-emerald-500 to-red-500 p-[2px] shadow-md flex items-center justify-center shrink-0">
+            <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[9px] flex items-center justify-center font-black text-xs text-slate-950 dark:text-white tracking-wider">
+              TVB GO
             </div>
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full border border-blue-100 dark:border-blue-900/30">
-                TVB Go 辦公套件
-              </span>
-              <span className="text-xs font-semibold text-slate-400">Step 1: 預約與邀請端</span>
-            </div>
-            <h1 className="text-lg font-black tracking-tight text-slate-900 dark:text-slate-50 flex items-center gap-1.5">
-              <span>訪客預約登記與邀請系統</span>
-              <Sparkles size={16} className="text-amber-500 fill-amber-500" />
+          <div className="flex items-center gap-2">
+            <h1 className="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-slate-50">
+              TVB GO
             </h1>
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2.5 py-0.5 rounded-full border border-blue-100 dark:border-blue-900/30">
+              TVB Go 辦公套件
+            </span>
           </div>
         </div>
 
-        {/* Action controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="p-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs flex items-center gap-2 border border-slate-200/50 dark:border-slate-700/50">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span className="font-bold text-slate-600 dark:text-slate-400">雙端交互模擬器</span>
-          </div>
-
+        {/* Action controls: Only Account and Logout */}
+        <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/60 rounded-lg text-xs">
             <User size={13} className="text-blue-600 dark:text-blue-400" />
             <span className="font-bold text-blue-700 dark:text-blue-300">帳號: {authUser}</span>
           </div>
-
-          <button
-            onClick={handleResetData}
-            type="button"
-            className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 cursor-pointer transition-all"
-          >
-            <RefreshCw size={13} />
-            <span>重設範例資料</span>
-          </button>
 
           <button
             onClick={handleLogout}
