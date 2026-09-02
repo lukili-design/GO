@@ -5,7 +5,8 @@
 
 import { 
   Booking, BookingStatus, PurposeOption, PurposeCode,
-  BeaconRule, WifiRule, GpsConfig, GpsFenceRule, ClockInLog, MonthlyReportSummary, MonthlyReportDetail
+  BeaconRule, WifiRule, GpsConfig, GpsFenceRule, ClockInLog, MonthlyReportSummary, MonthlyReportDetail,
+  VotingCampaign, VoteArticle
 } from '../types';
 
 export const PURPOSE_OPTIONS: PurposeOption[] = [
@@ -738,3 +739,489 @@ export const INITIAL_BOOKINGS: Booking[] = [
     ]
   }
 ];
+
+// ==========================================
+// 互動投票中台初始範例數據 (Voting Campaigns & Articles)
+// ==========================================
+export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
+  {
+    id: 'VOTE-CAMP-001',
+    title: '2026 TVB 萬千星輝頒獎典禮 • 全民大票選',
+    coverImage: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=800&auto=format&fit=crop&q=80',
+    description: '一年一度電視界盛事！由全港觀眾及電視城全體同仁共同投選出心目中的五大年度殊榮。本活動包含「最佳劇集」、「最佳女演員」、「最佳男演員」、「最佳女主持」與「最佳電視歌曲」五大評選項目，敬請踴躍投票！',
+    resultVisibility: 'AFTER_VOTE',
+    status: 'ACTIVE',
+    currentPhaseId: 'PHASE-02',
+    totalParticipants: 48920,
+    totalVotes: 101030,
+    startTime: '2026-08-01 00:00:00',
+    endTime: '2026-08-28 20:00:00',
+    creator: '陳總監 (綜藝節目科)',
+    createdAt: '2026-08-01 10:00:00',
+    updatedAt: '2026-08-28 16:45:10',
+    voteItems: [
+      {
+        id: 'ITEM-BEST-DRAMA',
+        title: '🏆 最佳劇集 20強晉級賽',
+        description: '由40部強勢入圍劇集逐輪晉級，角逐年度最佳劇集榮譽！',
+        coverImage: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=800&auto=format&fit=crop&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'PHASE-02',
+        totalParticipants: 48920,
+        totalVotes: 101030,
+        phases: [
+          {
+            id: 'PHASE-01',
+            name: '初賽：40 進 20 淘汰賽',
+            status: 'ENDED',
+            startTime: '2026-08-01 00:00:00',
+            endTime: '2026-08-07 23:59:59',
+            mode: 'MULTIPLE',
+            maxSelections: 3,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            advanceRuleEnabled: true,
+            advanceTopCount: 20,
+            advanceTargetPhaseId: 'PHASE-02',
+            options: [
+              { id: 'OPT-01', name: '《新聞女王 2》', initialVotes: 20000, votes: 24500, avatar: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&auto=format&fit=crop&q=80', description: '原班人馬強勢回歸，SNK News 再掀職場新聞風雲！' },
+              { id: 'OPT-02', name: '《反黑英雄 2》', initialVotes: 15000, votes: 19800, avatar: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&auto=format&fit=crop&q=80', description: '警匪槍戰巔峰對決，正邪交鋒熱血燃爆。' },
+              { id: 'OPT-03', name: '《巨塔之后》', initialVotes: 11000, votes: 14200, avatar: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&auto=format&fit=crop&q=80', description: '醫療豪門暗湧，權力與情感交織的頂級巨作。' },
+              { id: 'OPT-04', name: '《法證先鋒 VI》', initialVotes: 8000, votes: 9920, avatar: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&auto=format&fit=crop&q=80', description: '科學搜證破奇案，經典IP全新升級。' }
+            ]
+          },
+          {
+            id: 'PHASE-02',
+            name: '複賽：20 進 7 準決賽 (進行中)',
+            status: 'ACTIVE',
+            startTime: '2026-08-08 00:00:00',
+            endTime: '2026-08-20 23:59:59',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            advanceRuleEnabled: true,
+            advanceTopCount: 7,
+            advanceTargetPhaseId: 'PHASE-03',
+            options: [
+              { id: 'OPT-P2-01', name: '《新聞女王 2》', initialVotes: 10000, votes: 14850, avatar: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&auto=format&fit=crop&q=80', description: '文慧心強勢復出，女主播台前幕後激烈交鋒。' },
+              { id: 'OPT-P2-02', name: '《巨塔之后》', initialVotes: 6000, votes: 9240, avatar: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&auto=format&fit=crop&q=80', description: '宣萱攜手實力派演員，深沉刻畫醫療權力集團。' },
+              { id: 'OPT-P2-03', name: '《反黑英雄 2》', initialVotes: 4000, votes: 5820, avatar: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&auto=format&fit=crop&q=80', description: '陳山聰、張振朗再度聯手，緝毒反黑硬核出擊。' },
+              { id: 'OPT-P2-04', name: '《巾幗梟雄之懸崖》', initialVotes: 1800, votes: 2700, avatar: 'https://images.unsplash.com/photo-1533488765986-dfa2a9939acd?w=400&auto=format&fit=crop&q=80', description: '經典傳奇再現，亂世江湖中守護初心與大義。' }
+            ]
+          },
+          {
+            id: 'PHASE-03',
+            name: '終極總決賽：7強爭冠',
+            status: 'UPCOMING',
+            startTime: '2026-08-21 00:00:00',
+            endTime: '2026-08-28 20:00:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: []
+          }
+        ]
+      },
+      {
+        id: 'ITEM-BEST-ACTRESS',
+        title: '👑 最佳女演員 (最佳女主角)',
+        description: '群芳爭妍，演技巔峰！投選你心目中的視后之冠。',
+        coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'ACTRESS-P01',
+        totalParticipants: 39650,
+        totalVotes: 39650,
+        phases: [
+          {
+            id: 'ACTRESS-P01',
+            name: '決賽：四大熱門視后票選',
+            status: 'ACTIVE',
+            startTime: '2026-08-08 00:00:00',
+            endTime: '2026-08-28 20:00:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'ACTRESS-01', name: '佘詩曼 飾 文慧心 (Man姐)', initialVotes: 18000, votes: 21850, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80', description: '《新聞女王 2》霸氣回歸，眼神與氣場精準拿捏，職場大女主天花板！' },
+              { id: 'ACTRESS-02', name: '宣萱 飾 董以晴', initialVotes: 11000, votes: 13420, avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80', description: '《巨塔之后》心臟外科權威，細膩演繹醫者仁心與權力博弈。' },
+              { id: 'ACTRESS-03', name: '胡定欣 飾 鄧桂嬋 (七爺)', initialVotes: 4500, votes: 6180, avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80', description: '《巾幗梟雄之懸崖》商界女強人，跌宕起伏演繹江湖傳奇。' },
+              { id: 'ACTRESS-04', name: '李施嬅 飾 張家妍', initialVotes: 3200, votes: 4200, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80', description: '《新聞女王 2》黑化轉變層次分明，演技大爆發備受好評。' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-BEST-ACTOR',
+        title: '🌟 最佳男演員 (最佳男主角)',
+        description: '實力視帝巔峰對決！誰將榮登 2026 萬千星輝最佳男主角寶座？',
+        coverImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'ACTOR-P01',
+        totalParticipants: 35120,
+        totalVotes: 35120,
+        phases: [
+          {
+            id: 'ACTOR-P01',
+            name: '決賽：四大熱門視帝票選',
+            status: 'ACTIVE',
+            startTime: '2026-08-08 00:00:00',
+            endTime: '2026-08-28 20:00:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'ACTOR-01', name: '黃宗澤 飾 關智軒', initialVotes: 14000, votes: 16900, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80', description: '《反黑英雄 2》熱血警探，搏命動作與深情內心戲兼備。' },
+              { id: 'ACTOR-02', name: '陳豪 飾 柯政綱', initialVotes: 12000, votes: 14350, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80', description: '《巨塔之后》院長權謀沉穩大氣，舉手投足盡顯戲骨風範。' },
+              { id: 'ACTOR-03', name: '陳山聰 飾 彭穎傑', initialVotes: 4800, votes: 6120, avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80', description: '《反黑英雄 2》硬核緝毒，層次感分明，演技精湛。' },
+              { id: 'ACTOR-04', name: '黎耀祥 飾 柴十七', initialVotes: 3500, votes: 4750, avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80', description: '《巾幗梟雄之懸崖》神機妙算智勇雙全，再創經典角色。' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-BEST-HOST',
+        title: '🎙️ 最佳女主持',
+        description: '大方得體、執生一流！投選你最喜愛的 TVB 最佳女主持！',
+        coverImage: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&auto=format&fit=crop&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'HOST-P01',
+        totalParticipants: 22400,
+        totalVotes: 22400,
+        phases: [
+          {
+            id: 'HOST-P01',
+            name: '決賽：最佳女主持票選',
+            status: 'ACTIVE',
+            startTime: '2026-08-08 00:00:00',
+            endTime: '2026-08-28 20:00:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'HOST-01', name: '陳貝兒', initialVotes: 10500, votes: 12800, avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&auto=format&fit=crop&q=80', description: '《無窮之路 IV》深度主持感人至深，國際視野真誠流露。' },
+              { id: 'HOST-02', name: '車婉婉', initialVotes: 6200, votes: 7450, avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=400&auto=format&fit=crop&q=80', description: '《中年好聲音 3》暖心陪伴參賽者，控場流暢情真意切。' },
+              { id: 'HOST-03', name: '麥美恩', initialVotes: 3400, votes: 4120, avatar: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&auto=format&fit=crop&q=80', description: '《獎門人感謝篇》搞笑幽默活力爆棚，綜藝氣氛擔當。' },
+              { id: 'HOST-04', name: '陳庭欣', initialVotes: 1800, votes: 2030, avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80', description: '《東張西望》為民請命深入社區，專業親和深入民心。' }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-BEST-SONG',
+        title: '🎵 最佳電視歌曲',
+        description: '動人旋律，唱響劇迷回憶！投選本年度最深入民心的最佳電視歌曲！',
+        coverImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'SONG-P01',
+        totalParticipants: 28900,
+        totalVotes: 28900,
+        phases: [
+          {
+            id: 'SONG-P01',
+            name: '決賽：最佳電視歌曲票選',
+            status: 'ACTIVE',
+            startTime: '2026-08-08 00:00:00',
+            endTime: '2026-08-28 20:00:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'SONG-01', name: '《Crystal Clear》- 炎明熹', initialVotes: 12000, votes: 14600, avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&auto=format&fit=crop&q=80', description: '《新聞女王 2》英文主題曲，空靈聲線演繹職場迷局。' },
+              { id: 'SONG-02', name: '《無名英雄》- 周吉佩', initialVotes: 8500, votes: 10200, avatar: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&auto=format&fit=crop&q=80', description: '《反黑英雄 2》熱血激昂主題曲，唱出正義男兒本色。' },
+              { id: 'SONG-03', name: '《心跳回憶》- 谷婭溦', initialVotes: 5100, votes: 6800, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80', description: '《巨塔之后》片尾曲，細膩唱腔觸動心靈深處。' },
+              { id: 'OPT-S04', name: '《追夢同盟》- 吳業坤 & 戴祖儀', initialVotes: 3300, votes: 4250, avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&auto=format&fit=crop&q=80', description: '《職場風雲》輕快插曲，朗朗上口人氣爆棚。' }
+            ]
+          }
+        ]
+      }
+    ],
+    phases: [
+      {
+        id: 'PHASE-01',
+        name: '初賽：40 進 20 淘汰賽',
+        status: 'ENDED',
+        startTime: '2026-08-01 00:00:00',
+        endTime: '2026-08-07 23:59:59',
+        mode: 'MULTIPLE',
+        maxSelections: 3,
+        frequencyLimit: 'ONCE_TOTAL',
+        requireAuth: true,
+        advanceRuleEnabled: true,
+        advanceTopCount: 20,
+        advanceTargetPhaseId: 'PHASE-02',
+        options: [
+          { id: 'OPT-01', name: '《新聞女王 2》', initialVotes: 20000, votes: 24500, avatar: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&auto=format&fit=crop&q=80', description: '原班人馬強勢回歸，SNK News 再掀職場新聞風雲！' },
+          { id: 'OPT-02', name: '《反黑英雄 2》', initialVotes: 15000, votes: 19800, avatar: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&auto=format&fit=crop&q=80', description: '警匪槍戰巔峰對決，正邪交鋒熱血燃爆。' },
+          { id: 'OPT-03', name: '《巨塔之后》', initialVotes: 11000, votes: 14200, avatar: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&auto=format&fit=crop&q=80', description: '醫療豪門暗湧，權力與情感交織的頂級巨作。' },
+          { id: 'OPT-04', name: '《法證先鋒 VI》', initialVotes: 8000, votes: 9920, avatar: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=400&auto=format&fit=crop&q=80', description: '科學搜證破奇案，經典IP全新升級。' }
+        ]
+      },
+      {
+        id: 'PHASE-02',
+        name: '複賽：20 進 7 準決賽 (進行中)',
+        status: 'ACTIVE',
+        startTime: '2026-08-08 00:00:00',
+        endTime: '2026-08-20 23:59:59',
+        mode: 'SINGLE',
+        maxSelections: 1,
+        frequencyLimit: 'ONCE_TOTAL',
+        requireAuth: true,
+        advanceRuleEnabled: true,
+        advanceTopCount: 7,
+        advanceTargetPhaseId: 'PHASE-03',
+        options: [
+          { id: 'OPT-P2-01', name: '《新聞女王 2》', initialVotes: 10000, votes: 14850, avatar: 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=400&auto=format&fit=crop&q=80', description: '文慧心強勢復出，女主播台前幕後激烈交鋒。' },
+          { id: 'OPT-P2-02', name: '《巨塔之后》', initialVotes: 6000, votes: 9240, avatar: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&auto=format&fit=crop&q=80', description: '宣萱攜手實力派演員，深沉刻畫醫療權力集團。' },
+          { id: 'OPT-P2-03', name: '《反黑英雄 2》', initialVotes: 4000, votes: 5820, avatar: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=400&auto=format&fit=crop&q=80', description: '陳山聰、張振朗再度聯手，緝毒反黑硬核出擊。' },
+          { id: 'OPT-P2-04', name: '《巾幗梟雄之懸崖》', initialVotes: 1800, votes: 2700, avatar: 'https://images.unsplash.com/photo-1533488765986-dfa2a9939acd?w=400&auto=format&fit=crop&q=80', description: '經典傳奇再現，亂世江湖中守護初心與大義。' }
+        ]
+      },
+      {
+        id: 'PHASE-03',
+        name: '終極總決賽：7強爭冠',
+        status: 'UPCOMING',
+        startTime: '2026-08-21 00:00:00',
+        endTime: '2026-08-28 20:00:00',
+        mode: 'SINGLE',
+        maxSelections: 1,
+        frequencyLimit: 'ONCE_TOTAL',
+        requireAuth: true,
+        options: []
+      }
+    ]
+  },
+  {
+    id: 'VOTE-CAMP-BEST-ACTRESS',
+    title: '2026 TVB 萬千星輝頒獎典禮 • 最佳女演員 (最佳女主角)',
+    coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80',
+    description: '群芳爭妍，演技巔峰！投選你心目中的視后之冠，誰能捧起本年度萬千星輝最佳女主角獎座？',
+    resultVisibility: 'AFTER_VOTE',
+    status: 'ACTIVE',
+    currentPhaseId: 'ACTRESS-P01',
+    totalParticipants: 39650,
+    totalVotes: 39650,
+    startTime: '2026-08-08 00:00:00',
+    endTime: '2026-08-28 20:00:00',
+    creator: '梁副總監 (製作部)',
+    createdAt: '2026-08-08 09:00:00',
+    updatedAt: '2026-08-28 17:00:00',
+    phases: [
+      {
+        id: 'ACTRESS-P01',
+        name: '決賽：四大熱門視后票選',
+        status: 'ACTIVE',
+        startTime: '2026-08-08 00:00:00',
+        endTime: '2026-08-28 20:00:00',
+        mode: 'SINGLE',
+        maxSelections: 1,
+        frequencyLimit: 'ONCE_TOTAL',
+        requireAuth: true,
+        options: [
+          { id: 'ACTRESS-01', name: '佘詩曼 飾 文慧心 (Man姐)', initialVotes: 18000, votes: 21850, avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80', description: '《新聞女王 2》霸氣回歸，眼神與氣場精準拿捏，職場大女主天花板！' },
+          { id: 'ACTRESS-02', name: '宣萱 飾 董以晴', initialVotes: 11000, votes: 13420, avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80', description: '《巨塔之后》心臟外科權威，細膩演繹醫者仁心與權力博弈。' },
+          { id: 'ACTRESS-03', name: '胡定欣 飾 鄧桂嬋 (七爺)', initialVotes: 4500, votes: 6180, avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80', description: '《巾幗梟雄之懸崖》商界女強人，跌宕起伏演繹江湖傳奇。' },
+          { id: 'ACTRESS-04', name: '李施嬅 飾 張家妍', initialVotes: 3200, votes: 4200, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80', description: '《新聞女王 2》黑化轉變層次分明，演技大爆發備受好評。' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'VOTE-CAMP-BEST-ACTOR',
+    title: '2026 TVB 萬千星輝頒獎典禮 • 最佳男演員 (最佳男主角)',
+    coverImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80',
+    description: '實力視帝巔峰對決！誰將榮登 2026 萬千星輝頒獎典禮最佳男主角寶座？立即投下關鍵一票！',
+    resultVisibility: 'AFTER_VOTE',
+    status: 'ACTIVE',
+    currentPhaseId: 'ACTOR-P01',
+    totalParticipants: 35120,
+    totalVotes: 35120,
+    startTime: '2026-08-08 00:00:00',
+    endTime: '2026-08-28 20:00:00',
+    creator: '梁副總監 (製作部)',
+    createdAt: '2026-08-08 09:30:00',
+    updatedAt: '2026-08-28 17:15:00',
+    phases: [
+      {
+        id: 'ACTOR-P01',
+        name: '決賽：四大熱門視帝票選',
+        status: 'ACTIVE',
+        startTime: '2026-08-08 00:00:00',
+        endTime: '2026-08-28 20:00:00',
+        mode: 'SINGLE',
+        maxSelections: 1,
+        frequencyLimit: 'ONCE_TOTAL',
+        requireAuth: true,
+        options: [
+          { id: 'ACTOR-01', name: '黃宗澤 飾 關智軒', initialVotes: 14000, votes: 16900, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80', description: '《反黑英雄 2》熱血警探，搏命動作與深情內心戲兼備。' },
+          { id: 'ACTOR-02', name: '陳豪 飾 柯政綱', initialVotes: 12000, votes: 14350, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&auto=format&fit=crop&q=80', description: '《巨塔之后》院長權謀沉穩大氣，舉手投足盡顯戲骨風範。' },
+          { id: 'ACTOR-03', name: '陳山聰 飾 彭穎傑', initialVotes: 4800, votes: 6120, avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80', description: '《反黑英雄 2》硬核緝毒，層次感分明，演技精湛。' },
+          { id: 'ACTOR-04', name: '黎耀祥 飾 柴十七', initialVotes: 3500, votes: 4750, avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80', description: '《巾幗梟雄之懸崖》神機妙算智勇雙全，再創經典角色。' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'VOTE-CAMP-BEST-HOST',
+    title: '2026 TVB 萬千星輝頒獎典禮 • 最佳女主持',
+    coverImage: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=800&auto=format&fit=crop&q=80',
+    description: '大方得體、執生一流！投選你最喜愛的 TVB 綜藝與資訊節目最佳女主持！',
+    resultVisibility: 'AFTER_VOTE',
+    status: 'ACTIVE',
+    currentPhaseId: 'HOST-P01',
+    totalParticipants: 22400,
+    totalVotes: 22400,
+    startTime: '2026-08-08 00:00:00',
+    endTime: '2026-08-28 20:00:00',
+    creator: '黃監製 (非戲劇製作)',
+    createdAt: '2026-08-08 11:00:00',
+    updatedAt: '2026-08-28 16:30:00',
+    phases: [
+      {
+        id: 'HOST-P01',
+        name: '決賽：最佳女主持票選',
+        status: 'ACTIVE',
+        startTime: '2026-08-08 00:00:00',
+        endTime: '2026-08-28 20:00:00',
+        mode: 'SINGLE',
+        maxSelections: 1,
+        frequencyLimit: 'ONCE_TOTAL',
+        requireAuth: true,
+        options: [
+          { id: 'HOST-01', name: '陳貝兒', initialVotes: 10500, votes: 12800, avatar: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&auto=format&fit=crop&q=80', description: '《無窮之路 IV》深度主持感人至深，國際視野真誠流露。' },
+          { id: 'HOST-02', name: '車婉婉', initialVotes: 6200, votes: 7450, avatar: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=400&auto=format&fit=crop&q=80', description: '《中年好聲音 3》暖心陪伴參賽者，控場流暢情真意切。' },
+          { id: 'HOST-03', name: '麥美恩', initialVotes: 3400, votes: 4120, avatar: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&auto=format&fit=crop&q=80', description: '《獎門人感謝篇》搞笑幽默活力爆棚，綜藝氣氛擔當。' },
+          { id: 'HOST-04', name: '陳庭欣', initialVotes: 1800, votes: 2030, avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&auto=format&fit=crop&q=80', description: '《東張西望》為民請命深入社區，專業親和深入民心。' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'VOTE-CAMP-BEST-SONG',
+    title: '2026 TVB 萬千星輝頒獎典禮 • 最佳電視歌曲',
+    coverImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=800&auto=format&fit=crop&q=80',
+    description: '動人旋律，唱響劇迷回憶！投選本年度最深入民心的最佳電視主題曲及片尾曲！',
+    resultVisibility: 'AFTER_VOTE',
+    status: 'ACTIVE',
+    currentPhaseId: 'SONG-P01',
+    totalParticipants: 28900,
+    totalVotes: 28900,
+    startTime: '2026-08-08 00:00:00',
+    endTime: '2026-08-28 20:00:00',
+    creator: '星夢娛樂音樂組',
+    createdAt: '2026-08-08 11:30:00',
+    updatedAt: '2026-08-28 17:30:00',
+    phases: [
+      {
+        id: 'SONG-P01',
+        name: '決賽：最佳電視歌曲票選',
+        status: 'ACTIVE',
+        startTime: '2026-08-08 00:00:00',
+        endTime: '2026-08-28 20:00:00',
+        mode: 'SINGLE',
+        maxSelections: 1,
+        frequencyLimit: 'ONCE_TOTAL',
+        requireAuth: true,
+        options: [
+          { id: 'SONG-01', name: '《Crystal Clear》- 炎明熹', initialVotes: 12000, votes: 14600, avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=400&auto=format&fit=crop&q=80', description: '《新聞女王 2》英文主題曲，空靈聲線演繹職場迷局。' },
+          { id: 'SONG-02', name: '《無名英雄》- 周吉佩', initialVotes: 8500, votes: 10200, avatar: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&auto=format&fit=crop&q=80', description: '《反黑英雄 2》熱血激昂主題曲，唱出正義男兒本色。' },
+          { id: 'SONG-03', name: '《雪落無聲》- 谷婭溦', initialVotes: 4800, votes: 5900, avatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&auto=format&fit=crop&q=80', description: '《巨塔之后》深情片尾曲，旋律淒美直擊心靈。' },
+          { id: 'SONG-04', name: '《相愛萬年》- 吳業坤 / 戴祖儀', initialVotes: 2600, votes: 3200, avatar: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=400&auto=format&fit=crop&q=80', description: '《巾幗梟雄之懸崖》經典對唱插曲，亂世情懷餘音裊裊。' }
+        ]
+      }
+    ]
+  },
+  {
+    id: 'VOTE-CAMP-002',
+    title: '電視城員工餐廳 2026 第三季「最受歡迎港式美食」評選',
+    coverImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+    description: '民以食為天！行政及設施部為提升同仁用餐體驗，特舉辦本季美食票選活動，獲勝菜式將享有每日特價及常駐窗口供應！',
+    resultVisibility: 'ALWAYS_PUBLIC',
+    status: 'ACTIVE',
+    currentPhaseId: 'P01-CANTEEN',
+    totalParticipants: 1840,
+    totalVotes: 1840,
+    startTime: '2026-08-05 00:00:00',
+    endTime: '2026-08-25 23:59:59',
+    creator: '李思婷 (行政及設施部)',
+    createdAt: '2026-08-05 14:20:00',
+    updatedAt: '2026-08-29 09:20:00',
+    phases: [
+      {
+        id: 'P01-CANTEEN',
+        name: '全城熱選：心水菜式單選',
+        status: 'ACTIVE',
+        startTime: '2026-08-05 00:00:00',
+        endTime: '2026-08-25 23:59:59',
+        mode: 'SINGLE',
+        maxSelections: 1,
+        frequencyLimit: 'ONCE_TOTAL',
+        requireAuth: true,
+        options: [
+          { id: 'CANT-01', name: '秘制深井脆皮燒鵝皇配絲苗飯', initialVotes: 500, votes: 780, avatar: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=400&auto=format&fit=crop&q=80', description: '皮脆肉嫩，秘制酸梅醬汁濃郁開胃！' },
+          { id: 'CANT-02', name: '香港道地沙爹牛肉公仔麵配滑蛋多士', initialVotes: 300, votes: 530, avatar: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&auto=format&fit=crop&q=80', description: '濃郁花生沙爹香氣，配搭香脆黃金牛油多士。' },
+          { id: 'CANT-03', name: '順德古法薑蔥生蠔煲', initialVotes: 200, votes: 340, avatar: 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=400&auto=format&fit=crop&q=80', description: '肥厚生蠔佐以老薑青蔥爆炒，鑊氣十足。' },
+          { id: 'CANT-04', name: '經典港式滑蛋蝦仁炒河粉', initialVotes: 100, votes: 190, avatar: 'https://images.unsplash.com/photo-1617093727343-374698b1b08d?w=400&auto=format&fit=crop&q=80', description: '鮮蝦爽口彈牙，蛋香滑嫩覆蓋寬河粉。' }
+        ]
+      }
+    ]
+  }
+];
+
+export const INITIAL_VOTE_ARTICLES: VoteArticle[] = [
+  {
+    id: 'ART-2026-001',
+    title: '【熱爆專題】2026 萬千星輝頒獎典禮 20強激戰！即刻投選各大獎項心水',
+    coverImage: 'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=800&auto=format&fit=crop&q=80',
+    summary: '請為你喜歡的明星或電視劇投票！年度壓軸盛典《2026萬千星輝頒獎典禮》正式進入準決賽激戰階段！多部口碑旗艦劇與實力巨星同台爭霸，包括「最佳劇集」、「最佳女演員」、「最佳男演員」、「最佳女主持」及「最佳電視歌曲」，快來投下決定性的一票！',
+    category: '年度盛典',
+    author: 'TVB 娛樂新聞組',
+    publishDate: '2026-08-11 12:00:00',
+    status: 'PUBLISHED',
+    viewCount: 15820,
+    linkedCampaignIds: ['VOTE-CAMP-001', 'VOTE-CAMP-BEST-ACTRESS', 'VOTE-CAMP-BEST-ACTOR', 'VOTE-CAMP-BEST-HOST', 'VOTE-CAMP-BEST-SONG'],
+    content: `[VOTE_ID: VOTE-CAMP-001]
+
+[VOTE_ID: VOTE-CAMP-BEST-ACTRESS]
+
+[VOTE_ID: VOTE-CAMP-BEST-ACTOR]
+
+[VOTE_ID: VOTE-CAMP-BEST-HOST]
+
+[VOTE_ID: VOTE-CAMP-BEST-SONG]
+
+### 📋 全民投票規則須知
+1. 每位合資格會員於各獎項限投 **1** 票。
+2. 投票後即時解鎖最新即時得票走勢與各選項百分比。
+3. 準決賽將於 **2026年8月28日 20:00** 截止計票，敬請把握時間踴躍投票！
+`
+  },
+  {
+    id: 'ART-2026-002',
+    title: '【員工福利】電視城餐廳美食大升級！八月心水菜式你話事',
+    coverImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&auto=format&fit=crop&q=80',
+    summary: '為回饋全體員工辛勤付出，行政及設施部聯同餐廳大廚推出全新菜式票選，最高票菜式將享有專屬八五折優惠！',
+    category: '福利生活',
+    author: '行政及設施部',
+    publishDate: '2026-08-09 10:30:00',
+    status: 'PUBLISHED',
+    viewCount: 4620,
+    linkedCampaignIds: ['VOTE-CAMP-002'],
+    content: `## 電視城餐廳八月份美食大改造
+
+為營造更優質的員工餐飲環境，行政及設施部特別邀請星級主廚團隊研發四款經典與創新兼備的港式料理。
+
+同仁只需透過 TVB GO 系統動動手指，即可為你心水的美味投下神聖一票：
+
+[VOTE_ID: VOTE-CAMP-002]
+
+期待全體同事的熱烈參與，共同打造更美味的電視城工作日常！
+`
+  }
+];
+

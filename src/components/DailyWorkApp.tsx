@@ -6,14 +6,18 @@
 import React, { useState, useEffect } from 'react';
 import { 
   AppBottomTab, DailyWorkSubModule, ClockInLog, LocationMethod, 
-  BeaconRule, WifiRule, GpsConfig 
+  BeaconRule, WifiRule, GpsConfig, VotingCampaign, VoteArticle 
 } from '../types';
+import { AppArticleDetailView } from './voting/AppArticleDetailView';
+import { AppVotingListView } from './voting/AppVotingListView';
+import { AppVotingDetailView } from './voting/AppVotingDetailView';
 import { 
   Newspaper, Users, Briefcase, Sparkles, FolderKanban, 
   Calendar, Utensils, Bus, UserCheck, Clock, MapPin, 
   Wifi, Radio, CheckCircle2, AlertTriangle, ChevronRight, 
   RefreshCw, ShieldCheck, ArrowLeft, Send, Check, Info, FileText, Search,
-  ChevronDown, Bell, QrCode, Building2, FileCheck, FileSpreadsheet, Plus, Laptop
+  ChevronDown, Bell, QrCode, Building2, FileCheck, FileSpreadsheet, Plus, Laptop,
+  BarChart2, Flame, Award
 } from 'lucide-react';
 
 interface DailyWorkAppProps {
@@ -24,6 +28,10 @@ interface DailyWorkAppProps {
   gpsConfig: GpsConfig;
   onOpenVisitorBooking: () => void;
   onOpenVisitorRecords?: () => void;
+  votingCampaigns?: VotingCampaign[];
+  voteArticles?: VoteArticle[];
+  userVotes?: Record<string, string[]>;
+  onVoteSubmit?: (campaignId: string, phaseId: string, optionIds: string[]) => void;
   triggerSound: (freq: number, type: OscillatorType, duration: number) => void;
 }
 
@@ -35,6 +43,10 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   gpsConfig,
   onOpenVisitorBooking,
   onOpenVisitorRecords,
+  votingCampaigns = [],
+  voteArticles = [],
+  userVotes = {},
+  onVoteSubmit,
   triggerSound
 }) => {
   // Bottom Tab State (Default & ONLY clickable functional tab: 'DAILY_WORK')
@@ -43,7 +55,13 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   // Sub-module view inside 'DAILY_WORK'
   const [subModule, setSubModule] = useState<DailyWorkSubModule>('WORKBENCH');
 
-  // TVB Express News Tab State
+  // Currently opened article for reading
+  const [selectedArticle, setSelectedArticle] = useState<VoteArticle | null>(null);
+
+  // Currently opened voting campaign for detail viewing/voting (Page 2 of Voting)
+  const [selectedVotingCampaign, setSelectedVotingCampaign] = useState<VotingCampaign | null>(null);
+
+  // TVB Express News Tab State: 全部 / 公司公告 / 部門消息
   const [newsTab, setNewsTab] = useState<'ALL' | 'ANNOUNCEMENT' | 'DEPT'>('ALL');
 
   // Attendance History Calendar State
@@ -225,6 +243,46 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   const [calendarSelectedDate, setCalendarSelectedDate] = useState<string>('2026-08-10');
   const [canteenCategory, setCanteenCategory] = useState<'A' | 'B' | 'DRINK'>('A');
 
+  // If viewing an article detail, render the specialized article reader (Page with single back button)
+  if (selectedArticle) {
+    return (
+      <AppArticleDetailView
+        article={selectedArticle}
+        campaigns={votingCampaigns}
+        onBack={() => setSelectedArticle(null)}
+        onSelectCampaign={(campaign) => setSelectedVotingCampaign(campaign)}
+        onVoteSubmit={onVoteSubmit}
+        userVotes={userVotes}
+        triggerSound={triggerSound}
+      />
+    );
+  }
+
+  // If viewing a voting campaign detail, render the specialized voting detail page (Page 2 with single back button)
+  if (selectedVotingCampaign) {
+    return (
+      <AppVotingDetailView
+        campaign={selectedVotingCampaign}
+        onBack={() => setSelectedVotingCampaign(null)}
+        onVoteSubmit={onVoteSubmit}
+        userVotes={userVotes}
+        triggerSound={triggerSound}
+      />
+    );
+  }
+
+  // Determine if current screen is root view (no back button needed)
+  const isRootScreen = (activeBottomTab === 'NEWS') || (activeBottomTab === 'DAILY_WORK' && subModule === 'WORKBENCH');
+
+  const handleTopBack = () => {
+    if (subModule === 'CLOCK_RECORD') {
+      setSubModule('CLOCK_IN');
+    } else {
+      setSubModule('WORKBENCH');
+    }
+    triggerSound(500, 'sine', 0.05);
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 overflow-hidden relative">
       
@@ -294,76 +352,58 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
         </div>
       )}
 
-      {/* TOP STATUS BAR & NATIVE APP HEADER (釘釘風格) */}
-      <div className="bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 shrink-0 select-none">
-        {/* iOS/Android Status Bar */}
-        <div className="px-4 pt-2 pb-1 flex items-center justify-between text-[11px] font-bold text-slate-800 dark:text-slate-200">
-          <span className="font-mono tracking-tight">09:41</span>
-          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400">
-            <span className="text-[10px] font-mono font-black">5G</span>
-            <Wifi size={12} />
-            <div className="w-5 h-2.5 rounded-sm border border-current p-0.5 flex items-center">
-              <div className="h-full w-full bg-current rounded-2xs"></div>
-            </div>
-          </div>
-        </div>
-
-        {/* APP Native Navigation Header */}
-        <div className="px-4 py-2.5 flex items-center justify-between border-t border-slate-100 dark:border-slate-900">
-          <div className="flex items-center gap-2.5">
+      {/* APP TOP NATIVE NAVIGATION HEADER */}
+      <div className="bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 px-4 py-2.5 flex items-center justify-between shrink-0 select-none shadow-2xs z-20">
+        <div className="flex items-center gap-2.5">
+          {/* 只在非根頁面顯示唯一的返回按鈕 */}
+          {!isRootScreen && (
             <button
               type="button"
-              onClick={() => {
-                if (subModule === 'CLOCK_RECORD') {
-                  setSubModule('CLOCK_IN');
-                } else if (subModule !== 'WORKBENCH') {
-                  setSubModule('WORKBENCH');
-                } else if (activeBottomTab === 'DAILY_WORK') {
-                  setActiveBottomTab('NEWS');
-                }
-              }}
+              onClick={handleTopBack}
               className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+              title="返回上一頁"
             >
-              <ArrowLeft size={18} />
-            </button>
-
-            <div>
-              <h1 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight">
-                {activeBottomTab === 'NEWS' && 'TVB快訊'}
-                {activeBottomTab === 'DAILY_WORK' && subModule === 'WORKBENCH' && '工作日常'}
-                {activeBottomTab === 'DAILY_WORK' && subModule === 'CLOCK_IN' && '考勤'}
-                {subModule === 'CLOCK_RECORD' && '考勤記錄'}
-                {subModule === 'CALENDAR' && '日曆'}
-                {subModule === 'CANTEEN' && '餐廳'}
-                {subModule === 'BUS' && '員工巴士'}
-              </h1>
-            </div>
-          </div>
-
-          {/* 右上角按鈕: 考勤頁面顯示日曆圖案 (進入考勤記錄), 其他頁面顯示搜尋按鈕 */}
-          {activeBottomTab === 'DAILY_WORK' && subModule === 'CLOCK_IN' ? (
-            <button
-              type="button"
-              onClick={() => setSubModule('CLOCK_RECORD')}
-              className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-all cursor-pointer flex items-center justify-center border border-blue-200/60 dark:border-blue-800/60"
-              title="考勤記錄"
-            >
-              <Calendar size={18} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                setToastMessage('搜尋功能已就緒');
-                setTimeout(() => setToastMessage(null), 2000);
-              }}
-              className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer flex items-center justify-center border border-slate-200/60 dark:border-slate-700/60"
-              title="搜尋"
-            >
-              <Search size={18} />
+              <ArrowLeft size={17} />
             </button>
           )}
+
+          <div>
+            <h1 className="text-sm font-black text-slate-900 dark:text-slate-100 leading-tight">
+              {activeBottomTab === 'NEWS' && 'TVB快訊'}
+              {activeBottomTab === 'DAILY_WORK' && subModule === 'WORKBENCH' && '工作日常'}
+              {activeBottomTab === 'DAILY_WORK' && subModule === 'VOTING' && '互動投票'}
+              {activeBottomTab === 'DAILY_WORK' && subModule === 'CLOCK_IN' && '考勤'}
+              {subModule === 'CLOCK_RECORD' && '考勤記錄'}
+              {subModule === 'CALENDAR' && '日曆'}
+              {subModule === 'CANTEEN' && '餐廳'}
+              {subModule === 'BUS' && '員工巴士'}
+            </h1>
+          </div>
         </div>
+
+        {/* 右上角快捷操作: 考勤頁面顯示考勤日曆, 其他頁面顯示搜尋 */}
+        {activeBottomTab === 'DAILY_WORK' && subModule === 'CLOCK_IN' ? (
+          <button
+            type="button"
+            onClick={() => setSubModule('CLOCK_RECORD')}
+            className="p-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 hover:bg-blue-100 transition-all cursor-pointer flex items-center justify-center border border-blue-200/60 dark:border-blue-800/60"
+            title="考勤記錄"
+          >
+            <Calendar size={17} />
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setToastMessage('搜尋功能已就緒');
+              setTimeout(() => setToastMessage(null), 2000);
+            }}
+            className="p-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer flex items-center justify-center border border-slate-200/60 dark:border-slate-700/60"
+            title="搜尋"
+          >
+            <Search size={17} />
+          </button>
+        )}
       </div>
 
       {/* MAIN CONTENT CANVAS */}
@@ -411,11 +451,11 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
               </div>
 
               {/* 三個 Tab: 全部 / 公司公告 / 部門消息 */}
-              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl">
+              <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-900 rounded-xl overflow-x-auto scrollbar-none">
                 <button
                   type="button"
                   onClick={() => setNewsTab('ALL')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                     newsTab === 'ALL'
                       ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -426,7 +466,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 <button
                   type="button"
                   onClick={() => setNewsTab('ANNOUNCEMENT')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                     newsTab === 'ANNOUNCEMENT'
                       ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -437,7 +477,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 <button
                   type="button"
                   onClick={() => setNewsTab('DEPT')}
-                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer whitespace-nowrap ${
                     newsTab === 'DEPT'
                       ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -447,11 +487,46 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 </button>
               </div>
 
-              {/* 文章內容 */}
+              {/* 文章內容 (第一篇文章為包含投票組件的專題文章，點擊進入即可看到文章與關聯投票組件效果) */}
               <div className="space-y-2.5 pt-1">
+                {/* 渲染專題與投票關聯文章 */}
+                {voteArticles
+                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告'))) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門'))))
+                  .map(article => (
+                    <div
+                      key={article.id}
+                      onClick={() => {
+                        setSelectedArticle(article);
+                        triggerSound(750, 'sine', 0.08);
+                      }}
+                      className="p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/40 dark:from-slate-900/90 dark:to-blue-950/30 rounded-2xl border border-blue-200/80 dark:border-blue-900/60 space-y-2 hover:border-blue-400 transition-all cursor-pointer shadow-2xs group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9.5px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white flex items-center gap-1 shadow-xs">
+                          <Sparkles size={10} className="text-amber-300" />
+                          <span>{article.category}</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">{article.publishDate.substring(0, 10)}</span>
+                      </div>
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {article.title}
+                      </h4>
+                      {article.summary && (
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
+                          {article.summary}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between text-[10px] text-blue-600 dark:text-blue-400 font-bold pt-1 border-t border-blue-100 dark:border-slate-800">
+                        <span>點擊閱讀全文並立即參與投票 ➔</span>
+                        <span>{article.viewCount.toLocaleString()} 閱讀</span>
+                      </div>
+                    </div>
+                  ))}
+
+                {/* 常規快訊公告 */}
                 {[
                   {
-                    id: '1',
+                    id: 'std-1',
                     category: 'ANNOUNCEMENT',
                     categoryName: '公司公告',
                     title: '【公司公告】2026年度電視城行政與考勤管理制度升級指引',
@@ -459,7 +534,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                     summary: '為方便全體同仁差勤登記，電視城已全面開通藍牙與Wi-Fi考勤，請參閱最新考勤指引。'
                   },
                   {
-                    id: '2',
+                    id: 'std-2',
                     category: 'DEPT',
                     categoryName: '部門消息',
                     title: '【部門消息】綜藝節目部《2026台慶亮燈》1號錄影廠行程預告',
@@ -467,7 +542,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                     summary: '綜藝節目部製作團隊請留意，1號廠錄影設備將於明日14:00進行測試，請相關人員準時出席。'
                   },
                   {
-                    id: '3',
+                    id: 'std-3',
                     category: 'ANNOUNCEMENT',
                     categoryName: '公司公告',
                     title: '【公司公告】員工餐廳八月份特別菜單及八達通/飯卡增值優惠',
@@ -475,7 +550,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                     summary: '八月份電視城員工餐廳提供精選港式燒味套餐，使用電子飯卡消費可享85折優惠。'
                   },
                   {
-                    id: '4',
+                    id: 'std-4',
                     category: 'DEPT',
                     categoryName: '部門消息',
                     title: '【部門消息】電視城員工巴士班次增設調景嶺/旺角直達線',
@@ -603,7 +678,36 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 </span>
               </button>
 
+              {/* 7. 互動投票專區 (炫彩漸變特色入口) */}
+              <button
+                type="button"
+                onClick={() => setSubModule('VOTING')}
+                className="bg-gradient-to-br from-rose-50/90 to-pink-50/90 dark:from-rose-950/40 dark:to-pink-950/40 hover:from-rose-100/90 hover:to-pink-100/90 border border-rose-200/70 dark:border-rose-900/50 rounded-2xl py-4.5 px-3 flex flex-col items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer shadow-2xs group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-md shadow-pink-500/25 group-hover:scale-105 transition-transform relative">
+                  <Award size={26} className="stroke-[2.2]" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white animate-ping"></span>
+                </div>
+                <span className="text-xs font-black text-rose-950 dark:text-rose-100 tracking-tight">
+                  互動投票
+                </span>
+              </button>
+
             </div>
+          </div>
+        )}
+
+        {/* ================= 1.5 互動投票專區 - 頁面 1: 投票列表 (subModule === 'VOTING') ================= */}
+        {activeBottomTab === 'DAILY_WORK' && subModule === 'VOTING' && (
+          <div className="p-3.5 space-y-3">
+            <AppVotingListView
+              campaigns={votingCampaigns}
+              onSelectCampaign={(campaign) => {
+                setSelectedVotingCampaign(campaign);
+              }}
+              userVotes={userVotes}
+              triggerSound={triggerSound}
+            />
           </div>
         )}
 

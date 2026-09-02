@@ -3,9 +3,12 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
-import { Booking, BookingStatus, PurposeCode, ClockInLog } from '../types';
-import { INITIAL_BOOKINGS, INITIAL_CLOCK_IN_LOGS, INITIAL_BEACONS, INITIAL_WIFIS, INITIAL_GPS_CONFIG, getPurposeOption } from '../data/mockData';
+import React, { useState, useEffect, useRef } from 'react';
+import { Booking, BookingStatus, PurposeCode, ClockInLog, VotingCampaign, VoteArticle } from '../types';
+import { 
+  INITIAL_BOOKINGS, INITIAL_CLOCK_IN_LOGS, INITIAL_BEACONS, INITIAL_WIFIS, 
+  INITIAL_GPS_CONFIG, INITIAL_VOTING_CAMPAIGNS, INITIAL_VOTE_ARTICLES, getPurposeOption 
+} from '../data/mockData';
 import { BookingForm } from './BookingForm';
 import { BookingRecords } from './BookingRecords';
 import { InvitationCard } from './InvitationCard';
@@ -32,9 +35,26 @@ export const WorkspaceShell: React.FC = () => {
     setAuthUser(null);
   };
   // Sound synthesizer for UI feedback
+  const audioCtxRef = useRef<AudioContext | null>(null);
   const triggerSound = (freq: number, type: OscillatorType, duration: number) => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (typeof window === 'undefined') return;
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx || typeof AudioCtx !== 'function') return;
+
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        try {
+          audioCtxRef.current = new AudioCtx();
+        } catch {
+          return;
+        }
+      }
+      const ctx = audioCtxRef.current;
+      if (!ctx || typeof ctx.createOscillator !== 'function') return;
+
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = type;
@@ -45,7 +65,138 @@ export const WorkspaceShell: React.FC = () => {
       gain.connect(ctx.destination);
       osc.start();
       osc.stop(ctx.currentTime + duration);
-    } catch (e) {}
+    } catch {
+      // Audio might be restricted or unsupported in sandbox iframe
+    }
+  };
+
+  // Voting Campaigns State
+  const [votingCampaigns, setVotingCampaigns] = useState<VotingCampaign[]>(() => {
+    localStorage.removeItem('tvb_go_voting_campaigns_v1');
+    const saved = localStorage.getItem('tvb_go_voting_campaigns_v2');
+    if (saved) {
+      try {
+        const parsed: VotingCampaign[] = JSON.parse(saved);
+        // Automatically merge any newly introduced INITIAL_VOTING_CAMPAIGNS if missing
+        const existingIds = new Set(parsed.map(c => c.id));
+        const missingInitial = INITIAL_VOTING_CAMPAIGNS.filter(c => !existingIds.has(c.id));
+        if (missingInitial.length > 0) {
+          const merged = [...parsed, ...missingInitial];
+          localStorage.setItem('tvb_go_voting_campaigns_v2', JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      } catch (e) {}
+    }
+    localStorage.setItem('tvb_go_voting_campaigns_v2', JSON.stringify(INITIAL_VOTING_CAMPAIGNS));
+    return INITIAL_VOTING_CAMPAIGNS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('tvb_go_voting_campaigns_v2', JSON.stringify(votingCampaigns));
+  }, [votingCampaigns]);
+
+  // Vote Articles State
+  const [voteArticles, setVoteArticles] = useState<VoteArticle[]>(() => {
+    localStorage.removeItem('tvb_go_vote_articles_v1');
+    const saved = localStorage.getItem('tvb_go_vote_articles_v2');
+    if (saved) {
+      try {
+        const parsed: VoteArticle[] = JSON.parse(saved);
+        // Always refresh standard articles to guarantee latest multi-widget embeds
+        const updated = INITIAL_VOTE_ARTICLES.map(initArt => {
+          const found = parsed.find(p => p.id === initArt.id);
+          return found ? { ...initArt, viewCount: Math.max(initArt.viewCount, found.viewCount) } : initArt;
+        });
+        localStorage.setItem('tvb_go_vote_articles_v2', JSON.stringify(updated));
+        return updated;
+      } catch (e) {}
+    }
+    localStorage.setItem('tvb_go_vote_articles_v2', JSON.stringify(INITIAL_VOTE_ARTICLES));
+    return INITIAL_VOTE_ARTICLES;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('tvb_go_vote_articles_v2', JSON.stringify(voteArticles));
+  }, [voteArticles]);
+
+  // User Voted Records (Campaign ID -> Array of Option IDs)
+  const [userVotes, setUserVotes] = useState<Record<string, string[]>>(() => {
+    const saved = localStorage.getItem('tvb_go_user_votes_v1');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('tvb_go_user_votes_v1', JSON.stringify(userVotes));
+  }, [userVotes]);
+
+  // Voting Handlers
+  const handleSaveVotingCampaign = (campaign: VotingCampaign) => {
+    setVotingCampaigns(prev => {
+      const idx = prev.findIndex(c => c.id === campaign.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = campaign;
+        return updated;
+      }
+      return [campaign, ...prev];
+    });
+  };
+
+  const handleDeleteVotingCampaign = (campaignId: string) => {
+    setVotingCampaigns(prev => prev.filter(c => c.id !== campaignId));
+  };
+
+  const handleSaveVoteArticle = (article: VoteArticle) => {
+    setVoteArticles(prev => {
+      const idx = prev.findIndex(a => a.id === article.id);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = article;
+        return updated;
+      }
+      return [article, ...prev];
+    });
+  };
+
+  const handleDeleteVoteArticle = (articleId: string) => {
+    setVoteArticles(prev => prev.filter(a => a.id !== articleId));
+  };
+
+  const handleVoteSubmit = (campaignId: string, phaseId: string, optionIds: string[]) => {
+    // 1. Record user vote
+    setUserVotes(prev => ({
+      ...prev,
+      [campaignId]: optionIds
+    }));
+
+    // 2. Increment votes in the campaign
+    setVotingCampaigns(prev => prev.map(camp => {
+      if (camp.id !== campaignId) return camp;
+      const updatedPhases = camp.phases.map(ph => {
+        if (ph.id !== phaseId) return ph;
+        const updatedOptions = ph.options.map(opt => {
+          if (optionIds.includes(opt.id)) {
+            return { ...opt, votes: opt.votes + 1 };
+          }
+          return opt;
+        });
+        const newTotalVotes = updatedOptions.reduce((sum, o) => sum + o.votes, 0);
+        return {
+          ...ph,
+          totalVotes: newTotalVotes,
+          options: updatedOptions
+        };
+      });
+      return {
+        ...camp,
+        totalParticipants: camp.totalParticipants + 1,
+        phases: updatedPhases
+      };
+    }));
   };
 
   // Main Bookings State
@@ -444,6 +595,14 @@ export const WorkspaceShell: React.FC = () => {
             onUpdateBookingStatus={handleUpdateBookingStatus}
             onCancelBooking={handleCancelBooking}
             onDeleteBooking={handleDeleteBooking}
+            votingCampaigns={votingCampaigns}
+            onSaveVotingCampaign={handleSaveVotingCampaign}
+            onDeleteVotingCampaign={handleDeleteVotingCampaign}
+            voteArticles={voteArticles}
+            onSaveVoteArticle={handleSaveVoteArticle}
+            onDeleteVoteArticle={handleDeleteVoteArticle}
+            onVoteSubmit={handleVoteSubmit}
+            userVotes={userVotes}
             triggerSound={triggerSound}
           />
         ) : (
@@ -532,6 +691,10 @@ export const WorkspaceShell: React.FC = () => {
                         gpsConfig={INITIAL_GPS_CONFIG}
                         onOpenVisitorBooking={() => setMobileView('FORM')}
                         onOpenVisitorRecords={() => setMobileView('RECORDS')}
+                        votingCampaigns={votingCampaigns}
+                        voteArticles={voteArticles}
+                        userVotes={userVotes}
+                        onVoteSubmit={handleVoteSubmit}
                         triggerSound={triggerSound}
                       />
                     )}

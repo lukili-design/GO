@@ -4,16 +4,18 @@
  */
 
 import React, { useState } from 'react';
-import { Booking, BookingStatus, PurposeCode } from '../types';
+import { Booking, BookingStatus, PurposeCode, VotingCampaign, VoteArticle } from '../types';
 import { PURPOSE_OPTIONS, getPurposeOption, getVisitorTypeLabel } from '../data/mockData';
 import { CmsAttendanceManagement } from './CmsAttendanceManagement';
+import { VotingCampaignManager } from './voting/VotingCampaignManager';
+import { ArticleManager } from './voting/ArticleManager';
 import { 
   Search, Filter, Check, X, Plus, FileText, Printer, 
   Trash2, Clock, Building, Calendar, Mail, Car, CheckCircle, 
   XCircle, AlertCircle, User, ShieldCheck, Sliders, Settings,
   ClipboardList, UserCheck, BookOpen, Save, Info, Sparkles, Laptop, FileSpreadsheet,
   Crown, Download, RefreshCw, ShieldAlert, Bell, UserPlus, FileUp, AlertTriangle,
-  ToggleLeft, ToggleRight, Shield, Upload
+  ToggleLeft, ToggleRight, Shield, Upload, BarChart2, Layers
 } from 'lucide-react';
 
 interface CmsConsoleProps {
@@ -22,6 +24,14 @@ interface CmsConsoleProps {
   onUpdateBookingStatus: (id: string, status: BookingStatus, checkedInOrOutTime?: string) => void;
   onCancelBooking: (id: string) => void;
   onDeleteBooking: (id: string) => void;
+  votingCampaigns?: VotingCampaign[];
+  onSaveVotingCampaign?: (camp: VotingCampaign) => void;
+  onDeleteVotingCampaign?: (id: string) => void;
+  voteArticles?: VoteArticle[];
+  onSaveVoteArticle?: (art: VoteArticle) => void;
+  onDeleteVoteArticle?: (id: string) => void;
+  onVoteSubmit?: (campaignId: string, phaseId: string, optionIds: string[]) => void;
+  userVotes?: Record<string, string[]>;
   triggerSound: (frequency: number, type: OscillatorType, duration: number) => void;
 }
 
@@ -31,10 +41,18 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
   onUpdateBookingStatus,
   onCancelBooking,
   onDeleteBooking,
+  votingCampaigns = [],
+  onSaveVotingCampaign,
+  onDeleteVotingCampaign,
+  voteArticles = [],
+  onSaveVoteArticle,
+  onDeleteVoteArticle,
+  onVoteSubmit,
+  userVotes = {},
   triggerSound
 }) => {
-  // Navigation: 'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT'
-  const [activeCmsTab, setActiveCmsTab] = useState<'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT'>('VISITORS');
+  // Navigation: 'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT' | 'VOTING_CAMPAIGNS' | 'VOTING_ARTICLES'
+  const [activeCmsTab, setActiveCmsTab] = useState<'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT' | 'VOTING_CAMPAIGNS' | 'VOTING_ARTICLES'>('VOTING_CAMPAIGNS');
 
   // 1. Employee Whitelist Management & Approval Config States (審核配置與員工白名單配置)
   const [isBookingApprovalRequired, setIsBookingApprovalRequired] = useState<boolean>(() => {
@@ -1110,6 +1128,58 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                 </div>
               </div>
 
+              {/* 互動投票管理 主菜單 */}
+              <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-850">
+                <div className="px-2 py-1 flex items-center gap-2 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <BarChart2 size={14} className="text-blue-500" />
+                  <span>互動投票系統</span>
+                </div>
+
+                <div className="pl-1.5 space-y-1 border-l-2 border-slate-100 dark:border-slate-800/80 ml-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCmsTab('VOTING_CAMPAIGNS');
+                      triggerSound(800, 'sine', 0.05);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCmsTab === 'VOTING_CAMPAIGNS'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <BarChart2 size={15} />
+                    <span className="flex-1 text-left flex items-center justify-between">
+                      <span>投票活動管理</span>
+                      <span className="px-1.5 py-0.2 text-[9.5px] font-mono font-bold bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full">
+                        {votingCampaigns.length}
+                      </span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCmsTab('VOTING_ARTICLES');
+                      triggerSound(820, 'sine', 0.05);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCmsTab === 'VOTING_ARTICLES'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Layers size={15} />
+                    <span className="flex-1 text-left flex items-center justify-between">
+                      <span>文章與投票關聯</span>
+                      <span className="px-1.5 py-0.2 text-[9.5px] font-mono font-bold bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-full">
+                        {voteArticles.length}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               {/* 考勤管理 主菜單 */}
               <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-850">
                 <div className="px-2 py-1 flex items-center gap-2 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -1184,6 +1254,29 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
 
         {/* Right Content Area */}
         <main className="flex-1 p-6 overflow-y-auto min-w-0">
+
+          {/* PAGE: 投票活動管理 (Campaign List & Editor) */}
+          {activeCmsTab === 'VOTING_CAMPAIGNS' && (
+            <VotingCampaignManager
+              campaigns={votingCampaigns}
+              onSaveCampaign={onSaveVotingCampaign || (() => {})}
+              onDeleteCampaign={onDeleteVotingCampaign || (() => {})}
+              triggerSound={triggerSound}
+            />
+          )}
+
+          {/* PAGE: 文章與投票關聯管理 (Article List & Editor) */}
+          {activeCmsTab === 'VOTING_ARTICLES' && (
+            <ArticleManager
+              articles={voteArticles}
+              campaigns={votingCampaigns}
+              onSaveArticle={onSaveVoteArticle || (() => {})}
+              onDeleteArticle={onDeleteVoteArticle || (() => {})}
+              onVoteSubmit={onVoteSubmit}
+              userVotes={userVotes}
+              triggerSound={triggerSound}
+            />
+          )}
 
           {/* PAGE 1: 訪客核銷記錄 */}
           {activeCmsTab === 'VISITORS' && (
