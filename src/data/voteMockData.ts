@@ -8,10 +8,11 @@ import { VotingCampaign, VoteArticle, VoteLogRecord } from '../types';
 export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
   {
     id: 'CAMP-2026-001',
-    title: '2026 萬千星輝最佳員工與藝員年度大獎',
+    title: '2026 萬千星輝台慶盛典年度總選（需全部投完統一提交）',
     coverImage: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
-    description: '年度電視城矚目焦點！全體同仁與觀眾共同票選年度最傑出幕前幕後同仁，見證榮耀時刻。本屆活動包含「最受歡迎男藝員」、「最受歡迎女藝員」、「最佳幕後製作團隊」等多個評選投票項目。',
+    description: '年度電視城矚目焦點！全體同仁與觀眾共同票選年度最受歡迎藝員與旗艦作品，需依序完成五個評選項目後統一提交選票。',
     resultVisibility: 'AFTER_VOTE',
+    submissionMode: 'ALL_REQUIRED',
     status: 'ACTIVE',
     currentPhaseId: 'PHASE-02',
     totalParticipants: 38420,
@@ -256,16 +257,17 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
   },
   {
     id: 'CAMP-2026-002',
-    title: '2026 電視城最佳幕後創意節目策劃大獎',
+    title: '2026 電視城幕後製作與創意策劃大獎（支持單個提交）',
     coverImage: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1200&q=80',
-    description: '表揚幕後策劃團隊的無窮創意！為您最喜愛的劇集與綜藝製作幕後團隊投下神聖一票。',
+    description: '表揚幕後策劃團隊的無窮創意！為您最喜愛的劇集與綜藝製作幕後團隊投下神聖一票，支持單個評選項目隨時獨立提交。',
     resultVisibility: 'ALWAYS_PUBLIC',
+    submissionMode: 'INDIVIDUAL',
     status: 'ACTIVE',
     currentPhaseId: 'PHASE-BG-01',
-    totalParticipants: 12580,
-    totalVotes: 12580,
+    totalParticipants: 18920,
+    totalVotes: 32580,
     startTime: '2026-08-10 00:00:00',
-    endTime: '2026-09-01 23:59:59',
+    endTime: '2026-09-30 23:59:59',
     creator: '李思婷 (互動研發處)',
     createdAt: '2026-08-10 14:00:00',
     updatedAt: '2026-08-29 09:20:00',
@@ -285,7 +287,7 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
             name: '全民決選階段',
             status: 'ACTIVE',
             startTime: '2026-08-10 00:00:00',
-            endTime: '2026-09-01 23:59:59',
+            endTime: '2026-09-30 23:59:59',
             mode: 'SINGLE',
             maxSelections: 1,
             frequencyLimit: 'ONCE_TOTAL',
@@ -300,7 +302,7 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
       {
         id: 'ITEM-BG-02',
         title: '🎼 最佳原創影視配樂與音效指導組',
-        description: '表揚綜藝節目導演與幕後配樂團隊。',
+        description: '表揚綜藝節目與旗艦劇集幕後原創音樂與音效團隊。',
         coverImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
         status: 'ACTIVE',
         currentPhaseId: 'PHASE-BG-02',
@@ -312,14 +314,95 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
             name: '全民評選階段',
             status: 'ACTIVE',
             startTime: '2026-08-10 00:00:00',
-            endTime: '2026-09-01 23:59:59',
+            endTime: '2026-09-30 23:59:59',
             mode: 'SINGLE',
             maxSelections: 1,
             frequencyLimit: 'ONCE_TOTAL',
             requireAuth: true,
             options: [
               { id: 'OPT-BG-03', name: '《聲夢傳奇3》音樂製作與舞台指導組', avatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80', description: '打造頂級聲光電舞台，挖掘新一代歌唱巨星。', initialVotes: 300, votes: 3890 },
-              { id: 'OPT-BG-04', name: '《中年好聲音3》導演組', avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=300&q=80', description: '感動無數家庭的情感編排與熱血追夢舞台。', initialVotes: 400, votes: 1570 }
+              { id: 'OPT-BG-04', name: '《中年好聲音3》音效工程組', avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=300&q=80', description: '感動無數家庭的情感編排與熱血追夢舞台。', initialVotes: 400, votes: 1570 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-BG-03',
+        title: '💡 最佳綜藝創新企劃與導演組',
+        description: '表揚引領全城熱話、突破傳統框架的王牌綜藝導演策劃團隊。',
+        coverImage: 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=600&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'PHASE-BG-03',
+        totalParticipants: 6840,
+        totalVotes: 6840,
+        phases: [
+          {
+            id: 'PHASE-BG-03',
+            name: '全民評選階段',
+            status: 'ACTIVE',
+            startTime: '2026-08-10 00:00:00',
+            endTime: '2026-09-30 23:59:59',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-BG-05', name: '《無窮之路 IV》特別策劃組', avatar: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=300&q=80', description: '跨越千山萬水記錄時代發展，口碑享譽全球。', initialVotes: 800, votes: 4210 },
+              { id: 'OPT-BG-06', name: '《獎門人 2026 歡樂盛典》導演組', avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=300&q=80', description: '傳承港式合家歡經典笑料，老少咸宜。', initialVotes: 500, votes: 2630 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-BG-04',
+        title: '🎨 最佳舞台美術與服裝造型設計',
+        description: '表揚呈現極致視覺審美、重現歷史質感與時尚造型的美術團隊。',
+        coverImage: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=600&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'PHASE-BG-04',
+        totalParticipants: 6320,
+        totalVotes: 6320,
+        phases: [
+          {
+            id: 'PHASE-BG-04',
+            name: '全民評選階段',
+            status: 'ACTIVE',
+            startTime: '2026-08-10 00:00:00',
+            endTime: '2026-09-30 23:59:59',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-BG-07', name: '《巾幗梟雄之懸崖》美術指導組', avatar: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=300&q=80', description: '高度還原民國風雲場景與華麗考究服飾。', initialVotes: 600, votes: 3680 },
+              { id: 'OPT-BG-08', name: '《巨塔之后》現代時裝與醫療美學組', avatar: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=300&q=80', description: '極簡俐落現代精英風格，視覺質感極高。', initialVotes: 400, votes: 2640 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-BG-05',
+        title: '📽️ 最佳視覺特效與後期剪輯製作',
+        description: '表揚運用前沿數碼科技與行雲流水剪輯手法的後期精英。',
+        coverImage: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=600&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'PHASE-BG-05',
+        totalParticipants: 6840,
+        totalVotes: 6840,
+        phases: [
+          {
+            id: 'PHASE-BG-05',
+            name: '全民評選階段',
+            status: 'ACTIVE',
+            startTime: '2026-08-10 00:00:00',
+            endTime: '2026-09-30 23:59:59',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-BG-09', name: '《反黑英雄》硬核動作後期視效團隊', avatar: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=300&q=80', description: '震撼爆破追車特效與俐落快節奏剪輯。', initialVotes: 700, votes: 4120 },
+              { id: 'OPT-BG-10', name: '《新聞女王2》直播室即時視效剪輯組', avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=300&q=80', description: '緊湊窒息的直播現場節奏把握與多屏聯動。', initialVotes: 450, votes: 2720 }
             ]
           }
         ]
@@ -331,7 +414,7 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
         name: '全民決選階段',
         status: 'ACTIVE',
         startTime: '2026-08-10 00:00:00',
-        endTime: '2026-09-01 23:59:59',
+        endTime: '2026-09-30 23:59:59',
         mode: 'SINGLE',
         maxSelections: 1,
         frequencyLimit: 'ONCE_TOTAL',
@@ -339,7 +422,7 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
         options: [
           { id: 'OPT-BG-01', name: '《新聞女王2》編劇與監製團隊', avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=300&q=80', description: '緊湊劇情架構與職場金句，引發全網現象級討論。', initialVotes: 500, votes: 5420 },
           { id: 'OPT-BG-02', name: '《聲夢傳奇3》音樂製作與舞台指導組', avatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80', description: '打造頂級聲光電舞台，挖掘新一代歌唱巨星。', initialVotes: 300, votes: 3890 },
-          { id: 'OPT-BG-03', name: '《中年好聲音3》導演組', avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=300&q=80', description: '感動無數家庭的情感編排與熱血追夢舞台。', initialVotes: 400, votes: 3270 },
+          { id: 'OPT-BG-03', name: '《無窮之路 IV》特別策劃組', avatar: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&w=300&q=80', description: '跨越千山萬水記錄時代發展，口碑享譽全球。', initialVotes: 400, votes: 3270 },
         ]
       }
     ]
@@ -350,6 +433,7 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
     coverImage: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=1200&q=80',
     description: '美麗與智慧並重！誠邀全港市民見證港姐誕生，即時為佳麗投票打氣，支持心目中的香港小姐。',
     resultVisibility: 'AFTER_CAMPAIGN_END',
+    submissionMode: 'ALL_REQUIRED',
     status: 'UPCOMING',
     currentPhaseId: 'PHASE-HKM-01',
     totalParticipants: 0,
@@ -443,6 +527,8 @@ export const INITIAL_VOTE_LOGS: VoteLogRecord[] = [
     id: 'VLOG-20260829-0001',
     campaignId: 'CAMP-2026-001',
     campaignTitle: '2026 萬千星輝最佳員工與藝員年度大獎',
+    voteItemId: 'ITEM-ACTOR',
+    voteItemTitle: '最受歡迎男藝員評選',
     phaseId: 'PHASE-02',
     phaseName: '20強進7 晉級賽',
     voterId: 'USR-892104',
@@ -460,6 +546,8 @@ export const INITIAL_VOTE_LOGS: VoteLogRecord[] = [
     id: 'VLOG-20260829-0002',
     campaignId: 'CAMP-2026-001',
     campaignTitle: '2026 萬千星輝最佳員工與藝員年度大獎',
+    voteItemId: 'ITEM-ACTOR',
+    voteItemTitle: '最受歡迎男藝員評選',
     phaseId: 'PHASE-02',
     phaseName: '20強進7 晉級賽',
     voterId: 'USR-773821',
@@ -477,6 +565,8 @@ export const INITIAL_VOTE_LOGS: VoteLogRecord[] = [
     id: 'VLOG-20260829-0003',
     campaignId: 'CAMP-2026-001',
     campaignTitle: '2026 萬千星輝最佳員工與藝員年度大獎',
+    voteItemId: 'ITEM-ACTOR',
+    voteItemTitle: '最受歡迎男藝員評選',
     phaseId: 'PHASE-02',
     phaseName: '20強進7 晉級賽',
     voterId: 'EMP-90214',
@@ -494,6 +584,8 @@ export const INITIAL_VOTE_LOGS: VoteLogRecord[] = [
     id: 'VLOG-20260829-0004',
     campaignId: 'CAMP-2026-001',
     campaignTitle: '2026 萬千星輝最佳員工與藝員年度大獎',
+    voteItemId: 'ITEM-ACTRESS',
+    voteItemTitle: '最受歡迎女藝員評選',
     phaseId: 'PHASE-02',
     phaseName: '20強進7 晉級賽',
     voterId: 'USR-481920',
@@ -511,6 +603,8 @@ export const INITIAL_VOTE_LOGS: VoteLogRecord[] = [
     id: 'VLOG-20260829-0005',
     campaignId: 'CAMP-2026-002',
     campaignTitle: '2026 電視城最佳幕後創意節目策劃大獎',
+    voteItemId: 'ITEM-CREATIVE',
+    voteItemTitle: '幕後創意節目評選',
     phaseId: 'PHASE-BG-01',
     phaseName: '全民決選階段',
     voterId: 'USR-619283',
@@ -528,6 +622,8 @@ export const INITIAL_VOTE_LOGS: VoteLogRecord[] = [
     id: 'VLOG-20260829-0006',
     campaignId: 'CAMP-2026-001',
     campaignTitle: '2026 萬千星輝最佳員工與藝員年度大獎',
+    voteItemId: 'ITEM-ACTOR',
+    voteItemTitle: '最受歡迎男藝員評選',
     phaseId: 'PHASE-01',
     phaseName: '40強初選淘汰賽',
     voterId: 'USR-102938',
@@ -545,6 +641,8 @@ export const INITIAL_VOTE_LOGS: VoteLogRecord[] = [
     id: 'VLOG-20260829-0007',
     campaignId: 'CAMP-2026-001',
     campaignTitle: '2026 萬千星輝最佳員工與藝員年度大獎',
+    voteItemId: 'ITEM-ACTOR',
+    voteItemTitle: '最受歡迎男藝員評選',
     phaseId: 'PHASE-02',
     phaseName: '20強進7 晉級賽',
     voterId: 'USR-BOT-9921',

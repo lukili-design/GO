@@ -156,6 +156,7 @@ export type VoteResultVisibility = 'AFTER_VOTE' | 'ALWAYS_PUBLIC' | 'ADMIN_ONLY'
 export type VoteCampaignStatus = 'UPCOMING' | 'ACTIVE' | 'ENDED';
 export type VoteSelectionMode = 'SINGLE' | 'MULTIPLE';
 export type VoteFrequencyLimit = 'ONCE_TOTAL' | 'ONCE_DAILY';
+export type VoteSubmissionMode = 'ALL_REQUIRED' | 'INDIVIDUAL'; // 🌟 投票設置：需完成所有組件才能提交 vs 可單個組件獨立提交
 
 export interface VoteOption {
   id: string;
@@ -203,6 +204,7 @@ export interface VotingCampaign {
   coverImage: string; // 16:9 封面圖
   description: string; // 活動簡介
   resultVisibility: VoteResultVisibility; // 結果公開規則
+  submissionMode?: VoteSubmissionMode; // 🌟 投票設置：所有投票組件都投完才能提交 (ALL_REQUIRED) / 可以單個提交 (INDIVIDUAL)
   status: VoteCampaignStatus; // 當前整體狀態
   voteItems?: VoteItem[]; // 🌟 活動下的多個投票項目 (一個活動可以創建多個投票項目)
   phases: VotePhase[]; // 分階段賽制配置 (解決 40進20、20進7，兼容單一投票賽制)
@@ -220,6 +222,8 @@ export interface VoteLogRecord {
   id: string; // 投票紀錄單號 (如 VLOG-8921471)
   campaignId: string; // 所屬活動 ID
   campaignTitle: string; // 所屬活動名稱
+  voteItemId?: string; // 投票組件 ID (如 ITEM-ACTOR 或 ITEM-01)
+  voteItemTitle?: string; // 投票組件名稱
   phaseId: string; // 投票階段 ID
   phaseName: string; // 投票階段名稱
   voterId: string; // 投票人 ID (如 USR-82910)

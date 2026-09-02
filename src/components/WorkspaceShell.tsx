@@ -7,8 +7,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Booking, BookingStatus, PurposeCode, ClockInLog, VotingCampaign, VoteArticle } from '../types';
 import { 
   INITIAL_BOOKINGS, INITIAL_CLOCK_IN_LOGS, INITIAL_BEACONS, INITIAL_WIFIS, 
-  INITIAL_GPS_CONFIG, INITIAL_VOTING_CAMPAIGNS, INITIAL_VOTE_ARTICLES, getPurposeOption 
+  INITIAL_GPS_CONFIG, getPurposeOption 
 } from '../data/mockData';
+import { INITIAL_VOTING_CAMPAIGNS, INITIAL_VOTE_ARTICLES } from '../data/voteMockData';
 import { BookingForm } from './BookingForm';
 import { BookingRecords } from './BookingRecords';
 import { InvitationCard } from './InvitationCard';
@@ -73,7 +74,9 @@ export const WorkspaceShell: React.FC = () => {
   // Voting Campaigns State
   const [votingCampaigns, setVotingCampaigns] = useState<VotingCampaign[]>(() => {
     localStorage.removeItem('tvb_go_voting_campaigns_v1');
-    const saved = localStorage.getItem('tvb_go_voting_campaigns_v3') || localStorage.getItem('tvb_go_voting_campaigns_v2');
+    localStorage.removeItem('tvb_go_voting_campaigns_v2');
+    localStorage.removeItem('tvb_go_voting_campaigns_v3');
+    const saved = localStorage.getItem('tvb_go_voting_campaigns_v5');
     if (saved) {
       try {
         const parsed: VotingCampaign[] = JSON.parse(saved);
@@ -86,23 +89,24 @@ export const WorkspaceShell: React.FC = () => {
             title: initCamp.title,
             description: initCamp.description || found.description,
             coverImage: initCamp.coverImage || found.coverImage,
-            voteItems: (initCamp.voteItems && initCamp.voteItems.length > 0) ? initCamp.voteItems : (found.voteItems || []),
+            submissionMode: initCamp.submissionMode || found.submissionMode || 'INDIVIDUAL',
+            voteItems: (initCamp.voteItems && initCamp.voteItems.length >= 5) ? initCamp.voteItems : (found.voteItems || initCamp.voteItems || []),
             phases: (initCamp.phases && initCamp.phases.length > 0) ? initCamp.phases : (found.phases || [])
           };
         });
         // Retain any custom campaigns created by user
         const customCampaigns = parsed.filter(p => !INITIAL_VOTING_CAMPAIGNS.some(c => c.id === p.id));
         const merged = [...updated, ...customCampaigns];
-        localStorage.setItem('tvb_go_voting_campaigns_v3', JSON.stringify(merged));
+        localStorage.setItem('tvb_go_voting_campaigns_v5', JSON.stringify(merged));
         return merged;
       } catch (e) {}
     }
-    localStorage.setItem('tvb_go_voting_campaigns_v3', JSON.stringify(INITIAL_VOTING_CAMPAIGNS));
+    localStorage.setItem('tvb_go_voting_campaigns_v5', JSON.stringify(INITIAL_VOTING_CAMPAIGNS));
     return INITIAL_VOTING_CAMPAIGNS;
   });
 
   useEffect(() => {
-    localStorage.setItem('tvb_go_voting_campaigns_v3', JSON.stringify(votingCampaigns));
+    localStorage.setItem('tvb_go_voting_campaigns_v5', JSON.stringify(votingCampaigns));
   }, [votingCampaigns]);
 
   // Vote Articles State

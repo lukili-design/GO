@@ -164,6 +164,18 @@ export const AppVotingListView: React.FC<AppVotingListViewProps> = ({
                         <Award size={11} />
                         <span>設有 {voteItems.length} 個評選項目</span>
                       </span>
+
+                      {campaign.submissionMode === 'ALL_REQUIRED' ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-purple-600/90 backdrop-blur-md text-white shadow-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0">
+                          <Layers size={11} />
+                          <span>所有的投票組件都投完後統一提交</span>
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-blue-600/90 backdrop-blur-md text-white shadow-xs inline-flex items-center gap-1 whitespace-nowrap shrink-0">
+                          <Sparkles size={11} />
+                          <span>支持單個投票組件提交</span>
+                        </span>
+                      )}
                     </div>
 
                     {hasVoted && (
