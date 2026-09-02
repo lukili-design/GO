@@ -293,7 +293,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 overflow-hidden relative">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 overflow-hidden relative">
       
       {/* Toast Notification for Non-clickable bottom tabs */}
       {toastMessage && (

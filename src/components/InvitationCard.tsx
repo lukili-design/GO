@@ -67,7 +67,7 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-100 dark:bg-slate-900 overflow-hidden relative">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900 overflow-hidden relative">
       {/* 1. Header Bar: 返回 | 電子通行證 */}
       <div className="shrink-0 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex items-center justify-between shadow-2xs z-10">
         <div className="flex items-center gap-2">

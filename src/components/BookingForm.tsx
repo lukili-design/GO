@@ -199,7 +199,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onViewRecord
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900 overflow-y-auto">
+    <div className="flex flex-col h-full bg-white dark:bg-slate-900 overflow-y-auto">
       {/* 1. 頂部返回Bar: 返回按鈕 | 訪客預約 | 我的預約 */}
       <div className="sticky top-0 z-10 flex items-center justify-between px-4 py-3 bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 shadow-xs">
         <div className="flex items-center gap-2.5">

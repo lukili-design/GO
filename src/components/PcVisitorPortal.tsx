@@ -370,7 +370,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
   );
 
   return (
-    <div className="flex-1 bg-slate-100 dark:bg-slate-950 flex flex-col min-h-0 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
+    <div className="flex-1 bg-white dark:bg-slate-950 flex flex-col min-h-0 rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-xl">
       
       {/* Top PC Portal Bar */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

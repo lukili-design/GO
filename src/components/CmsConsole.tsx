@@ -974,7 +974,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
       </div>
 
       {/* Main Grid: Left Sidebar & Right Content */}
-      <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-slate-50 dark:bg-slate-900">
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0 bg-white dark:bg-slate-900">
         
         {/* Left Side Sidebar */}
         <aside className="w-full lg:w-64 bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between shrink-0">

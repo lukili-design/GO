@@ -481,7 +481,7 @@ export const WorkspaceShell: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col">
+    <div className="min-h-screen bg-white dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col">
       
       {/* Top Main Navigation Header */}
       <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3.5 shadow-sm flex items-center justify-between gap-4">
@@ -521,7 +521,7 @@ export const WorkspaceShell: React.FC = () => {
       </header>
 
       {/* Workspace Module Selector / System Mode Tabs */}
-      <div className="bg-slate-150/80 dark:bg-slate-900/45 border-b border-slate-200 dark:border-slate-800 p-2 flex justify-center">
+      <div className="bg-slate-50/90 dark:bg-slate-900/45 border-b border-slate-200 dark:border-slate-800 p-2 flex justify-center">
         <div className="bg-white dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex shadow-xs gap-1 max-w-3xl w-full overflow-x-auto">
           <button
             onClick={() => {
