@@ -79,7 +79,7 @@ export function calculatePhaseAutoStatus(phases: VotePhase[]): VoteCampaignStatu
 /**
  * 將多個投票項目的數據同步回活動主對象 (計算總票數、總參與人數、整體排程時間與整體狀態)
  */
-export function syncCampaignFromVoteItems(campaign: VotingCampaign, voteItems: VoteItem[]): VotingCampaign {
+export function syncCampaignFromVoteItems(campaign: VotingCampaign, voteItems?: VoteItem[]): VotingCampaign {
   const items = voteItems && voteItems.length > 0 ? voteItems : getCampaignVoteItems(campaign);
   
   let totalVotes = 0;

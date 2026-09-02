@@ -73,51 +73,64 @@ export const WorkspaceShell: React.FC = () => {
   // Voting Campaigns State
   const [votingCampaigns, setVotingCampaigns] = useState<VotingCampaign[]>(() => {
     localStorage.removeItem('tvb_go_voting_campaigns_v1');
-    const saved = localStorage.getItem('tvb_go_voting_campaigns_v2');
+    const saved = localStorage.getItem('tvb_go_voting_campaigns_v3') || localStorage.getItem('tvb_go_voting_campaigns_v2');
     if (saved) {
       try {
         const parsed: VotingCampaign[] = JSON.parse(saved);
-        // Automatically merge any newly introduced INITIAL_VOTING_CAMPAIGNS if missing
-        const existingIds = new Set(parsed.map(c => c.id));
-        const missingInitial = INITIAL_VOTING_CAMPAIGNS.filter(c => !existingIds.has(c.id));
-        if (missingInitial.length > 0) {
-          const merged = [...parsed, ...missingInitial];
-          localStorage.setItem('tvb_go_voting_campaigns_v2', JSON.stringify(merged));
-          return merged;
-        }
-        return parsed;
+        // Map initial campaigns and guarantee latest voteItems / title / configuration
+        const updated = INITIAL_VOTING_CAMPAIGNS.map(initCamp => {
+          const found = parsed.find(p => p.id === initCamp.id);
+          if (!found) return initCamp;
+          return {
+            ...found,
+            title: initCamp.title,
+            description: initCamp.description || found.description,
+            coverImage: initCamp.coverImage || found.coverImage,
+            voteItems: (initCamp.voteItems && initCamp.voteItems.length > 0) ? initCamp.voteItems : (found.voteItems || []),
+            phases: (initCamp.phases && initCamp.phases.length > 0) ? initCamp.phases : (found.phases || [])
+          };
+        });
+        // Retain any custom campaigns created by user
+        const customCampaigns = parsed.filter(p => !INITIAL_VOTING_CAMPAIGNS.some(c => c.id === p.id));
+        const merged = [...updated, ...customCampaigns];
+        localStorage.setItem('tvb_go_voting_campaigns_v3', JSON.stringify(merged));
+        return merged;
       } catch (e) {}
     }
-    localStorage.setItem('tvb_go_voting_campaigns_v2', JSON.stringify(INITIAL_VOTING_CAMPAIGNS));
+    localStorage.setItem('tvb_go_voting_campaigns_v3', JSON.stringify(INITIAL_VOTING_CAMPAIGNS));
     return INITIAL_VOTING_CAMPAIGNS;
   });
 
   useEffect(() => {
-    localStorage.setItem('tvb_go_voting_campaigns_v2', JSON.stringify(votingCampaigns));
+    localStorage.setItem('tvb_go_voting_campaigns_v3', JSON.stringify(votingCampaigns));
   }, [votingCampaigns]);
 
   // Vote Articles State
   const [voteArticles, setVoteArticles] = useState<VoteArticle[]>(() => {
     localStorage.removeItem('tvb_go_vote_articles_v1');
-    const saved = localStorage.getItem('tvb_go_vote_articles_v2');
+    localStorage.removeItem('tvb_go_vote_articles_v2');
+    localStorage.removeItem('tvb_go_vote_articles_v3');
+    const saved = localStorage.getItem('tvb_go_vote_articles_v4');
     if (saved) {
       try {
         const parsed: VoteArticle[] = JSON.parse(saved);
-        // Always refresh standard articles to guarantee latest multi-widget embeds
+        // Always refresh standard articles to guarantee latest multi-widget embeds and titles
         const updated = INITIAL_VOTE_ARTICLES.map(initArt => {
           const found = parsed.find(p => p.id === initArt.id);
           return found ? { ...initArt, viewCount: Math.max(initArt.viewCount, found.viewCount) } : initArt;
         });
-        localStorage.setItem('tvb_go_vote_articles_v2', JSON.stringify(updated));
-        return updated;
+        const customArticles = parsed.filter(p => !INITIAL_VOTE_ARTICLES.some(a => a.id === p.id));
+        const merged = [...updated, ...customArticles];
+        localStorage.setItem('tvb_go_vote_articles_v4', JSON.stringify(merged));
+        return merged;
       } catch (e) {}
     }
-    localStorage.setItem('tvb_go_vote_articles_v2', JSON.stringify(INITIAL_VOTE_ARTICLES));
+    localStorage.setItem('tvb_go_vote_articles_v4', JSON.stringify(INITIAL_VOTE_ARTICLES));
     return INITIAL_VOTE_ARTICLES;
   });
 
   useEffect(() => {
-    localStorage.setItem('tvb_go_vote_articles_v2', JSON.stringify(voteArticles));
+    localStorage.setItem('tvb_go_vote_articles_v4', JSON.stringify(voteArticles));
   }, [voteArticles]);
 
   // User Voted Records (Campaign ID -> Array of Option IDs)

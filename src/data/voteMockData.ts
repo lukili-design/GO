@@ -113,6 +113,90 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
             ]
           }
         ]
+      },
+      {
+        id: 'ITEM-DRAMA',
+        title: '🎬 最佳年度旗艦劇集評選',
+        description: '表揚引發全城熱話、製作精良的年度黃金檔旗艦大劇。',
+        coverImage: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?auto=format&fit=crop&w=600&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'DRAMA-P01',
+        totalParticipants: 28500,
+        totalVotes: 28500,
+        phases: [
+          {
+            id: 'DRAMA-P01',
+            name: '全民決選階段',
+            status: 'ACTIVE',
+            startTime: '2026-08-01 00:00:00',
+            endTime: '2026-09-15 23:00:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_DAILY',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-DR-01', name: '《新聞女王 2》', avatar: 'https://images.unsplash.com/photo-1594909122845-11baa439b7bf?auto=format&fit=crop&w=300&q=80', description: '黃金主創原班人馬強勢回歸，新聞部博弈升級。', initialVotes: 15000, votes: 19400 },
+              { id: 'OPT-DR-02', name: '《企業強人》', avatar: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=300&q=80', description: '商海沉浮與商道人心的極致詮釋，收視口碑雙豐收。', initialVotes: 9800, votes: 14200 },
+              { id: 'OPT-DR-03', name: '《反黑英雄》', avatar: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=300&q=80', description: '港式硬核警匪動作力作，節奏明快張力十足。', initialVotes: 6400, votes: 9800 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-MISS',
+        title: '💐 最上鏡小姐與年度風采大獎',
+        description: '表揚舉止優雅、鏡頭感出眾且深受觀眾支持的年度風采女性。',
+        coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'MISS-P01',
+        totalParticipants: 24200,
+        totalVotes: 24200,
+        phases: [
+          {
+            id: 'MISS-P01',
+            name: '全民決選階段',
+            status: 'ACTIVE',
+            startTime: '2026-08-16 00:00:00',
+            endTime: '2026-09-15 23:00:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_DAILY',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-MISS-01', name: '01號 - 倪樂琳 (Ellyn Ngai)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80', description: '大方得體，笑容甜美，備受觀眾喜愛。', initialVotes: 9800, votes: 12400 },
+              { id: 'OPT-MISS-02', name: '02號 - 梁嘉莹 (Emily Liang)', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80', description: '自信開朗，鏡頭感十足，舞台氣場亮眼。', initialVotes: 8200, votes: 10800 },
+              { id: 'OPT-MISS-03', name: '03號 - 楊梓瑤 (Amina Yeung)', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80', description: '高挑優雅，才藝出眾，談吐得體。', initialVotes: 7100, votes: 9200 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-SONG',
+        title: '🎵 最受歡迎電視歌曲與主題曲',
+        description: '表揚旋律動人、傳唱度高、伴隨劇集深入人心的年度電視金曲。',
+        coverImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'SONG-P01',
+        totalParticipants: 31000,
+        totalVotes: 31000,
+        phases: [
+          {
+            id: 'SONG-P01',
+            name: '金曲票選階段',
+            status: 'ACTIVE',
+            startTime: '2026-08-01 00:00:00',
+            endTime: '2026-09-15 23:00:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_DAILY',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-SONG-01', name: '《Crystal Clear》- 炎明熹 (《新聞女王2》)', avatar: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80', description: '震撼心靈的旋律，唱出職場博弈的鋒芒與堅韌。', initialVotes: 13500, votes: 18200 },
+              { id: 'OPT-SONG-02', name: '《逆流同行》- 林家謙 (《企業強人》)', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80', description: '細膩動人的聲線，陪伴觀眾經歷商戰風雨。', initialVotes: 11000, votes: 14600 },
+              { id: 'OPT-SONG-03', name: '《誓不回頭》- 吳業坤 (《反黑英雄》)', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80', description: '激昂節奏與熱血演繹，引發無數劇迷共鳴。', initialVotes: 8200, votes: 11500 }
+            ]
+          }
+        ]
       }
     ],
     phases: [
@@ -185,6 +269,62 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
     creator: '李思婷 (互動研發處)',
     createdAt: '2026-08-10 14:00:00',
     updatedAt: '2026-08-29 09:20:00',
+    voteItems: [
+      {
+        id: 'ITEM-BG-01',
+        title: '🎬 最佳幕後製作與編劇團隊',
+        description: '表揚幕後策劃團隊的無窮創意！為您最喜愛的劇集製作幕後團隊投下神聖一票。',
+        coverImage: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=600&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'PHASE-BG-01',
+        totalParticipants: 7120,
+        totalVotes: 7120,
+        phases: [
+          {
+            id: 'PHASE-BG-01',
+            name: '全民決選階段',
+            status: 'ACTIVE',
+            startTime: '2026-08-10 00:00:00',
+            endTime: '2026-09-01 23:59:59',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-BG-01', name: '《新聞女王2》編劇與監製團隊', avatar: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=300&q=80', description: '緊湊劇情架構與職場金句，引發全網現象級討論。', initialVotes: 500, votes: 5420 },
+              { id: 'OPT-BG-02', name: '《企業強人》劇本創作組', avatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80', description: '深刻刻畫商業博弈與人性光輝。', initialVotes: 300, votes: 1700 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-BG-02',
+        title: '🎼 最佳原創影視配樂與音效指導組',
+        description: '表揚綜藝節目導演與幕後配樂團隊。',
+        coverImage: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=600&q=80',
+        status: 'ACTIVE',
+        currentPhaseId: 'PHASE-BG-02',
+        totalParticipants: 5460,
+        totalVotes: 5460,
+        phases: [
+          {
+            id: 'PHASE-BG-02',
+            name: '全民評選階段',
+            status: 'ACTIVE',
+            startTime: '2026-08-10 00:00:00',
+            endTime: '2026-09-01 23:59:59',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_TOTAL',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-BG-03', name: '《聲夢傳奇3》音樂製作與舞台指導組', avatar: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80', description: '打造頂級聲光電舞台，挖掘新一代歌唱巨星。', initialVotes: 300, votes: 3890 },
+              { id: 'OPT-BG-04', name: '《中年好聲音3》導演組', avatar: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?auto=format&fit=crop&w=300&q=80', description: '感動無數家庭的情感編排與熱血追夢舞台。', initialVotes: 400, votes: 1570 }
+            ]
+          }
+        ]
+      }
+    ],
     phases: [
       {
         id: 'PHASE-BG-01',
@@ -219,6 +359,64 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
     creator: '黃志偉 (大型節目組)',
     createdAt: '2026-08-25 11:30:00',
     updatedAt: '2026-08-30 14:15:00',
+    voteItems: [
+      {
+        id: 'ITEM-HKM-01',
+        title: '📸 最上鏡小姐評選',
+        description: '由全民觀眾與專業評審共同選出鏡頭感與氣質最出眾的佳麗。',
+        coverImage: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=600&q=80',
+        status: 'UPCOMING',
+        currentPhaseId: 'PHASE-HKM-01',
+        totalParticipants: 0,
+        totalVotes: 0,
+        phases: [
+          {
+            id: 'PHASE-HKM-01',
+            name: '準決賽 全民人氣榜',
+            status: 'UPCOMING',
+            startTime: '2026-09-05 12:00:00',
+            endTime: '2026-09-20 22:30:00',
+            mode: 'MULTIPLE',
+            maxSelections: 3,
+            frequencyLimit: 'ONCE_DAILY',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-HKM-01', name: '01號佳麗 - 梁雅慧 (Victoria Leung)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80', description: '香港大學法律系碩士，精通多國語言，談吐優雅。', initialVotes: 0, votes: 0 },
+              { id: 'OPT-HKM-02', name: '02號佳麗 - 張穎恩 (Chloe Cheung)', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80', description: '專業舞蹈編導，舞台魅力非凡，笑容甜美。', initialVotes: 0, votes: 0 },
+              { id: 'OPT-HKM-03', name: '03號佳麗 - 鄧曉琳 (Sharon Tang)', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80', description: '國際環保公益倡導者，陽光活力，自信滿溢。', initialVotes: 0, votes: 0 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'ITEM-HKM-02',
+        title: '👑 全民人氣后評選',
+        description: '百分之百全港觀眾投票產生之年度人氣后榮譽。',
+        coverImage: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80',
+        status: 'UPCOMING',
+        currentPhaseId: 'PHASE-HKM-02',
+        totalParticipants: 0,
+        totalVotes: 0,
+        phases: [
+          {
+            id: 'PHASE-HKM-02',
+            name: '全港觀眾即時票選',
+            status: 'UPCOMING',
+            startTime: '2026-09-05 12:00:00',
+            endTime: '2026-09-20 22:30:00',
+            mode: 'SINGLE',
+            maxSelections: 1,
+            frequencyLimit: 'ONCE_DAILY',
+            requireAuth: true,
+            options: [
+              { id: 'OPT-HKM-04', name: '01號佳麗 - 梁雅慧 (Victoria Leung)', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80', description: '香港大學法律系碩士，精通多國語言，談吐優雅。', initialVotes: 0, votes: 0 },
+              { id: 'OPT-HKM-05', name: '02號佳麗 - 張穎恩 (Chloe Cheung)', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80', description: '專業舞蹈編導，舞台魅力非凡，笑容甜美。', initialVotes: 0, votes: 0 },
+              { id: 'OPT-HKM-06', name: '03號佳麗 - 鄧曉琳 (Sharon Tang)', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=300&q=80', description: '國際環保公益倡導者，陽光活力，自信滿溢。', initialVotes: 0, votes: 0 }
+            ]
+          }
+        ]
+      }
+    ],
     phases: [
       {
         id: 'PHASE-HKM-01',

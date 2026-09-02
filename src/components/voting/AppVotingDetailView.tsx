@@ -13,6 +13,7 @@ import {
 
 interface AppVotingDetailViewProps {
   campaign: VotingCampaign;
+  initialVoteItemId?: string;
   onBack: () => void;
   onVoteSubmit?: (campaignId: string, phaseId: string, optionIds: string[]) => void;
   userVotes?: Record<string, string[]>;
@@ -21,6 +22,7 @@ interface AppVotingDetailViewProps {
 
 export const AppVotingDetailView: React.FC<AppVotingDetailViewProps> = ({
   campaign,
+  initialVoteItemId,
   onBack,
   onVoteSubmit,
   userVotes = {},
@@ -56,7 +58,7 @@ export const AppVotingDetailView: React.FC<AppVotingDetailViewProps> = ({
           className="p-1.5 -ml-1 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer flex items-center gap-1 text-xs font-bold"
         >
           <ArrowLeft size={17} />
-          <span>返回投票列表</span>
+          <span>返回投票活動列表</span>
         </button>
 
         <div className="flex items-center gap-2">
@@ -74,9 +76,10 @@ export const AppVotingDetailView: React.FC<AppVotingDetailViewProps> = ({
       {/* 活動投票主要詳情內容 */}
       <div className="p-3.5 space-y-4">
         
-        {/* 核心投票組件 (包含多階段導航、候選項卡片/列表、單選多選判定、百分比走勢) */}
+        {/* 核心投票組件 (包含多項目切換、多階段導航、候選項卡片/列表、單選多選判定、百分比走勢) */}
         <AppVotingWidget
           campaign={campaign}
+          initialVoteItemId={initialVoteItemId}
           onVoteSubmit={onVoteSubmit}
           userVotedOptionIds={userVotes[campaign.id] || []}
           isLoggedIn={true}

@@ -40,12 +40,22 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
     : (voteItems[0]?.id || 'item_default');
   const [activeVoteItemId, setActiveVoteItemId] = useState<string>(defaultItemId);
 
+  useEffect(() => {
+    if (initialVoteItemId && voteItems.some(v => v.id === initialVoteItemId)) {
+      setActiveVoteItemId(initialVoteItemId);
+    }
+  }, [initialVoteItemId, campaign]);
+
   const currentVoteItem: VoteItem = voteItems.find(v => v.id === activeVoteItemId) || voteItems[0] || {
     id: 'item_default',
+    title: campaign.title,
     name: campaign.title,
     phases: campaign.phases,
+    currentPhaseId: campaign.currentPhaseId || campaign.phases[0]?.id || 'PHASE-01',
     status: campaign.status
   };
+
+  const currentVoteItemTitle = currentVoteItem.title || currentVoteItem.name || campaign.title;
 
   // Find current phase of the active vote item
   const currentItemPhases = currentVoteItem.phases && currentVoteItem.phases.length > 0
@@ -234,7 +244,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
           </h2>
           <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-200">
             {voteItems.length > 1 ? (
-              <span className="font-bold text-amber-300">項目：{currentVoteItem.name}（階段：{currentPhase.name}）</span>
+              <span className="font-bold text-amber-300">項目：{currentVoteItemTitle}（階段：{currentPhase.name}）</span>
             ) : (
               <span className="font-bold text-amber-300">當前階段：{currentPhase.name}</span>
             )}
@@ -267,13 +277,14 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
             {voteItems.map((item, idx) => {
               const isSelected = item.id === currentVoteItem.id;
               const isVoted = Boolean(votedItemsMap[item.id] && votedItemsMap[item.id].length > 0);
+              const itemLabel = item.title || item.name || `項目 #${idx + 1}`;
 
               return (
                 <button
                   key={item.id || idx}
                   type="button"
                   onClick={() => handleSelectVoteItem(item)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs whitespace-nowrap ${
                     isSelected
                       ? 'bg-rose-600 text-white shadow-xs'
                       : isVoted
@@ -281,7 +292,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                       : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                   }`}
                 >
-                  <span>{item.name}</span>
+                  <span className="whitespace-nowrap">{itemLabel}</span>
                   {isVoted ? (
                     <CheckCircle2 size={12} className={isSelected ? 'text-white' : 'text-emerald-500'} />
                   ) : null}
@@ -417,14 +428,14 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
         <div className="mx-4 mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold">
             <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-            <span>已投選「{currentVoteItem.name}」！前往下一個獎項：</span>
+            <span>已投選「{currentVoteItemTitle}」！前往下一個獎項：</span>
           </div>
           <button
             type="button"
             onClick={handleGoNextUnvotedItem}
             className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold flex items-center gap-1 shrink-0 transition-all cursor-pointer shadow-xs"
           >
-            <span>{nextUnvotedItem.name}</span>
+            <span>{nextUnvotedItem.title || nextUnvotedItem.name}</span>
             <ArrowRight size={13} />
           </button>
         </div>
@@ -576,7 +587,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>投選「{currentVoteItem.name}」</span>
+                    <span>投選「{currentVoteItemTitle}」</span>
                     <ChevronRight size={15} />
                   </>
                 )}
@@ -589,7 +600,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
             <div className="pt-2 flex items-center justify-between text-xs text-slate-500 px-1 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center gap-1 text-emerald-600 font-bold text-[11px]">
                 <CheckCircle2 size={13} />
-                <span>您已完成「{currentVoteItem.name}」投票，結果實時累計中</span>
+                <span>您已完成「{currentVoteItemTitle}」投票，結果實時累計中</span>
               </div>
 
               <div className="text-[11px] font-mono text-slate-400">

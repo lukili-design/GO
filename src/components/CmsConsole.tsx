@@ -1171,7 +1171,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                   >
                     <Layers size={15} />
                     <span className="flex-1 text-left flex items-center justify-between">
-                      <span>文章與投票關聯</span>
+                      <span>文章與投票活動關聯</span>
                       <span className="px-1.5 py-0.2 text-[9.5px] font-mono font-bold bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-full">
                         {voteArticles.length}
                       </span>

@@ -4,14 +4,16 @@
  */
 
 import React, { useState } from 'react';
-import { VoteArticle, VotingCampaign } from '../../types';
+import { VoteArticle, VotingCampaign, VoteItem } from '../../types';
 import { 
   Search, Plus, Edit3, Trash2, FileText, CheckCircle2, 
   BarChart2, Eye, Calendar, User, ArrowLeft, Check, 
   Sparkles, Layers, Image as ImageIcon, HelpCircle, X,
-  ExternalLink, Sliders
+  ExternalLink, Sliders, Award, ChevronDown, ChevronUp,
+  Tag, Flame, Users, CheckSquare
 } from 'lucide-react';
 import { AppVotingWidget } from './AppVotingWidget';
+import { getCampaignVoteItems } from '../../utils/votingHelpers';
 
 interface ArticleManagerProps {
   articles: VoteArticle[];
@@ -41,9 +43,10 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
   const [editingArticle, setEditingArticle] = useState<VoteArticle | null>(null);
   const [previewArticle, setPreviewArticle] = useState<VoteArticle | null>(null);
 
-  // Insert Vote Modal State
+  // Insert Campaign Modal State
   const [showInsertVoteModal, setShowInsertVoteModal] = useState(false);
   const [selectedVoteCampaignIds, setSelectedVoteCampaignIds] = useState<string[]>([]);
+  const [expandedCampaignInModal, setExpandedCampaignInModal] = useState<string | null>(null);
 
   // Filtered Articles
   const filteredArticles = articles.filter(art => {
@@ -58,11 +61,11 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
     setEditingArticle({
       id: newId,
       title: '',
-      category: '焦點專題',
-      author: 'TVB GO 互動編輯組',
+      category: '投票資訊',
+      author: 'TVB 互動新聞組',
       coverImage: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
       summary: '',
-      content: `請在此輸入文章正文內容...\n\n點擊工具欄上的 [📊 插入投票] 按鈕，即可在文內嵌入一個或多個即時互動投票活動模組！`,
+      content: `請在此輸入文章正文內容...\n\n點擊工具欄上的 [📊 關聯投票活動] 按鈕，即可在文內嵌入包含多個評選投票的活動模組！`,
       linkedCampaignIds: [],
       status: 'PUBLISHED',
       publishDate: new Date().toISOString().replace('T', ' ').substring(0, 19),
@@ -86,7 +89,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
     triggerSound(700, 'sine', 0.08);
   };
 
-  // Insert Selected Votes into Article Content
+  // Insert Selected Campaign Votes into Article Content
   const handleConfirmInsertVotes = () => {
     if (!editingArticle || selectedVoteCampaignIds.length === 0) {
       setShowInsertVoteModal(false);
@@ -109,6 +112,14 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
     setShowInsertVoteModal(false);
     setSelectedVoteCampaignIds([]);
     triggerSound(800, 'sine', 0.12);
+  };
+
+  // Helper to extract linked campaigns from article
+  const getLinkedCampaignsForArticle = (art: VoteArticle): VotingCampaign[] => {
+    const matches = art.content.match(/\[VOTE_ID:\s*([^\]]+)\]/g) || [];
+    const extractedIds = matches.map(m => m.replace(/\[VOTE_ID:\s*|\]/g, '').trim());
+    const allIds = Array.from(new Set([...(art.linkedCampaignIds || []), ...extractedIds]));
+    return allIds.map(id => campaigns.find(c => c.id === id)).filter((c): c is VotingCampaign => Boolean(c));
   };
 
   // Save Article Submit
@@ -148,15 +159,15 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">
-                  內容管理中心
+                  內容發布管理
                 </span>
-                <span className="text-xs text-slate-400">文章與互動投票關聯</span>
+                <span className="text-xs text-slate-400">文章與投票活動關聯 (1活動包含多投票)</span>
               </div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white mt-1">
-                文章列表與投票關聯管理
+                文章列表與投票活動關聯管理
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                在文章正文中一鍵插入多個投票活動佔位符，前台 App 即刻渲染高互動投票卡片。
+                支援將文章關聯至投票活動，每個投票活動可包含多個投票/評選項目（如男藝員、女藝員、劇集等），前台一鍵渲染全部投票組件。
               </p>
             </div>
 
@@ -185,7 +196,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
 
             <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto">
               <span className="text-xs font-bold text-slate-500 shrink-0 mr-1">專題分類：</span>
-              {(['ALL', '焦點專題', '幕後花絮', '活動公告'] as const).map((cat) => (
+              {(['ALL', '投票資訊', '焦點專題', '幕後花絮', '活動公告'] as const).map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
@@ -210,7 +221,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                   <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold">
                     <th className="py-3 px-4">文章標題</th>
                     <th className="py-3 px-4">專題分類</th>
-                    <th className="py-3 px-4">關聯投票活動</th>
+                    <th className="py-3 px-4">關聯投票活動及包含項目</th>
                     <th className="py-3 px-4 text-center">瀏覽量</th>
                     <th className="py-3 px-4">發布時間</th>
                     <th className="py-3 px-4 text-center">狀態</th>
@@ -227,7 +238,9 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                     </tr>
                   ) : (
                     filteredArticles.map((art) => {
-                      const voteMatches = (art.content.match(/\[VOTE_ID:\s*([^\]]+)\]/g) || []).length;
+                      const linkedCamps = getLinkedCampaignsForArticle(art);
+                      const totalSubVotes = linkedCamps.reduce((sum, c) => sum + getCampaignVoteItems(c).length, 0);
+
                       return (
                         <tr key={art.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-3.5 px-4">
@@ -237,7 +250,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                                 alt={art.title}
                                 className="w-12 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0"
                               />
-                              <div>
+                              <div className="min-w-0">
                                 <div className="font-bold text-slate-900 dark:text-white line-clamp-1">
                                   {art.title}
                                 </div>
@@ -250,28 +263,64 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                             </div>
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md font-bold text-[11px]">
+                            <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-md font-bold text-[11px] whitespace-nowrap">
                               {art.category}
                             </span>
                           </td>
                           <td className="py-3.5 px-4">
-                            {voteMatches > 0 ? (
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/60 rounded-lg text-amber-700 dark:text-amber-300 font-bold text-[11px]">
-                                <BarChart2 size={13} className="text-amber-600" />
-                                <span>已關聯 {voteMatches} 個投票模組</span>
+                            {linkedCamps.length > 0 ? (
+                              <div className="space-y-1.5">
+                                {linkedCamps.map((camp) => {
+                                  const voteItems = getCampaignVoteItems(camp);
+                                  return (
+                                    <div 
+                                      key={camp.id}
+                                      className="p-1.5 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800/50 rounded-xl space-y-1"
+                                    >
+                                      <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                          <BarChart2 size={12} className="text-amber-600 shrink-0" />
+                                          <span className="font-bold text-slate-900 dark:text-slate-100 text-[11px] truncate">
+                                            {camp.title}
+                                          </span>
+                                        </div>
+                                        <span className="px-1.5 py-0.2 bg-amber-200/60 dark:bg-amber-800/60 text-amber-800 dark:text-amber-200 rounded text-[9.5px] font-black shrink-0">
+                                          {voteItems.length} 個投票
+                                        </span>
+                                      </div>
+                                      
+                                      {/* 投票項目名稱標籤 */}
+                                      <div className="flex flex-wrap gap-1">
+                                        {voteItems.slice(0, 3).map((vItem, vIdx) => (
+                                          <span
+                                            key={vItem.id || vIdx}
+                                            className="px-1.5 py-0.2 bg-white/80 dark:bg-slate-900/80 border border-amber-200/50 dark:border-amber-800/40 rounded text-[9px] text-slate-600 dark:text-slate-300"
+                                          >
+                                            {vItem.title || `投票 #${vIdx + 1}`}
+                                          </span>
+                                        ))}
+                                        {voteItems.length > 3 && (
+                                          <span className="px-1 py-0.2 text-[9px] text-amber-700 dark:text-amber-400 font-bold">
+                                            +{voteItems.length - 3}項
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             ) : (
-                              <span className="text-slate-400 text-[11px]">無關聯投票</span>
+                              <span className="text-slate-400 text-[11px]">無關聯活動</span>
                             )}
                           </td>
                           <td className="py-3.5 px-4 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
                             {art.viewCount.toLocaleString()}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
-                            {art.publishDate}
+                          <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px] whitespace-nowrap">
+                            {art.publishDate.substring(0, 16)}
                           </td>
                           <td className="py-3.5 px-4 text-center">
-                            <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-full text-emerald-600 dark:text-emerald-400 font-bold text-[11px]">
+                            <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 rounded-full text-emerald-600 dark:text-emerald-400 font-bold text-[11px] whitespace-nowrap">
                               {art.status === 'PUBLISHED' ? '已發布' : '草稿'}
                             </span>
                           </td>
@@ -281,7 +330,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                               <button
                                 onClick={() => handleOpenPreview(art)}
                                 type="button"
-                                title="預覽文章與投票組件"
+                                title="預覽文章與投票活動"
                                 className="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
                               >
                                 <Eye size={12} />
@@ -292,7 +341,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                               <button
                                 onClick={() => handleOpenEdit(art)}
                                 type="button"
-                                title="編輯文章"
+                                title="編輯文章與關聯活動"
                                 className="px-2 py-1 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 text-blue-600 dark:text-blue-400 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
                               >
                                 <Edit3 size={12} />
@@ -347,7 +396,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
               </button>
               <div>
                 <h2 className="text-base font-black text-slate-900 dark:text-white">
-                  {editingArticle.title ? `編輯文章：${editingArticle.title}` : '新建專題文章'}
+                  {editingArticle.title ? `編輯文章：${editingArticle.title}` : '新建文章'}
                 </h2>
                 <span className="text-xs font-mono text-slate-400">文章編號：{editingArticle.id}</span>
               </div>
@@ -397,6 +446,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                   onChange={(e) => setEditingArticle({ ...editingArticle, category: e.target.value })}
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-indigo-500"
                 >
+                  <option value="投票資訊">投票資訊</option>
                   <option value="焦點專題">焦點專題</option>
                   <option value="幕後花絮">幕後花絮</option>
                   <option value="活動公告">活動公告</option>
@@ -447,13 +497,18 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
             </div>
 
             {/* Editor Toolbar & Content */}
-            <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  文章正文內容 (支援插入多個互動投票模組)
-                </label>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    文章正文內容 (支援關聯插入多個投票活動)
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    每個投票活動可包含多個投票/評選項目，前台將完整渲染活動卡片與全部項目
+                  </span>
+                </div>
 
-                {/* 🌟 核心按鈕：[📊 插入投票] */}
+                {/* 🌟 核心按鈕：[📊 關聯投票活動] */}
                 <button
                   type="button"
                   onClick={() => {
@@ -461,24 +516,94 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                     setShowInsertVoteModal(true);
                     triggerSound(700, 'sine', 0.1);
                   }}
-                  className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <BarChart2 size={14} className="text-amber-100" />
-                  <span>📊 插入投票</span>
+                  <BarChart2 size={15} className="text-amber-100" />
+                  <span>📊 關聯投票活動</span>
                 </button>
               </div>
 
               <textarea
-                rows={10}
+                rows={9}
                 value={editingArticle.content}
                 onChange={(e) => setEditingArticle({ ...editingArticle, content: e.target.value })}
-                placeholder="在正文中任意位置輸入 [VOTE_ID: 活動編號]，發布後系統將自動將其替換為即時互動投票組件..."
+                placeholder="在正文中任意位置插入 [VOTE_ID: 活動ID]，前台系統將自動將其替換為即時互動投票活動卡片（含其下全部投票項目）..."
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-mono leading-relaxed focus:outline-none focus:border-indigo-500"
               />
 
+              {/* 🌟 已關聯活動與多個投票項目即時檢視面板 */}
+              {(() => {
+                const linkedCamps = getLinkedCampaignsForArticle(editingArticle);
+                if (linkedCamps.length === 0) return null;
+
+                return (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-850/80 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles size={14} className="text-amber-500" />
+                        <span>文章已關聯之投票活動及所屬投票組件 ({linkedCamps.length} 個活動)</span>
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-normal">
+                        一個活動包含多個投票項目
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-2.5">
+                      {linkedCamps.map((camp, cIdx) => {
+                        const voteItems = getCampaignVoteItems(camp);
+                        return (
+                          <div 
+                            key={camp.id}
+                            className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/90 dark:border-slate-700/80 shadow-2xs space-y-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <img src={camp.coverImage} alt={camp.title} className="w-10 h-7 rounded-md object-cover border shrink-0" />
+                                <div className="min-w-0">
+                                  <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                    {camp.title}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-mono">
+                                    ID: {camp.id} • 包含 {voteItems.length} 個評選投票項目
+                                  </div>
+                                </div>
+                              </div>
+
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                {camp.status === 'ACTIVE' ? '進行中' : camp.status}
+                              </span>
+                            </div>
+
+                            {/* 投票項目清單 (1 活動 ➔ 多個投票) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-800">
+                              {voteItems.map((item, idx) => {
+                                const curPhase = item.phases.find(p => p.id === item.currentPhaseId) || item.phases[0];
+                                return (
+                                  <div 
+                                    key={item.id || idx}
+                                    className="px-2.5 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between text-[11px]"
+                                  >
+                                    <span className="font-bold text-slate-800 dark:text-slate-200 truncate mr-2">
+                                      {idx + 1}. {item.title || `投票項目 #${idx + 1}`}
+                                    </span>
+                                    <span className="text-[9.5px] px-1.5 py-0.2 bg-slate-200/70 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded font-medium shrink-0">
+                                      {curPhase ? (curPhase.mode === 'SINGLE' ? '單選' : `多選(${curPhase.maxSelections})`) : '投票'}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="p-3 bg-slate-100 dark:bg-slate-800/60 rounded-xl text-[11px] text-slate-500 flex items-center gap-2">
                 <HelpCircle size={14} className="text-indigo-500 shrink-0" />
-                <span>提示：您可以多次點擊「📊 插入投票」，一篇文章內可自由嵌入多個不同投票活動（如最佳男主角、最佳女主角、最佳劇集等）。</span>
+                <span>提示：在文章正文中插入投票活動短碼 <code>[VOTE_ID: 活動ID]</code>，前台讀者在瀏覽文章時即可直接瀏覽該活動下的全部投票評選項目並進行投票。</span>
               </div>
             </div>
           </div>
@@ -486,7 +611,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 視圖三：文章即時預覽 (包含真實解析渲染投票卡片) */}
+      {/* 視圖三：文章即時預覽 (包含真實解析渲染活動及多個投票組件) */}
       {/* ========================================================================= */}
       {viewMode === 'PREVIEW' && previewArticle && (
         <div className="space-y-6">
@@ -505,7 +630,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
               </button>
               <div>
                 <h2 className="text-base font-black text-slate-900 dark:text-white">
-                  文章預覽模式 (前台 App 渲染效果)
+                  文章與投票活動預覽模式 (前台 App 渲染效果)
                 </h2>
                 <span className="text-xs font-mono text-slate-400">{previewArticle.title}</span>
               </div>
@@ -525,7 +650,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
           <div className="max-w-md mx-auto bg-slate-100 dark:bg-slate-950 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4">
             <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-800">
               <img src={previewArticle.coverImage} alt={previewArticle.title} className="w-full h-48 object-cover" />
-              <div className="p-4 space-y-3">
+              <div className="p-4 space-y-2">
                 <span className="px-2.5 py-0.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 rounded-full font-bold text-[10px]">
                   {previewArticle.category}
                 </span>
@@ -540,7 +665,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
               </div>
             </div>
 
-            {/* Article Content with rendered [VOTE_ID] widgets */}
+            {/* Article Content with rendered [VOTE_ID] campaign widgets */}
             <div className="space-y-4">
               {(() => {
                 const parts = previewArticle.content.split(/(\[VOTE_ID:\s*[^\]]+\])/g);
@@ -552,7 +677,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                     if (!campaign) {
                       return (
                         <div key={index} className="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-600">
-                          [找不到活動編號為 {campaignId} 的投票模組]
+                          [找不到活動編號為 {campaignId} 的投票活動]
                         </div>
                       );
                     }
@@ -584,21 +709,22 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 彈出視窗：插入投票活動 Modal ([📊 插入投票]) */}
+      {/* 彈出視窗：關聯投票活動 Modal ([📊 關聯投票活動]) */}
+      {/* 按照「一個活動關聯多個投票」的形式清楚展示 */}
       {/* ========================================================================= */}
       {showInsertVoteModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-lg w-full shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-xl w-full shadow-2xl space-y-4 max-h-[88vh] flex flex-col">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-amber-50 dark:bg-amber-950/60 rounded-xl text-amber-600">
-                  <BarChart2 size={18} />
+                  <BarChart2 size={20} />
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                    插入投票活動模組
+                    關聯投票活動 (1 個活動 ➔ 多個評選投票)
                   </h3>
-                  <p className="text-[11px] text-slate-400">勾選欲插入文章之進行中投票活動（支援多選）</p>
+                  <p className="text-[11px] text-slate-400">勾選欲關聯至文章之投票活動，前台將自動載入該活動及其所有投票組件</p>
                 </div>
               </div>
               <button
@@ -610,53 +736,116 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
               </button>
             </div>
 
-            {/* Campaign Selection List */}
-            <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
+            {/* Campaign Selection List (Each Campaign with its nested Vote Items) */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
               {campaigns.map((camp) => {
                 const isSelected = selectedVoteCampaignIds.includes(camp.id);
-                const curPhase = camp.phases.find(p => p.id === camp.currentPhaseId) || camp.phases[0];
+                const voteItems = getCampaignVoteItems(camp);
+                const isExpanded = expandedCampaignInModal === camp.id;
 
                 return (
                   <div
                     key={camp.id}
-                    onClick={() => {
-                      if (isSelected) {
-                        setSelectedVoteCampaignIds(selectedVoteCampaignIds.filter(id => id !== camp.id));
-                      } else {
-                        setSelectedVoteCampaignIds([...selectedVoteCampaignIds, camp.id]);
-                      }
-                      triggerSound(700, 'sine', 0.05);
-                    }}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                    className={`rounded-2xl border transition-all overflow-hidden ${
                       isSelected
-                        ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/30'
-                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                        ? 'border-amber-500 bg-amber-50/40 dark:bg-amber-950/20 shadow-xs'
+                        : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all ${
-                        isSelected ? 'bg-amber-500 border-amber-500 text-white' : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900'
-                      }`}>
-                        {isSelected && <Check size={13} className="stroke-[3]" />}
+                    {/* Campaign Header Clickable Area */}
+                    <div 
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedVoteCampaignIds(selectedVoteCampaignIds.filter(id => id !== camp.id));
+                        } else {
+                          setSelectedVoteCampaignIds([...selectedVoteCampaignIds, camp.id]);
+                        }
+                        triggerSound(700, 'sine', 0.05);
+                      }}
+                      className="p-3.5 flex items-center justify-between gap-3 cursor-pointer select-none"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Checkbox */}
+                        <div className={`w-5 h-5 rounded-lg border flex items-center justify-center transition-all shrink-0 ${
+                          isSelected ? 'bg-amber-500 border-amber-500 text-white' : 'border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800'
+                        }`}>
+                          {isSelected && <Check size={13} className="stroke-[3]" />}
+                        </div>
+
+                        <img src={camp.coverImage} alt={camp.title} className="w-12 h-8 rounded-lg object-cover border shrink-0" />
+
+                        <div className="min-w-0">
+                          <div className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
+                            {camp.title}
+                          </div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                            <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">{camp.id}</span>
+                            <span>•</span>
+                            <span className="text-amber-600 dark:text-amber-400 font-bold">
+                              包含 {voteItems.length} 個評選投票項目
+                            </span>
+                          </div>
+                        </div>
                       </div>
 
-                      <img src={camp.coverImage} alt={camp.title} className="w-12 h-8 rounded-lg object-cover border shrink-0" />
-
-                      <div>
-                        <div className="font-bold text-xs text-slate-900 dark:text-white line-clamp-1">
-                          {camp.title}
-                        </div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                          <span className="font-mono text-blue-600 dark:text-blue-400 font-bold">{camp.id}</span>
-                          <span>•</span>
-                          <span>階段：{curPhase?.name}</span>
-                        </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full font-bold text-[10px]">
+                          {camp.status === 'ACTIVE' ? '進行中' : '有效活動'}
+                        </span>
+                        
+                        {/* Expand Details Trigger */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedCampaignInModal(prev => prev === camp.id ? null : camp.id);
+                          }}
+                          className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                          title="查看該活動下包含的投票項目"
+                        >
+                          {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                        </button>
                       </div>
                     </div>
 
-                    <span className="px-2 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-full font-bold text-[10px] shrink-0">
-                      {camp.status === 'ACTIVE' ? '進行中' : '可插入'}
-                    </span>
+                    {/* Nested Vote Items breakdown (1 活動 ➔ 多個投票展示) */}
+                    {isExpanded && (
+                      <div className="px-3.5 pb-3 pt-1 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 space-y-2">
+                        <div className="text-[11px] font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1">
+                          <Award size={12} className="text-rose-500" />
+                          <span>該活動下設的 {voteItems.length} 個評選投票項目：</span>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          {voteItems.map((item, vIdx) => {
+                            const curPhase = item.phases.find(p => p.id === item.currentPhaseId) || item.phases[0];
+                            return (
+                              <div
+                                key={item.id || vIdx}
+                                className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-xs"
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-4 h-4 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] font-black flex items-center justify-center shrink-0">
+                                    {vIdx + 1}
+                                  </span>
+                                  <span className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                                    {item.title || `評選項目 #${vIdx + 1}`}
+                                  </span>
+                                </div>
+                                
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-400 shrink-0">
+                                  <span>{curPhase?.options.length || 0} 位候選</span>
+                                  <span>•</span>
+                                  <span className="text-indigo-600 dark:text-indigo-400 font-medium">
+                                    {curPhase?.mode === 'SINGLE' ? '單選' : `多選(最多${curPhase?.maxSelections}項)`}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -665,7 +854,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
             {/* Modal Actions */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <span className="text-xs text-slate-500">
-                已選取 <strong className="text-amber-600 font-bold">{selectedVoteCampaignIds.length}</strong> 個投票模組
+                已選取 <strong className="text-amber-600 font-bold">{selectedVoteCampaignIds.length}</strong> 個投票活動
               </span>
 
               <div className="flex gap-2">
@@ -683,7 +872,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                   className="px-5 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
                 >
                   <Check size={14} />
-                  <span>確認插入文章</span>
+                  <span>確認關聯至文章</span>
                 </button>
               </div>
             </div>

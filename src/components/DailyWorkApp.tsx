@@ -60,6 +60,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
 
   // Currently opened voting campaign for detail viewing/voting (Page 2 of Voting)
   const [selectedVotingCampaign, setSelectedVotingCampaign] = useState<VotingCampaign | null>(null);
+  const [selectedVoteItemId, setSelectedVoteItemId] = useState<string | undefined>(undefined);
 
   // TVB Express News Tab State: 全部 / 公司公告 / 部門消息
   const [newsTab, setNewsTab] = useState<'ALL' | 'ANNOUNCEMENT' | 'DEPT'>('ALL');
@@ -250,7 +251,11 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
         article={selectedArticle}
         campaigns={votingCampaigns}
         onBack={() => setSelectedArticle(null)}
-        onSelectCampaign={(campaign) => setSelectedVotingCampaign(campaign)}
+        onSelectCampaign={(campaign, voteItemId) => {
+          setSelectedArticle(null);
+          setSelectedVotingCampaign(campaign);
+          setSelectedVoteItemId(voteItemId);
+        }}
         onVoteSubmit={onVoteSubmit}
         userVotes={userVotes}
         triggerSound={triggerSound}
@@ -263,7 +268,11 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
     return (
       <AppVotingDetailView
         campaign={selectedVotingCampaign}
-        onBack={() => setSelectedVotingCampaign(null)}
+        initialVoteItemId={selectedVoteItemId}
+        onBack={() => {
+          setSelectedVotingCampaign(null);
+          setSelectedVoteItemId(undefined);
+        }}
         onVoteSubmit={onVoteSubmit}
         userVotes={userVotes}
         triggerSound={triggerSound}
@@ -491,7 +500,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
               <div className="space-y-2.5 pt-1">
                 {/* 渲染專題與投票關聯文章 */}
                 {voteArticles
-                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告'))) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門'))))
+                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告'))) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門'))))
                   .map(article => (
                     <div
                       key={article.id}
@@ -702,8 +711,9 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
           <div className="p-3.5 space-y-3">
             <AppVotingListView
               campaigns={votingCampaigns}
-              onSelectCampaign={(campaign) => {
+              onSelectCampaign={(campaign, voteItemId) => {
                 setSelectedVotingCampaign(campaign);
+                setSelectedVoteItemId(voteItemId);
               }}
               userVotes={userVotes}
               triggerSound={triggerSound}

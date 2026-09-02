@@ -187,6 +187,7 @@ export interface VotePhase {
 export interface VoteItem {
   id: string; // 投票項目 ID (如 ITEM-01, BEST-ACTOR, BEST-DRAMA)
   title: string; // 投票項目名稱 (如：最佳女演員、最佳男演員、最佳劇集)
+  name?: string; // 投票項目名稱 (兼容別名)
   description?: string; // 投票項目說明
   coverImage?: string; // 投票項目專屬封面圖 (可選，留空則默認繼承活動封面)
   phases: VotePhase[]; // 該投票項目的階段賽制 (單階段或多階段淘汰賽)
