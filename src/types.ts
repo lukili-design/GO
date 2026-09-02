@@ -203,6 +203,7 @@ export interface VotingCampaign {
   title: string; // 活動名稱
   coverImage: string; // 16:9 封面圖
   description: string; // 活動簡介
+  rules?: string; // 活動規則說明
   resultVisibility: VoteResultVisibility; // 結果公開規則
   submissionMode?: VoteSubmissionMode; // 🌟 投票設置：所有投票組件都投完才能提交 (ALL_REQUIRED) / 可以單個提交 (INDIVIDUAL)
   status: VoteCampaignStatus; // 當前整體狀態
@@ -213,7 +214,7 @@ export interface VotingCampaign {
   totalVotes: number; // 總票數
   startTime: string; // 活動整體開始時間
   endTime: string; // 活動整體結束時間
-  creator: string; // 創建人
+  creator?: string; // 創建人
   createdAt: string; // 創建時間
   updatedAt: string; // 更新時間
 }

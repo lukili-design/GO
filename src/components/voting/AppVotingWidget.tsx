@@ -116,11 +116,21 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
   // For ALL_REQUIRED mode: stores draft selections for all items: { [itemId]: string[] }
   const [allRequiredDrafts, setAllRequiredDrafts] = useState<Record<string, string[]>>({});
   
-  // For INDIVIDUAL mode: stores selected options for currently active item
-  const [individualSelections, setIndividualSelections] = useState<string[]>([]);
+  // For INDIVIDUAL mode: stores selected draft options for each item: { [itemId]: string[] }
+  const [individualDraftsMap, setIndividualDraftsMap] = useState<Record<string, string[]>>({});
 
   // Maps itemId -> optionIds[] that have been submitted to server/database
-  const [votedItemsMap, setVotedItemsMap] = useState<Record<string, string[]>>({});
+  // 預設第 1、第 2 個投票 tab 為已完成投票狀態，第 3、第 4、第 5 個為未投票狀態
+  const [votedItemsMap, setVotedItemsMap] = useState<Record<string, string[]>>(() => {
+    const initialMap: Record<string, string[]> = {};
+    if (voteItems.length >= 1 && voteItems[0]?.phases?.[0]?.options?.[0]?.id) {
+      initialMap[voteItems[0].id] = [voteItems[0].phases[0].options[0].id];
+    }
+    if (voteItems.length >= 2 && voteItems[1]?.phases?.[0]?.options?.[0]?.id) {
+      initialMap[voteItems[1].id] = [voteItems[1].phases[0].options[0].id];
+    }
+    return initialMap;
+  });
 
   // Has all items been submitted (for ALL_REQUIRED mode)
   const [isAllSubmitted, setIsAllSubmitted] = useState(false);
@@ -132,17 +142,15 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showBatchSuccessModal, setShowBatchSuccessModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Sync external voted state on mount
-  useEffect(() => {
-    if (userVotedOptionIds.length > 0) {
-      setVotedItemsMap(prev => ({
-        ...prev,
-        [currentVoteItem.id]: userVotedOptionIds
-      }));
-    }
-  }, [userVotedOptionIds]);
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 2800);
+  };
 
   // Check if current item or all items are voted
   const currentItemVotedIds = votedItemsMap[currentVoteItem.id] || [];
@@ -150,20 +158,20 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
   const hasUserVotedThisItem = currentItemVotedIds.length > 0;
   const isCompletedAll = voteItems.every(v => votedItemsMap[v.id] && votedItemsMap[v.id].length > 0);
 
-  // Should show results for current item
-  const shouldShowResults = isPhaseEnded || hasUserVotedThisItem || isAllSubmitted || campaign.resultVisibility === 'ALWAYS_PUBLIC';
+  // Should show results percentage bars for current item (when voted or phase ended)
+  const shouldShowResults = isPhaseEnded || hasUserVotedThisItem || isAllSubmitted;
 
   // Active selections for current view
   const currentSelectedOptionIds = isAllRequiredMode
     ? (allRequiredDrafts[currentVoteItem.id] || [])
-    : individualSelections;
+    : (individualDraftsMap[currentVoteItem.id] || []);
 
   // ---------------------------------------------------------------------------
   // Handlers
   // ---------------------------------------------------------------------------
   // Toggle selection for an option
   const handleToggleOption = (optId: string) => {
-    if (shouldShowResults) return; // Read-only once submitted or phase ended
+    if (hasUserVotedThisItem || isPhaseEnded) return; // Read-only once submitted or phase ended
 
     setErrorMessage(null);
     const existing = currentSelectedOptionIds;
@@ -193,14 +201,16 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
         [currentVoteItem.id]: updated
       }));
     } else {
-      setIndividualSelections(updated);
+      setIndividualDraftsMap(prev => ({
+        ...prev,
+        [currentVoteItem.id]: updated
+      }));
     }
   };
 
   // Switch Vote Item (INDIVIDUAL mode)
   const handleSelectVoteItem = (item: VoteItem) => {
     setActiveVoteItemId(item.id);
-    setIndividualSelections([]);
     setErrorMessage(null);
     const targetPhases = item.phases && item.phases.length > 0 ? item.phases : campaign.phases;
     const initialP = targetPhases.find(p => p.id === item.currentPhaseId) || targetPhases[0];
@@ -327,7 +337,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
     }, 500);
   };
 
-  // Submit Individual Item (INDIVIDUAL mode)
+  // Submit Individual Item (INDIVIDUAL mode) - 提交投票並自動跳轉至下一個投票 tab（第五個不跳轉直接 toast "投票成功"）
   const handleSubmitIndividualVote = () => {
     setErrorMessage(null);
 
@@ -338,15 +348,17 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
       return;
     }
 
+    const currentDrafts = individualDraftsMap[currentVoteItem.id] || [];
+
     // Selection empty check
-    if (individualSelections.length === 0) {
+    if (currentDrafts.length === 0) {
       setErrorMessage('請先選擇您欲支持的候選項！');
       if (triggerSound) triggerSound(350, 'triangle', 0.15);
       return;
     }
 
     // Max selection check
-    if (currentPhase.mode === 'MULTIPLE' && individualSelections.length > currentPhase.maxSelections) {
+    if (currentPhase.mode === 'MULTIPLE' && currentDrafts.length > currentPhase.maxSelections) {
       setErrorMessage(`最多只能選擇 ${currentPhase.maxSelections} 項！`);
       return;
     }
@@ -354,17 +366,36 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
     setIsSubmitting(true);
     if (triggerSound) triggerSound(880, 'sine', 0.2);
 
+    const submittedItemId = currentVoteItem.id;
+    const submittedSelections = [...currentDrafts];
+
     setTimeout(() => {
       setIsSubmitting(false);
-      setVotedItemsMap(prev => ({
-        ...prev,
-        [currentVoteItem.id]: individualSelections
-      }));
+      
+      const newVotedMap: Record<string, string[]> = {
+        ...votedItemsMap,
+        [submittedItemId]: submittedSelections
+      };
+      setVotedItemsMap(newVotedMap);
+
       if (onVoteSubmit) {
-        onVoteSubmit(campaign.id, currentPhase.id, individualSelections);
+        onVoteSubmit(campaign.id, currentPhase.id, submittedSelections);
       }
       if (triggerSound) triggerSound(950, 'sine', 0.3);
-    }, 450);
+
+      // 觸發 Toast 提示「投票成功」
+      showToast('投票成功');
+
+      const currentIdx = voteItems.findIndex(v => v.id === submittedItemId);
+      const isLastItem = currentIdx === voteItems.length - 1;
+
+      // 如果不是最後一個投票 tab（例如第三、第四個），投票成功後自動跳轉到下一個投票 tab
+      // 如果是第五個投票（最後一個投票 tab），不需要跳轉，直接留在當前 tab
+      if (!isLastItem && currentIdx + 1 < voteItems.length) {
+        const nextItem = voteItems[currentIdx + 1];
+        handleSelectVoteItem(nextItem);
+      }
+    }, 400);
   };
 
   // Navigate to next unvoted item (INDIVIDUAL mode)
@@ -382,241 +413,157 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
   // Count draft completions in ALL_REQUIRED mode
   const draftCompletedCount = voteItems.filter(v => (allRequiredDrafts[v.id] || []).length > 0).length;
+  const activeStepNum = isAllRequiredMode
+    ? stepIndex + 1
+    : (voteItems.findIndex(v => v.id === activeVoteItemId) + 1 || 1);
 
   return (
     <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden font-sans select-none transition-all">
       
       {/* ========================================================================= */}
-      {/* 頂部封面與活動標題 */}
+      {/* 頂部封面圖與投票狀態（進行中） */}
       {/* ========================================================================= */}
-      <div className="relative w-full h-36 sm:h-44 bg-slate-950 overflow-hidden">
+      <div className="relative w-full h-40 sm:h-48 bg-slate-950 overflow-hidden">
         <img
           src={campaign.coverImage}
           alt={campaign.title}
-          className="w-full h-full object-cover opacity-85 hover:scale-105 transition-transform duration-700"
+          className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/30 to-transparent"></div>
 
-        {/* Status Badge & Mode */}
+        {/* 投票狀態（進行中）標籤 */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between z-10">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full text-white text-[11px] font-bold border border-white/20">
-            <Sparkles size={12} className="text-amber-400" />
-            <span>TVB GO 互動投票</span>
-          </div>
-
-          <div className="inline-flex items-center gap-1.5">
-            {isAllRequiredMode ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-purple-600/90 backdrop-blur-md rounded-full text-white text-[11px] font-bold shadow-xs">
-                <Layers size={11} />
-                <span>需全部投完統一提交</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-600/90 backdrop-blur-md rounded-full text-white text-[11px] font-bold shadow-xs">
-                <span>支持單個投票組件提交</span>
+          <div className="flex items-center gap-1.5">
+            {campaign.status === 'ACTIVE' && (
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500 text-white shadow-md inline-flex items-center gap-1.5 whitespace-nowrap">
+                <span className="w-2 h-2 bg-white rounded-full animate-ping"></span>
+                <span>進行中</span>
               </span>
             )}
+            {campaign.status === 'UPCOMING' && (
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-amber-500 text-white shadow-md inline-flex items-center whitespace-nowrap">
+                即將開始
+              </span>
+            )}
+            {campaign.status === 'ENDED' && (
+              <span className="px-3 py-1 rounded-full text-xs font-black bg-slate-600 text-white shadow-md inline-flex items-center whitespace-nowrap">
+                已結束
+              </span>
+            )}
+          </div>
+
+          <div className="text-[11px] font-mono font-bold text-slate-200 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">
+            共 {voteItems.length} 個投票
           </div>
         </div>
 
-        {/* Campaign Title & Current VoteItem Name */}
-        <div className="absolute bottom-3 left-3 right-3 z-10 text-white">
-          <h2 className="text-base sm:text-lg font-black tracking-tight leading-snug line-clamp-1 drop-shadow-md">
+        {/* 活動主標題 */}
+        <div className="absolute bottom-3 left-3 right-3 z-10 text-white space-y-1">
+          <h2 className="text-base sm:text-lg font-black tracking-tight leading-snug drop-shadow-md line-clamp-1">
             {campaign.title}
           </h2>
-          <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-200">
-            {isAllRequiredMode ? (
-              <span className="font-bold text-amber-300">
-                評選進度：第 {stepIndex + 1} / {voteItems.length} 項（{currentVoteItemTitle}）
-              </span>
-            ) : (
-              <span className="font-bold text-amber-300">
-                當前項目：{currentVoteItemTitle}
-              </span>
-            )}
-            <span>•</span>
-            <span className="flex items-center gap-1">
-              <Clock size={11} className="text-slate-300" />
-              <span>進行中</span>
+          <div className="flex items-center gap-2 text-xs text-slate-200 font-medium">
+            <span className="flex items-center gap-1 text-amber-300 font-bold">
+              <Clock size={12} />
+              <span>截止時間：{campaign.endTime || (currentPhase ? currentPhase.endTime : '依官方公告')}</span>
             </span>
           </div>
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 模式一：ALL_REQUIRED 專用 Wizard 步驟進度導航條 (Sequential Stepper) */}
+      {/* 顯示投票1 / 投票2 / 投票3 / 投票4 / 投票5 Tab 切換列 + 進度條 */}
       {/* ========================================================================= */}
-      {isAllRequiredMode && voteItems.length > 1 && (
-        <div className="bg-slate-900 text-white p-3 border-b border-slate-800 space-y-2.5">
-          <div className="flex items-center justify-between text-xs px-1">
-            <div className="flex items-center gap-1.5 font-black text-amber-300">
-              <Layers size={14} className="text-purple-400" />
-              <span>依序評選流程：第 {stepIndex + 1} / {voteItems.length} 項</span>
-            </div>
-            <div className="text-[11px] font-mono text-slate-300">
-              已選 <strong className="text-amber-400">{draftCompletedCount}</strong> / {voteItems.length} 項
-            </div>
-          </div>
+      <div className="bg-slate-900 text-white p-2.5 border-b border-slate-800 space-y-2">
+        {/* 投票1 ~ 投票N 按鈕 Tab 列 */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+          {voteItems.map((item, idx) => {
+            const currentItemIdx = isAllRequiredMode ? stepIndex : voteItems.findIndex(v => v.id === activeVoteItemId);
+            const isCurrent = idx === currentItemIdx;
+            const hasDraftSelection = (allRequiredDrafts[item.id] || []).length > 0;
+            const isSubmitted = Boolean(votedItemsMap[item.id] && votedItemsMap[item.id].length > 0);
+            const isFinished = hasDraftSelection || isSubmitted;
 
-          {/* Stepper Steps Bar */}
-          <div className="grid grid-cols-5 gap-1.5">
-            {voteItems.map((item, idx) => {
-              const isCurrent = idx === stepIndex;
-              const hasDraftSelection = (allRequiredDrafts[item.id] || []).length > 0;
-              const isSubmitted = Boolean(votedItemsMap[item.id] && votedItemsMap[item.id].length > 0);
-              const isFinished = hasDraftSelection || isSubmitted;
-
-              return (
-                <button
-                  key={item.id || idx}
-                  type="button"
-                  onClick={() => handleJumpToStep(idx)}
-                  className={`py-2 px-1 rounded-xl text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 relative ${
-                    isCurrent
-                      ? 'bg-gradient-to-b from-purple-600 to-indigo-600 text-white ring-2 ring-purple-400 shadow-md scale-[1.02]'
-                      : isFinished
-                      ? 'bg-slate-800/90 text-emerald-400 border border-emerald-500/50 hover:bg-slate-700'
-                      : 'bg-slate-800/40 text-slate-400 border border-slate-700 hover:bg-slate-800'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-1 text-[11px] font-black">
-                    {isFinished ? (
-                      <Check size={11} strokeWidth={3} className="text-emerald-400" />
-                    ) : (
-                      <span>{idx + 1}</span>
-                    )}
-                  </div>
-                  <span className="text-[10px] font-bold truncate max-w-[56px] leading-tight block">
-                    {item.title ? item.title.replace(/[🎬🎼💡🎨📽️🌟👑💐🎵]/g, '').trim().substring(0, 4) : `項目${idx + 1}`}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Animated Progress Bar */}
-          <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-purple-500 via-rose-500 to-amber-400 transition-all duration-300"
-              style={{ width: `${((stepIndex + 1) / voteItems.length) * 100}%` }}
-            />
-          </div>
+            return (
+              <button
+                key={item.id || idx}
+                type="button"
+                onClick={() => {
+                  if (isAllRequiredMode) {
+                    handleJumpToStep(idx);
+                  } else {
+                    handleSelectVoteItem(item);
+                  }
+                }}
+                className={`py-2 px-3.5 rounded-xl text-center transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 ${
+                  isCurrent
+                    ? 'bg-gradient-to-r from-rose-600 to-purple-600 text-white font-black shadow-md'
+                    : isFinished
+                    ? 'bg-slate-800/90 text-emerald-400 border border-emerald-500/40 hover:bg-slate-700 font-bold'
+                    : 'bg-slate-800/60 text-slate-300 border border-slate-700/80 hover:bg-slate-800 font-medium'
+                }`}
+              >
+                {isFinished ? (
+                  <Check size={13} strokeWidth={3} className="text-emerald-400 shrink-0" />
+                ) : null}
+                <span className="text-xs">投票{idx + 1}</span>
+              </button>
+            );
+          })}
         </div>
-      )}
 
-      {/* ========================================================================= */}
-      {/* 🌟 模式二：INDIVIDUAL 專用多投票項目切換 Tab (Free Tabs Selector) */}
-      {/* ========================================================================= */}
-      {!isAllRequiredMode && voteItems.length > 1 && (
-        <div className="bg-slate-100 dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/80 p-2.5 space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1 text-xs font-bold text-slate-700 dark:text-slate-200">
-              <Sparkles size={13} className="text-rose-500" />
-              <span>本活動設有 {voteItems.length} 個評選獎項（支持隨時單獨投選）</span>
-            </div>
-            <div className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
-              已投選 <strong className="text-rose-600 dark:text-rose-400">{completedCount}</strong> / {voteItems.length}
-            </div>
-          </div>
-
-          {/* Vote Items Tab Bar */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {voteItems.map((item, idx) => {
-              const isSelected = item.id === currentVoteItem.id;
-              const isVoted = Boolean(votedItemsMap[item.id] && votedItemsMap[item.id].length > 0);
-              const itemLabel = item.title || item.name || `項目 #${idx + 1}`;
-
-              return (
-                <button
-                  key={item.id || idx}
-                  type="button"
-                  onClick={() => handleSelectVoteItem(item)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs whitespace-nowrap ${
-                    isSelected
-                      ? 'bg-rose-600 text-white shadow-xs'
-                      : isVoted
-                      ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700'
-                      : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <span className="whitespace-nowrap">{itemLabel}</span>
-                  {isVoted ? (
-                    <CheckCircle2 size={12} className={isSelected ? 'text-white' : 'text-emerald-500'} />
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
+        {/* 進度條 */}
+        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-gradient-to-r from-rose-500 via-purple-500 to-amber-400 transition-all duration-300"
+            style={{ 
+              width: `${(isAllRequiredMode 
+                ? ((stepIndex + 1) / voteItems.length) 
+                : (((voteItems.findIndex(v => v.id === activeVoteItemId) + 1) || 1) / voteItems.length)) * 100}%` 
+            }}
+          />
         </div>
-      )}
+      </div>
 
       {/* ========================================================================= */}
-      {/* 🌟 當前評選項目標題橫幅 (Current Active Step Headline) */}
+      {/* 下方切換對應的標題、簡介、選項 */}
       {/* ========================================================================= */}
-      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-        <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-950/80 text-rose-700 dark:text-rose-300 text-[10px] font-black rounded-md shrink-0">
-              {isAllRequiredMode ? `評選項目 #${stepIndex + 1}` : `當前評選`}
-            </span>
-            <h3 className="text-sm font-black text-slate-900 dark:text-white truncate">
-              {currentVoteItemTitle}
-            </h3>
-          </div>
+      <div className="px-4 py-3.5 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200/80 dark:border-slate-800 space-y-1.5">
+        <div className="space-y-1">
+          {/* 直接顯示標題，去掉切換按鈕與「投票1」標籤 */}
+          <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
+            {currentVoteItemTitle}
+          </h3>
           {currentVoteItem.description && (
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
               {currentVoteItem.description}
             </p>
           )}
         </div>
 
-        {/* Layout Switcher (List / Grid) */}
-        <div className="flex items-center gap-1 bg-slate-200/80 dark:bg-slate-800 p-0.5 rounded-lg shrink-0">
-          <button
-            type="button"
-            onClick={() => setLayoutMode('LIST')}
-            className={`p-1 rounded-md text-xs transition-all cursor-pointer ${
-              layoutMode === 'LIST' ? 'bg-white dark:bg-slate-900 shadow-xs text-blue-600' : 'text-slate-400'
-            }`}
-            title="列表視圖"
-          >
-            <List size={14} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setLayoutMode('GRID')}
-            className={`p-1 rounded-md text-xs transition-all cursor-pointer ${
-              layoutMode === 'GRID' ? 'bg-white dark:bg-slate-900 shadow-xs text-blue-600' : 'text-slate-400'
-            }`}
-            title="網格卡片視圖"
-          >
-            <LayoutGrid size={14} />
-          </button>
+        {/* 模式提示：單選 / 多選(最多可選3項) */}
+        <div className="flex items-center gap-2 pt-1 text-xs">
+          <span className="px-2 py-0.5 rounded-md font-bold text-xs bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60">
+            {currentPhase.mode === 'SINGLE' ? '單選' : `多選(最多可選${currentPhase.maxSelections || 3}項)`}
+          </span>
+          <span className="text-slate-400">•</span>
+          <span className="text-slate-500 dark:text-slate-400 font-medium">候選項目共 {currentPhase.options.length} 項</span>
         </div>
       </div>
+
+      {/* Toast Notification Alert */}
+      {toastMessage && (
+        <div className="mx-4 mt-3 p-3 bg-slate-900/95 dark:bg-slate-800/95 border border-slate-700 text-white rounded-2xl flex items-center gap-2 text-xs font-bold shadow-lg animate-bounce z-20">
+          <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
+          <span className="flex-1">{toastMessage}</span>
+        </div>
+      )}
 
       {/* Error Message Alert */}
       {errorMessage && (
         <div className="mx-4 mt-3 p-3 bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-2xl flex items-center gap-2 text-rose-700 dark:text-rose-300 text-xs font-bold animate-shake">
           <AlertCircle size={15} className="shrink-0 text-rose-500" />
           <span>{errorMessage}</span>
-        </div>
-      )}
-
-      {/* Success Notification Banner for continuous voting in INDIVIDUAL mode */}
-      {!isAllRequiredMode && hasUserVotedThisItem && nextUnvotedItem && (
-        <div className="mx-4 mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold">
-            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-            <span>已完成本項投票！前往下一個獎項：</span>
-          </div>
-          <button
-            type="button"
-            onClick={handleGoNextUnvotedItem}
-            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold flex items-center gap-1 shrink-0 transition-all cursor-pointer shadow-xs"
-          >
-            <span>{nextUnvotedItem.title || nextUnvotedItem.name}</span>
-            <ArrowRight size={13} />
-          </button>
         </div>
       )}
 
@@ -635,46 +582,44 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
               const isSelected = currentSelectedOptionIds.includes(option.id);
               const isVotedByMe = currentItemVotedIds.includes(option.id);
               const votePercent = ((option.votes / phaseTotalVotes) * 100).toFixed(1);
-              const isLeading = idx === 0;
 
               return (
                 <div
                   key={option.id}
                   onClick={() => handleToggleOption(option.id)}
-                  className={`relative p-3 rounded-2xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? 'bg-purple-50/80 dark:bg-purple-950/40 border-purple-500 shadow-sm'
-                      : isVotedByMe
-                      ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 shadow-xs'
-                      : 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 hover:border-slate-300 hover:bg-slate-50'
+                  className={`relative p-3.5 rounded-2xl border transition-all cursor-pointer select-none ${
+                    isVotedByMe
+                      ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-500 shadow-xs ring-1 ring-emerald-500/30'
+                      : isSelected
+                      ? 'bg-purple-50/90 dark:bg-purple-950/50 border-purple-500 shadow-md ring-2 ring-purple-500/30 active:scale-[0.99]'
+                      : hasUserVotedThisItem
+                      ? 'bg-slate-50/60 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800 opacity-90'
+                      : 'bg-slate-50/70 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 hover:border-purple-300 hover:bg-slate-100/70 dark:hover:bg-slate-800/80 active:scale-[0.99]'
                   }`}
                 >
-                  {/* Selection Check Circle / Avatar / Info */}
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-2.5">
+                  {/* Avatar / Info / Status Indicator */}
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                       {/* Avatar */}
                       {option.avatar ? (
                         <img
                           src={option.avatar}
                           alt={option.name}
-                          className="w-11 h-11 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                          className="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0 shadow-2xs"
                         />
                       ) : (
-                        <div className="w-11 h-11 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">
+                        <div className="w-12 h-12 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-500 font-bold text-xs shrink-0">
                           #{idx + 1}
                         </div>
                       )}
 
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-black text-slate-900 dark:text-white text-xs sm:text-sm">
+                          <span className={`font-black text-xs sm:text-sm truncate ${
+                            isSelected ? 'text-purple-700 dark:text-purple-300' : 'text-slate-900 dark:text-white'
+                          }`}>
                             {option.name}
                           </span>
-                          {isLeading && shouldShowResults && (
-                            <span className="px-1.5 py-0.2 bg-amber-500 text-white rounded text-[9px] font-black">
-                              領先
-                            </span>
-                          )}
                         </div>
                         {option.description && (
                           <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
@@ -684,24 +629,24 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                       </div>
                     </div>
 
-                    {/* Radio / Checkbox Indicator */}
-                    {!shouldShowResults && (
-                      <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                          isSelected
-                            ? 'bg-purple-600 text-white shadow-xs'
-                            : 'border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800'
-                        }`}
-                      >
-                        {isSelected && <Check size={12} strokeWidth={3} />}
+                    {/* Voted Indicator (已投票完成時顯示 ✅) */}
+                    {isVotedByMe && (
+                      <div className="px-3 py-1 bg-emerald-600 text-white rounded-full text-xs font-bold flex items-center gap-1 shadow-2xs shrink-0">
+                        <Check size={13} strokeWidth={3.5} />
+                        <span>已投</span>
                       </div>
                     )}
 
-                    {/* Voted Indicator */}
-                    {isVotedByMe && (
-                      <div className="px-2 py-0.5 bg-emerald-600 text-white rounded-full text-[10px] font-bold flex items-center gap-1 shadow-2xs">
-                        <Check size={11} strokeWidth={3} />
-                        <span>已投</span>
+                    {/* 勾選按鈕 (未投票狀態時顯示醒目的勾選圓圈/選中狀態) */}
+                    {!hasUserVotedThisItem && (
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                          isSelected
+                            ? 'bg-purple-600 text-white shadow-sm ring-2 ring-purple-400/40 scale-105'
+                            : 'border-2 border-slate-300 dark:border-slate-500 bg-white dark:bg-slate-800'
+                        }`}
+                      >
+                        {isSelected && <Check size={14} strokeWidth={3.5} />}
                       </div>
                     )}
                   </div>
@@ -720,7 +665,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                       <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
-                            isLeading ? 'bg-amber-500' : isVotedByMe ? 'bg-emerald-500' : 'bg-purple-600'
+                            isVotedByMe ? 'bg-emerald-500' : 'bg-purple-600'
                           }`}
                           style={{ width: `${votePercent}%` }}
                         />
@@ -739,47 +684,46 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
       {/* ========================================================================= */}
       <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
         
-        {/* 🌟 1. ALL_REQUIRED 模式下的底部控制列 (下一步 / 提交所有投票) */}
+        {/* 🌟 1. ALL_REQUIRED 統一提交模式下的底部控制列 (上個投票 / 下個投票 / 提交所有投票) */}
         {isAllRequiredMode && (
           <div>
             {!shouldShowResults ? (
               <div className="space-y-2.5">
-                <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+                <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 px-1">
                   <span>
                     第 <strong>{stepIndex + 1}</strong> / {voteItems.length} 項：
                     {currentSelectedOptionIds.length > 0 ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">已選取候選人</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold ml-1">已選取候選人</span>
                     ) : (
-                      <span className="text-amber-600 font-bold">尚未選取</span>
+                      <span className="text-amber-600 font-bold ml-1">尚未選取</span>
                     )}
                   </span>
-                  <span className="flex items-center gap-1 text-[11px]">
-                    <ShieldCheck size={13} className="text-emerald-500" />
-                    <span>實名認證防刷機制</span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    已選取 {draftCompletedCount} / {voteItems.length} 項
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {/* 上一步按鈕 (Step > 0 時顯示) */}
+                  {/* 上個投票按鈕 (Step > 0 時顯示) */}
                   {stepIndex > 0 && (
                     <button
                       type="button"
                       onClick={handlePrevStep}
-                      className="py-3.5 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 text-slate-700 dark:text-slate-200 font-bold rounded-2xl text-xs flex items-center justify-center gap-1 cursor-pointer transition-all shadow-2xs"
+                      className="py-3.5 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold rounded-2xl text-xs flex items-center justify-center gap-1 cursor-pointer transition-all shadow-2xs shrink-0"
                     >
                       <ChevronLeft size={16} />
-                      <span>上一步</span>
+                      <span>上個投票</span>
                     </button>
                   )}
 
-                  {/* 核心主按鈕：下一步 OR 提交所有投票 */}
+                  {/* 核心按鈕：下個投票 OR 到最後一個變為 提交所有投票 */}
                   {stepIndex < voteItems.length - 1 ? (
                     <button
                       type="button"
                       onClick={handleNextStep}
-                      className="flex-1 py-3.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black rounded-2xl text-xs shadow-md shadow-purple-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                      className="flex-1 py-3.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black rounded-2xl text-xs shadow-md shadow-purple-600/20 flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-[0.99]"
                     >
-                      <span>下一步（第 {stepIndex + 2} / {voteItems.length} 項）</span>
+                      <span>下個投票</span>
                       <ChevronRight size={16} />
                     </button>
                   ) : (
@@ -787,14 +731,14 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                       type="button"
                       disabled={isSubmitting}
                       onClick={handleSubmitAllVotes}
-                      className="flex-1 py-3.5 px-4 bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black rounded-2xl text-xs shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99] animate-pulse"
+                      className="flex-1 py-3.5 px-4 bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 disabled:opacity-50 text-white font-black rounded-2xl text-xs shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
                     >
                       {isSubmitting ? (
                         <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                       ) : (
                         <>
                           <Send size={15} />
-                          <span>提交所有投票（共 {voteItems.length} 項評選）</span>
+                          <span>提交所有投票</span>
                         </>
                       )}
                     </button>
@@ -826,7 +770,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                           : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
                       }`}
                     >
-                      {idx + 1}. {item.title ? item.title.replace(/[🎬🎼💡🎨📽️🌟👑💐🎵]/g, '').trim().substring(0, 4) : `項目${idx + 1}`}
+                      投票 {idx + 1}
                     </button>
                   ))}
                 </div>
@@ -835,50 +779,64 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
           </div>
         )}
 
-        {/* 🌟 2. INDIVIDUAL 模式下的底部控制列 (投選當前項目) */}
+        {/* 🌟 2. INDIVIDUAL 模式下的底部控制列 (投選當前項目 / 已投票狀態) */}
         {!isAllRequiredMode && (
           <div>
-            {!shouldShowResults ? (
-              <div>
-                <div className="flex items-center justify-between text-xs text-slate-500 mb-2 px-1">
-                  <span>
-                    {currentPhase.mode === 'MULTIPLE' ? (
-                      <span>已選擇 <strong>{individualSelections.length}</strong> / {currentPhase.maxSelections} 項</span>
-                    ) : (
-                      <span>請選取 1 項候選人</span>
-                    )}
-                  </span>
-                  <span className="flex items-center gap-1 text-[11px]">
-                    <ShieldCheck size={13} className="text-emerald-500" />
-                    <span>實名認證安全投票</span>
-                  </span>
-                </div>
-
+            {!hasUserVotedThisItem ? (
+              /* 未投票樣式：下方顯示「提交投票」 */
+              <div className="space-y-2">
                 <button
                   type="button"
-                  disabled={isSubmitting || individualSelections.length === 0}
+                  disabled={isSubmitting || currentSelectedOptionIds.length === 0}
                   onClick={handleSubmitIndividualVote}
-                  className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-2xl text-xs shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
+                  className="w-full py-3.5 px-4 bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black rounded-2xl text-xs shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.99]"
                 >
                   {isSubmitting ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>提交投票中...</span>
+                    </>
                   ) : (
                     <>
-                      <span>投選「{currentVoteItemTitle}」</span>
+                      <Send size={15} />
+                      <span>提交投票</span>
                       <ChevronRight size={15} />
                     </>
                   )}
                 </button>
               </div>
             ) : (
-              <div className="pt-2 flex items-center justify-between text-xs text-slate-500 px-1 border-t border-slate-100 dark:border-slate-800">
-                <div className="flex items-center gap-1 text-emerald-600 font-bold text-[11px]">
-                  <CheckCircle2 size={13} />
-                  <span>您已完成「{currentVoteItemTitle}」投票，結果實時累計中</span>
+              /* 已投票樣式：下方顯示「已投票」，旁邊顯示「下一個投票」 */
+              <div className="flex items-center justify-between gap-3 p-1">
+                <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-black text-sm">
+                  <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-950/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                    <Check size={16} strokeWidth={3} />
+                  </div>
+                  <span>已投票</span>
                 </div>
-                <div className="text-[11px] font-mono text-slate-400">
-                  累計票數：{phaseTotalVotes.toLocaleString()}
-                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentIdx = voteItems.findIndex(v => v.id === currentVoteItem.id);
+                    if (currentIdx !== -1 && currentIdx + 1 < voteItems.length) {
+                      handleSelectVoteItem(voteItems[currentIdx + 1]);
+                    } else {
+                      // 若已是最後一個 tab，切換至未投項目或回到第 1 個
+                      const nextUnvoted = voteItems.find(v => !votedItemsMap[v.id] || votedItemsMap[v.id].length === 0);
+                      if (nextUnvoted) {
+                        handleSelectVoteItem(nextUnvoted);
+                      } else {
+                        handleSelectVoteItem(voteItems[0]);
+                      }
+                    }
+                    if (triggerSound) triggerSound(600, 'sine', 0.05);
+                  }}
+                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0"
+                >
+                  <span>下一個投票</span>
+                  <ChevronRight size={15} />
+                </button>
               </div>
             )}
           </div>
@@ -900,7 +858,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                 🎉 投票成功提交！
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">
-                感謝您的熱情參與！您已成功完成本活動全部 <strong>{voteItems.length}</strong> 個評選項目的投票，所有選票已上鏈計入總選票池！
+                感謝您的熱情參與！您已成功完成本活動全部 <strong>{voteItems.length}</strong> 個評選項目的投票，所有選票已計入總選票池！
               </p>
             </div>
 
@@ -908,7 +866,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
               <div className="text-[11px] font-bold text-slate-400">已提交評選項目：</div>
               {voteItems.map((v, i) => (
                 <div key={v.id || i} className="flex items-center justify-between text-slate-700 dark:text-slate-200">
-                  <span className="truncate">{i + 1}. {v.title || v.name}</span>
+                  <span className="truncate">投票 {i + 1}. {v.title || v.name}</span>
                   <Check size={13} className="text-emerald-500 shrink-0" />
                 </div>
               ))}
@@ -931,15 +889,15 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
       {showLoginModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-sm w-full shadow-2xl text-center space-y-4">
-            <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-950/60 text-blue-600 mx-auto flex items-center justify-center">
-              <ShieldCheck size={24} />
+            <div className="w-12 h-12 rounded-full bg-rose-50 dark:bg-rose-950/60 text-rose-600 mx-auto flex items-center justify-center">
+              <Award size={24} />
             </div>
             <div>
               <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                請先登入 TVB GO 會員
+                請先登入會員帳號
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                本活動強制開啟實名認證防刷機制，需登入官方會員帳號後方可投下神聖的一票。
+                登入會員帳號後方可投下您神聖的一票。
               </p>
             </div>
 
@@ -957,7 +915,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                   setShowLoginModal(false);
                   if (onRequireLogin) onRequireLogin();
                 }}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 立即登入
               </button>

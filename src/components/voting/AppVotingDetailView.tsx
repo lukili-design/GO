@@ -7,8 +7,8 @@ import React, { useState } from 'react';
 import { VotingCampaign } from '../../types';
 import { AppVotingWidget } from './AppVotingWidget';
 import { 
-  ArrowLeft, Share2, CheckCircle2, ShieldCheck, 
-  Info, Users, Award, Flame, Sparkles 
+  ArrowLeft, Share2, CheckCircle2, 
+  FileText, Clock, HelpCircle
 } from 'lucide-react';
 
 interface AppVotingDetailViewProps {
@@ -76,7 +76,7 @@ export const AppVotingDetailView: React.FC<AppVotingDetailViewProps> = ({
       {/* 活動投票主要詳情內容 */}
       <div className="p-3.5 space-y-4">
         
-        {/* 核心投票組件 (包含多項目切換、多階段導航、候選項卡片/列表、單選多選判定、百分比走勢) */}
+        {/* 核心投票組件 (包含頂部封面與狀態、投票1~5切換、標題/簡介/選項、上個投票/下個投票/提交所有投票) */}
         <AppVotingWidget
           campaign={campaign}
           initialVoteItemId={initialVoteItemId}
@@ -86,15 +86,41 @@ export const AppVotingDetailView: React.FC<AppVotingDetailViewProps> = ({
           triggerSound={triggerSound}
         />
 
-        {/* 活動主辦與規則聲明 */}
-        <div className="p-3.5 bg-white dark:bg-slate-950 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2 text-xs">
-          <div className="flex items-center gap-1.5 font-black text-slate-800 dark:text-slate-200">
-            <ShieldCheck size={16} className="text-blue-600" />
-            <span>TVB 官方認證與防刷票機制</span>
+        {/* ========================================================================= */}
+        {/* 最下方：活動規則說明 */}
+        {/* ========================================================================= */}
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 space-y-3 text-xs">
+          
+          {/* 活動規則 */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-1.5 font-black text-slate-900 dark:text-white text-sm">
+              <FileText size={16} className="text-rose-600" />
+              <span>活動規則說明</span>
+            </div>
+            
+            <div className="space-y-2 text-slate-600 dark:text-slate-400 text-xs leading-relaxed">
+              <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                <Clock size={14} className="text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-slate-800 dark:text-slate-200">投票時間：</strong>
+                  <span>即日起至 {campaign.endTime || '官方指定截止日'} 止，逾期投票系統將自動關閉並鎖定票數。</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                <HelpCircle size={14} className="text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="text-slate-800 dark:text-slate-200">選票與提交規則：</strong>
+                  <span>
+                    {campaign.submissionMode === 'ALL_REQUIRED'
+                      ? '本活動包含多個投票項目，需依序為每個投票項目選取候選項後統一提交全部選票。'
+                      : '本活動支持各投票項目單獨選取並隨時投選提交。'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-            本投票活動由電視城管理平台全程加密校驗，實施實名制會員單次投票限制及異常流量監控，確保投票結果公正透明。
-          </p>
+
         </div>
 
       </div>

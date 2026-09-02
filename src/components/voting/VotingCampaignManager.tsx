@@ -154,6 +154,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   const [formErrors, setFormErrors] = useState<string[]>([]);
   const [advanceSuccessMessage, setAdvanceSuccessMessage] = useState<string | null>(null);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
+  const voteItemCoverInputRef = useRef<HTMLInputElement>(null);
 
   // 🌟 二三十個投票組件專屬高效交互狀態
   const [voteItemLayoutMode, setVoteItemLayoutMode] = useState<'SPLIT' | 'GRID' | 'TABS'>('SPLIT');
@@ -242,6 +243,31 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
           coverImage: event.target.result
         });
         triggerSound(800, 'sine', 0.1);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 🌟 處理投票項目專屬封面圖片手動上傳
+  const handleVoteItemCoverUpload = (voteItemIdx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingCampaign) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('請選擇圖片格式檔案 (JPG, PNG, WebP)！');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target?.result && typeof event.target.result === 'string') {
+        const items = getCampaignVoteItems(editingCampaign);
+        if (items[voteItemIdx]) {
+          items[voteItemIdx].coverImage = event.target.result;
+          const updated = syncCampaignFromVoteItems({ ...editingCampaign, voteItems: items });
+          setEditingCampaign(updated);
+          triggerSound(800, 'sine', 0.1);
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -1404,7 +1430,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
           )}
 
           {/* ========================================== */}
-          {/* 活動基礎設置 (增加開始/結束時間、創建人等) */}
+          {/* 活動基礎設置與排程 */}
           {/* ========================================== */}
           <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
@@ -1431,23 +1457,6 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 />
               </div>
 
-              {/* 創建人 */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  活動創建人 / 負責部門 <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                  <input
-                    type="text"
-                    value={editingCampaign.creator || ''}
-                    onChange={(e) => setEditingCampaign({ ...editingCampaign, creator: e.target.value })}
-                    placeholder="例如：陳總監 (綜藝節目科) / TVB GO 運營組"
-                    className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-
               {/* 投票設置 (提交模式) */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
@@ -1463,6 +1472,23 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 >
                   <option value="ALL_REQUIRED">所有的投票組件都投完後統一提交</option>
                   <option value="INDIVIDUAL">支持單個投票組件提交</option>
+                </select>
+              </div>
+
+              {/* 結果公開規則 */}
+              <div className="space-y-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  結果公開規則
+                </label>
+                <select
+                  value={editingCampaign.resultVisibility}
+                  onChange={(e) => setEditingCampaign({ ...editingCampaign, resultVisibility: e.target.value as VoteResultVisibility })}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
+                >
+                  <option value="AFTER_VOTE">投票後可見 (用戶投完票即刻顯示實時進度)</option>
+                  <option value="ALWAYS_PUBLIC">一直公開 (無需投票即可查看當前票數)</option>
+                  <option value="ADMIN_ONLY">僅後台可見 (完全隱藏結果，僅管理端可查看)</option>
+                  <option value="AFTER_CAMPAIGN_END">活動結束後公開 (進行中保密，結束後公佈)</option>
                 </select>
               </div>
 
@@ -1522,23 +1548,6 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                     className="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
                   />
                 </div>
-              </div>
-
-              {/* 結果公開規則 */}
-              <div className="md:col-span-2 space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  結果公開規則
-                </label>
-                <select
-                  value={editingCampaign.resultVisibility}
-                  onChange={(e) => setEditingCampaign({ ...editingCampaign, resultVisibility: e.target.value as VoteResultVisibility })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
-                >
-                  <option value="AFTER_VOTE">投票後可見 (用戶投完票即刻顯示實時進度)</option>
-                  <option value="ALWAYS_PUBLIC">一直公開 (無需投票即可查看當前票數)</option>
-                  <option value="ADMIN_ONLY">僅後台可見 (完全隱藏結果，僅管理端可查看)</option>
-                  <option value="AFTER_CAMPAIGN_END">活動結束後公開 (進行中保密，結束後公佈)</option>
-                </select>
               </div>
 
               {/* 活動封面圖 */}
@@ -1610,13 +1619,27 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               {/* 活動簡介 */}
               <div className="md:col-span-2 space-y-1">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  活動簡介 (富文本/詳細規則說明)
+                  活動簡介
                 </label>
                 <textarea
                   rows={3}
                   value={editingCampaign.description}
                   onChange={(e) => setEditingCampaign({ ...editingCampaign, description: e.target.value })}
-                  placeholder="介紹本投票活動之背景、多階段晉級賽制與投票須知..."
+                  placeholder="介紹本投票活動之背景、賽制與簡要介紹..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* 活動規則 */}
+              <div className="md:col-span-2 space-y-1">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  活動規則
+                </label>
+                <textarea
+                  rows={4}
+                  value={editingCampaign.rules || ''}
+                  onChange={(e) => setEditingCampaign({ ...editingCampaign, rules: e.target.value })}
+                  placeholder="詳細填寫活動具體參與規則、防作弊規範、投票時間限制與免責條款說明..."
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -1687,26 +1710,6 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
                     <button
                       type="button"
-                      onClick={() => setShowReorderModal(true)}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
-                      title="調整所有組件的排列順序"
-                    >
-                      <ArrowUpDown size={13} />
-                      <span>順序調度</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDuplicateVoteItem(currentItemIndex)}
-                      className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-slate-200 dark:border-slate-700 shadow-2xs"
-                      title="複製當前選中的投票組件"
-                    >
-                      <Copy size={13} />
-                      <span>複製組件</span>
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={handleAddVoteItem}
                       className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
                     >
@@ -1716,443 +1719,92 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   </div>
                 </div>
 
-                {/* 🌟 控制列：搜尋、快速跳轉下拉選單、檢視模式切換 */}
-                <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                  {/* Left: Quick Search & Status Filter */}
-                  <div className="flex flex-wrap items-center gap-2 flex-1">
-                    <div className="relative flex-1 min-w-[200px] max-w-sm">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-                      <input
-                        type="text"
-                        value={voteItemSearchQuery}
-                        onChange={(e) => setVoteItemSearchQuery(e.target.value)}
-                        placeholder="快速檢索組件名稱或候選人..."
-                        className="w-full pl-8.5 pr-7 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-rose-500"
-                      />
-                      {voteItemSearchQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setVoteItemSearchQuery('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-                        >
-                          <X size={12} />
-                        </button>
-                      )}
+                {/* 雙欄主容器: 左欄為組件清單, 右欄為當前組件配置 */}
+                <div className="flex flex-col lg:flex-row gap-5 items-start">
+                  {/* 左欄：投票組件目錄清單 */}
+                  <div className="w-full lg:w-72 shrink-0 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 flex flex-col space-y-2.5 sticky top-4 shadow-2xs">
+                    <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/80 dark:border-slate-700/80">
+                      <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Layers size={14} className="text-rose-500" />
+                        <span>組件列表</span>
+                      </span>
+                      <span className="text-[11px] font-mono text-slate-400">
+                        {voteItems.length} 個項目
+                      </span>
                     </div>
 
-                    {/* Status Filter */}
-                    <select
-                      value={voteItemStatusFilter}
-                      onChange={(e) => setVoteItemStatusFilter(e.target.value as any)}
-                      className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-700 dark:text-slate-300 font-bold focus:outline-none"
-                    >
-                      <option value="ALL">全部狀態 ({voteItems.length})</option>
-                      <option value="ACTIVE">🟢 進行中 ({voteItems.filter(i => i.status === 'ACTIVE').length})</option>
-                      <option value="UPCOMING">⚪ 未開始 ({voteItems.filter(i => i.status === 'UPCOMING').length})</option>
-                      <option value="ENDED">🔴 已結束 ({voteItems.filter(i => i.status === 'ENDED').length})</option>
-                    </select>
-
-                    {/* Direct Jump Dropdown */}
-                    <div className="flex items-center gap-1 text-xs text-slate-500">
-                      <span className="font-bold shrink-0 hidden sm:inline">直達跳轉:</span>
-                      <select
-                        value={currentItemIndex}
-                        onChange={(e) => {
-                          const targetIdx = parseInt(e.target.value);
-                          setActiveVoteItemIndex(targetIdx);
-                          setActivePhaseIndex(0);
-                          triggerSound(600, 'sine', 0.05);
-                        }}
-                        className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-black focus:outline-none focus:border-rose-500 max-w-[180px] sm:max-w-[220px] truncate"
-                      >
-                        {voteItems.map((item, idx) => (
-                          <option key={item.id || idx} value={idx}>
-                            #{idx + 1} {item.title || `投票組件 #${idx + 1}`} ({item.status === 'ACTIVE' ? '進行中' : item.status === 'UPCOMING' ? '未開始' : '已結束'})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Right: Layout Switcher */}
-                  <div className="flex items-center gap-1 self-end md:self-auto bg-slate-200/70 dark:bg-slate-700/60 p-0.5 rounded-lg border border-slate-300/50 dark:border-slate-600">
-                    <button
-                      type="button"
-                      onClick={() => setVoteItemLayoutMode('SPLIT')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
-                        voteItemLayoutMode === 'SPLIT'
-                          ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                      }`}
-                      title="雙欄目錄專注佈局"
-                    >
-                      <Columns size={13} />
-                      <span>雙欄目錄</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setVoteItemLayoutMode('GRID')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
-                        voteItemLayoutMode === 'GRID'
-                          ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                      }`}
-                      title="矩陣看板總覽"
-                    >
-                      <LayoutGrid size={13} />
-                      <span>矩陣總覽</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setVoteItemLayoutMode('TABS')}
-                      className={`px-2.5 py-1 rounded-md text-xs font-black flex items-center gap-1 transition-all cursor-pointer ${
-                        voteItemLayoutMode === 'TABS'
-                          ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-2xs'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
-                      }`}
-                      title="經典橫向標籤頁"
-                    >
-                      <Layers size={13} />
-                      <span>標籤欄</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* ========================================================================= */}
-                {/* 模式 1：矩陣看板總覽視圖 (GRID Overview) */}
-                {/* ========================================================================= */}
-                {voteItemLayoutMode === 'GRID' && (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                      <span>組件矩陣看板 ({filteredVoteItemsWithIndex.length} / {voteItems.length})：點擊任意卡片可直接進入配置</span>
-                      <span className="text-slate-400 text-[11px]">支援拖動、複製、刪除或切換雙欄檢視</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-                      {filteredVoteItemsWithIndex.map(({ item, originalIndex }) => {
+                    {/* 組件按鈕清單 */}
+                    <div className="space-y-1.5 max-h-[580px] overflow-y-auto pr-0.5">
+                      {voteItems.map((item, idx) => {
+                        const isCurrent = currentItemIndex === idx;
                         const totalCandidates = item.phases.reduce((sum, p) => sum + (p.options?.length || 0), 0);
-                        const isCurrent = currentItemIndex === originalIndex;
 
                         return (
                           <div
-                            key={item.id || originalIndex}
+                            key={item.id || idx}
                             onClick={() => {
-                              setActiveVoteItemIndex(originalIndex);
+                              setActiveVoteItemIndex(idx);
                               setActivePhaseIndex(0);
-                              setVoteItemLayoutMode('SPLIT');
                               triggerSound(600, 'sine', 0.05);
                             }}
-                            className={`p-4 rounded-2xl border transition-all cursor-pointer relative group flex flex-col justify-between ${
+                            className={`group p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-between gap-2 relative ${
                               isCurrent
-                                ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-500 shadow-md ring-2 ring-rose-500/20'
-                                : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 hover:border-rose-300 dark:hover:border-rose-700 hover:shadow-sm'
+                                ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
                             }`}
                           >
-                            <div>
-                              {/* Top Bar: Index & Status */}
-                              <div className="flex items-center justify-between gap-2 mb-2">
-                                <div className="flex items-center gap-1.5">
-                                  <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-black ${
-                                    isCurrent ? 'bg-rose-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
-                                  }`}>
-                                    #{originalIndex + 1}
-                                  </span>
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                    item.status === 'ACTIVE'
-                                      ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 border border-emerald-200 dark:border-emerald-800'
-                                      : item.status === 'UPCOMING'
-                                      ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 border border-blue-200 dark:border-blue-800'
-                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'
-                                  }`}>
-                                    {item.status === 'ACTIVE' ? '進行中' : item.status === 'UPCOMING' ? '未開始' : '已結束'}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMoveVoteItemDirect(originalIndex, 'UP');
-                                    }}
-                                    disabled={originalIndex === 0}
-                                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 rounded text-slate-500"
-                                    title="上移"
-                                  >
-                                    <ArrowUp size={12} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMoveVoteItemDirect(originalIndex, 'DOWN');
-                                    }}
-                                    disabled={originalIndex === voteItems.length - 1}
-                                    className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 disabled:opacity-30 rounded text-slate-500"
-                                    title="下移"
-                                  >
-                                    <ArrowDown size={12} />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Title & Description */}
-                              <h4 className="font-black text-slate-900 dark:text-white text-sm line-clamp-1 group-hover:text-rose-600 transition-colors">
-                                {item.title || `投票組件 #${originalIndex + 1}`}
-                              </h4>
-                              <p className="text-[11px] text-slate-400 line-clamp-2 mt-1 min-h-[32px]">
-                                {item.description || '點擊進入配置階段與候選人名單...'}
-                              </p>
-                            </div>
-
-                            {/* Bottom stats & quick buttons */}
-                            <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-[11px]">
-                              <div className="flex items-center gap-2 text-slate-500">
-                                <span className="font-mono font-bold bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                                  {item.phases.length} 階段
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
+                                isCurrent ? 'bg-white text-rose-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+                              }`}>
+                                #{idx + 1}
+                              </span>
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <span className="truncate text-xs leading-tight font-bold">
+                                  {item.title || `投票 ${idx + 1}`}
                                 </span>
-                                <span className="font-mono font-bold bg-slate-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">
-                                  {totalCandidates} 候選人
+                                <span className={`text-[10px] font-mono mt-0.5 truncate ${
+                                  isCurrent ? 'text-white/80' : 'text-slate-400'
+                                }`}>
+                                  {item.phases.length} 階段 · {totalCandidates} 候選
                                 </span>
                               </div>
-
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDuplicateVoteItem(originalIndex);
-                                  }}
-                                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400 hover:text-slate-700"
-                                  title="複製"
-                                >
-                                  <Copy size={12} />
-                                </button>
-                                {voteItems.length > 1 && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleRemoveVoteItem(originalIndex);
-                                    }}
-                                    className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded text-slate-400 hover:text-rose-600"
-                                    title="刪除"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                )}
-                              </div>
                             </div>
+
+                            {voteItems.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveVoteItem(idx);
+                                }}
+                                className={`p-1 rounded-md hover:bg-black/20 transition-colors shrink-0 ${
+                                  isCurrent ? 'text-white/80 hover:text-white' : 'text-slate-400 hover:text-rose-600'
+                                }`}
+                                title="刪除此組件"
+                              >
+                                <X size={13} />
+                              </button>
+                            )}
                           </div>
                         );
                       })}
                     </div>
+
+                    {/* 底部快速新增按鈕 */}
+                    <button
+                      type="button"
+                      onClick={handleAddVoteItem}
+                      className="w-full py-2 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-700 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 border border-dashed border-slate-300 dark:border-slate-700 hover:border-rose-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Plus size={13} />
+                      <span>新增投票組件</span>
+                    </button>
                   </div>
-                )}
 
-                {/* ========================================================================= */}
-                {/* 模式 2 & 3：雙欄目錄 (SPLIT) 或 橫向標籤 (TABS) 視圖 */}
-                {/* ========================================================================= */}
-                {voteItemLayoutMode !== 'GRID' && (
-                  <div className={voteItemLayoutMode === 'SPLIT' ? 'flex flex-col lg:flex-row gap-5 items-start' : 'space-y-4'}>
-                    {/* Level 1 Sidebar or Ribbon Tabs */}
-                    {voteItemLayoutMode === 'SPLIT' ? (
-                      /* Left Sidebar Master List */
-                      <div className="w-full lg:w-80 shrink-0 bg-slate-50/90 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 flex flex-col space-y-2 lg:max-h-[820px] lg:overflow-y-auto sticky top-2 shadow-2xs">
-                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/80 dark:border-slate-700 px-1">
-                          <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                            <ListOrdered size={14} className="text-rose-500" />
-                            <span>組件目錄 ({filteredVoteItemsWithIndex.length})</span>
-                          </span>
-                          <span className="text-[11px] text-slate-400">上下鍵/點擊切換</span>
-                        </div>
-
-                        {/* List Items */}
-                        <div className="space-y-1.5 pr-0.5">
-                          {filteredVoteItemsWithIndex.map(({ item, originalIndex }) => {
-                            const totalCandidates = item.phases.reduce((sum, p) => sum + (p.options?.length || 0), 0);
-                            const isCurrent = currentItemIndex === originalIndex;
-
-                            return (
-                              <div
-                                key={item.id || originalIndex}
-                                onClick={() => {
-                                  setActiveVoteItemIndex(originalIndex);
-                                  setActivePhaseIndex(0);
-                                  triggerSound(600, 'sine', 0.05);
-                                }}
-                                className={`group p-2.5 rounded-xl text-xs transition-all cursor-pointer border relative flex items-center justify-between gap-2 ${
-                                  isCurrent
-                                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                                    : 'bg-white dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/60'
-                                }`}
-                              >
-                                <div className="flex items-center gap-2 min-w-0 flex-1">
-                                  <div className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
-                                    isCurrent ? 'bg-white text-rose-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                  }`}>
-                                    {originalIndex + 1}
-                                  </div>
-
-                                  <div className="flex flex-col min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className="font-bold truncate text-xs leading-tight">
-                                        {item.title || `投票組件 #${originalIndex + 1}`}
-                                      </span>
-                                      <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold shrink-0 ${
-                                        isCurrent ? 'bg-white/20 text-white' : 'bg-slate-100 dark:bg-slate-700 text-rose-600 dark:text-rose-400'
-                                      }`}>
-                                        ID: {item.id}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 mt-0.5 text-[10px]">
-                                      <span className={`px-1 py-0.2 rounded font-mono ${
-                                        isCurrent ? 'bg-white/20 text-white' : 'text-slate-400'
-                                      }`}>
-                                        {item.phases.length} 階段 • {totalCandidates} 候選
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Hover Reorder Buttons */}
-                                <div className="flex items-center gap-0.5 shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMoveVoteItemDirect(originalIndex, 'UP');
-                                    }}
-                                    disabled={originalIndex === 0}
-                                    className={`p-1 rounded opacity-60 hover:opacity-100 disabled:opacity-20 ${
-                                      isCurrent ? 'hover:bg-rose-700 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600'
-                                    }`}
-                                    title="向上移"
-                                  >
-                                    <ChevronUp size={12} />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleMoveVoteItemDirect(originalIndex, 'DOWN');
-                                    }}
-                                    disabled={originalIndex === voteItems.length - 1}
-                                    className={`p-1 rounded opacity-60 hover:opacity-100 disabled:opacity-20 ${
-                                      isCurrent ? 'hover:bg-rose-700 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600'
-                                    }`}
-                                    title="向下移"
-                                  >
-                                    <ChevronDown size={12} />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      /* Mode: TABS Horizontal Ribbon */
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-xs font-bold text-slate-500">
-                          <span>活動投票組件清單 ({filteredVoteItemsWithIndex.length} / {voteItems.length})：</span>
-                          <span className="text-[11px] text-slate-400 font-normal">點擊切換配置，可點擊箭頭調整先後順序</span>
-                        </div>
-                        <div className="flex items-center gap-2.5 overflow-x-auto pb-1.5 pt-0.5">
-                          {filteredVoteItemsWithIndex.map(({ item, originalIndex }) => {
-                            const totalCandidates = item.phases.reduce((sum, p) => sum + (p.options?.length || 0), 0);
-                            const isCurrent = currentItemIndex === originalIndex;
-
-                            return (
-                              <div
-                                key={item.id || originalIndex}
-                                onClick={() => {
-                                  setActiveVoteItemIndex(originalIndex);
-                                  setActivePhaseIndex(0);
-                                  triggerSound(600, 'sine', 0.05);
-                                }}
-                                className={`group px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2.5 shrink-0 transition-all cursor-pointer border ${
-                                  isCurrent
-                                    ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                                    : 'bg-slate-50 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
-                                }`}
-                              >
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
-                                  isCurrent ? 'bg-white text-rose-600' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                                }`}>
-                                  {originalIndex + 1}
-                                </div>
-
-                                <div className="flex flex-col items-start">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="truncate max-w-[130px] leading-tight">
-                                      {item.title || `投票組件 #${originalIndex + 1}`}
-                                    </span>
-                                    <span className={`text-[9px] px-1.5 py-0.2 rounded font-mono font-bold shrink-0 ${
-                                      isCurrent ? 'bg-white/20 text-white' : 'bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
-                                    }`}>
-                                      ID: {item.id}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1 mt-0.5">
-                                    <span className={`text-[9px] px-1 py-0.1 rounded font-mono ${
-                                      isCurrent ? 'bg-white/20 text-white' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-                                    }`}>
-                                      {item.phases.length} 階段
-                                    </span>
-                                    <span className={`text-[9px] px-1 py-0.1 rounded font-mono ${
-                                      isCurrent ? 'bg-white/20 text-white' : 'bg-slate-200/70 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-                                    }`}>
-                                      {totalCandidates} 候選
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Quick Move */}
-                                <div className="flex items-center gap-0.5 ml-1 border-l border-white/20 dark:border-slate-700 pl-1">
-                                  {originalIndex > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMoveVoteItemDirect(originalIndex, 'UP');
-                                      }}
-                                      className={`p-1 rounded-md opacity-70 hover:opacity-100 transition-opacity ${
-                                        isCurrent ? 'hover:bg-rose-700 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500'
-                                      }`}
-                                      title="向前移動此組件"
-                                    >
-                                      ←
-                                    </button>
-                                  )}
-                                  {originalIndex < voteItems.length - 1 && (
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMoveVoteItemDirect(originalIndex, 'DOWN');
-                                      }}
-                                      className={`p-1 rounded-md opacity-70 hover:opacity-100 transition-opacity ${
-                                        isCurrent ? 'hover:bg-rose-700 text-white' : 'hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500'
-                                      }`}
-                                      title="向後移動此組件"
-                                    >
-                                      →
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Level 2: Current Vote Item Details */}
-                {currentItem && (
-                  <div className="flex-1 min-w-0 w-full p-5 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-6">
+                  {/* 右欄：當前選中組件詳情配置 */}
+                  {currentItem && (
+                    <div className="flex-1 min-w-0 w-full p-5 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-6">
                     {/* Item Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-200/60 dark:border-slate-700/60 pb-5">
                       {/* 投票ID */}
@@ -2169,9 +1821,10 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                         />
                       </div>
 
+                      {/* 投票標題 */}
                       <div className="md:col-span-2 space-y-1">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                          投票組件名稱 (獎項/主題/類別) <span className="text-rose-500">*</span>
+                          投票標題 <span className="text-rose-500">*</span>
                         </label>
                         <input
                           type="text"
@@ -2182,9 +1835,76 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                         />
                       </div>
 
+                      {/* 投票封面圖展示 */}
+                      <div className="md:col-span-3 space-y-1.5">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                          投票封面圖展示
+                        </label>
+                        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                          <input
+                            ref={voteItemCoverInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleVoteItemCoverUpload(currentItemIndex, e)}
+                            className="hidden"
+                          />
+
+                          <div className="flex items-center gap-3">
+                            <div
+                              onClick={() => voteItemCoverInputRef.current?.click()}
+                              className="w-32 h-20 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer relative group hover:border-rose-500 transition-all shadow-xs"
+                              title="點擊上傳或更換投票封面"
+                            >
+                              {currentItem.coverImage ? (
+                                <>
+                                  <img src={currentItem.coverImage} alt="投票封面預覽" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-bold transition-opacity">
+                                    <Upload size={14} />
+                                    <span className="mt-0.5 text-[10px]">更換封面</span>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center text-slate-400 group-hover:text-rose-500 transition-colors p-2 text-center">
+                                  <ImageIcon size={20} />
+                                  <span className="text-[10px] font-bold mt-1">上傳封面</span>
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => voteItemCoverInputRef.current?.click()}
+                                  className="px-3 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-2xs"
+                                >
+                                  <Upload size={14} />
+                                  <span>{currentItem.coverImage ? '更換圖片' : '上傳投票封面圖片'}</span>
+                                </button>
+
+                                {currentItem.coverImage && (
+                                  <button
+                                    type="button"
+                                    onClick={() => updateCurrentItem(item => ({ ...item, coverImage: '' }))}
+                                    className="px-2.5 py-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                                  >
+                                    <X size={14} />
+                                    <span>清除</span>
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-400">
+                                支援 JPG, PNG, WebP 格式 (選填，未上傳則默認使用活動封面)
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 投票說明 */}
                       <div className="md:col-span-3 space-y-1">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                          組件評選須知 / 規則說明 (選填)
+                          投票說明
                         </label>
                         <input
                           type="text"
@@ -2201,11 +1921,8 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <h4 className="text-xs font-black text-slate-800 dark:text-slate-200">
-                            賽制階段配置 ({phases.length} 階段)
+                            賽制階段配置
                           </h4>
-                          <span className="text-[11px] text-slate-400">
-                            (支援 40進20、20進7 淘汰賽與獨立單/多選防刷票規則)
-                          </span>
                         </div>
 
                         <button
@@ -2214,7 +1931,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                           className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-2xs"
                         >
                           <Plus size={14} />
-                          <span>為此項目新增賽制階段</span>
+                          <span>+新增賽制階段</span>
                         </button>
                       </div>
 
@@ -2290,7 +2007,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                             </div>
                           </div>
 
-                          {/* Phase Fields (One field per row, with start/end time together on one row) */}
+                          {/* Phase Fields */}
                           <div className="space-y-4">
                             {/* 1. 階段名稱 */}
                             <div className="space-y-1">
@@ -2335,21 +2052,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                               </div>
                             </div>
 
-                            {/* 3. 投票人 */}
-                            <div className="space-y-1">
-                              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                投票人
-                              </label>
-                              <select
-                                value="TVB_GO_MEMBER"
-                                disabled
-                                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-bold cursor-default focus:outline-none"
-                              >
-                                <option value="TVB_GO_MEMBER">TVB GO會員</option>
-                              </select>
-                            </div>
-
-                            {/* 4. 單選 / 多選模式 */}
+                            {/* 3. 單選 / 多選模式 */}
                             <div className="space-y-1">
                               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                                 單選 / 多選模式
@@ -2364,7 +2067,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                               </select>
                             </div>
 
-                            {/* 5. 最多可選票數 (當選擇多選模式時獨立佔一行) */}
+                            {/* 4. 最多可選票數 (當選擇多選模式時) */}
                             {curPhase.mode === 'MULTIPLE' ? (
                               <div className="space-y-1">
                                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -2381,7 +2084,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                               </div>
                             ) : null}
 
-                            {/* 6. 投票頻率 (防刷票限制頻率) */}
+                            {/* 5. 投票頻率 */}
                             <div className="space-y-1">
                               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                                 投票頻率
@@ -2606,10 +2309,9 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                     </div>
                   </div>
                 )}
-                  </div>
-                )}
               </div>
-            );
+            </div>
+          );
           })()}
 
           {/* Form Bottom Bar */}
