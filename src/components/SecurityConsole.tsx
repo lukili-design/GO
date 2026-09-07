@@ -11,7 +11,9 @@ import {
   AlertTriangle, UserCheck, ShieldAlert, FileText, CheckCircle, 
   XCircle, Filter, Calendar, MapPin, Building, Phone, Car, 
   CreditCard, ArrowRight, User, Sparkles, RefreshCw, BarChart3,
-  Layers, Lock, Users, Plus, Trash2, Eye, X, LogOut
+  Layers, Lock, Users, Plus, Trash2, Eye, X, LogOut,
+  AlertOctagon, ShieldX, UserX, PhoneCall, Info, Edit3,
+  ChevronRight, ChevronLeft
 } from 'lucide-react';
 
 interface SecurityConsoleProps {
@@ -51,6 +53,93 @@ export interface VisitorIdRecord {
   idCardType: string;
   idCardNumber: string;
   isPrimary?: boolean;
+}
+
+// ----------------------------------------------------
+// 黑名單與安保風控受控人員庫 (Security Blacklist Database)
+// ----------------------------------------------------
+export interface BlacklistEntry {
+  id: string;
+  nameZh: string;
+  nameEn: string;
+  idNumber: string; // 标准化证件号
+  riskLevel: 'HIGH_RISK' | 'NAME_MATCH'; // HIGH_RISK: 证件精准匹配拦截 | NAME_MATCH: 同名待核验
+  category: string; // 分类 (如: 偷拍/非法闖入、商業間諜、黑名單受控人員、合約糾紛禁止入內)
+  reason: string;
+  addedAt: string;
+  handlerDept: string;
+  actionRequired: string;
+}
+
+export const MOCK_SECURITY_BLACKLIST: BlacklistEntry[] = [
+  {
+    id: 'BLK-001',
+    nameZh: '張偉強',
+    nameEn: 'Wai Keung Cheung',
+    idNumber: 'A123456(7)',
+    riskLevel: 'HIGH_RISK',
+    category: '未經授權偷拍 / 非法闖入前科',
+    reason: '曾於2025年多次未經許可擅闖電視城一號錄影廠進行商業偷拍與機密外洩，列入永久禁入黑名單。',
+    addedAt: '2025-11-10',
+    handlerDept: '集團保安部 (Security Control Center)',
+    actionRequired: '即時扣留通行證件，聯絡值班安保隊長（分機 #2335-9999）前往現場處理。'
+  },
+  {
+    id: 'BLK-002',
+    nameZh: '陳永強',
+    nameEn: 'Wing Keung Chan',
+    idNumber: 'D987654(3)',
+    riskLevel: 'HIGH_RISK',
+    category: '合約糾紛 / 商業侵權禁止入內',
+    reason: '涉及重大影視版權合約爭議與侵權糾紛，法務部已發出禁止進入電視城通知書。',
+    addedAt: '2026-02-15',
+    handlerDept: '法律事務部及安保部 (Legal & Security)',
+    actionRequired: '嚴禁任何門崗放行，即時通報法務部及安保主管。'
+  },
+  {
+    id: 'BLK-003',
+    nameZh: '黃志明',
+    nameEn: 'Chi Ming Wong',
+    idNumber: 'K654321(9)',
+    riskLevel: 'HIGH_RISK',
+    category: '安保警示受控人員',
+    reason: '曾在電視城公共區域嚴重擾亂公共秩序，列入安全受控管制名單。',
+    addedAt: '2026-05-20',
+    handlerDept: '園區物業安保處',
+    actionRequired: '同行組必須分離處置，嚴禁該員入內。'
+  },
+  {
+    id: 'BLK-004',
+    nameZh: '李偉強',
+    nameEn: 'Wai Keung Lee',
+    idNumber: 'B887766(5)',
+    riskLevel: 'HIGH_RISK',
+    category: '被辭退前僱員 / 敏感崗位',
+    reason: '敏感工程技術部門前僱員，離職後未完成安保審查，禁止單獨或以訪客身份入內。',
+    addedAt: '2026-03-01',
+    handlerDept: '人力資源部 / 內部安保科',
+    actionRequired: '須由對接部門主管親自至門崗確認後方可特批。'
+  }
+];
+
+// Helper: Normalize ID card string (strip whitespace, hyphens, uppercase)
+const normalizeIdString = (idStr: string): string => {
+  return idStr.toUpperCase().replace(/[\s\-\(\)]/g, '');
+};
+
+// Helper: Normalize name string for matching
+const normalizeNameString = (nameStr: string): string => {
+  return nameStr.toLowerCase().replace(/[\s\(\)\,\.\-]/g, '');
+};
+
+// Check if a visitor entry matches blacklist by name or ID
+export interface VisitorSecurityAlert {
+  visitorEntryId: string;
+  visitorName: string;
+  enteredIdCard: string;
+  isPrimary: boolean;
+  matchType: 'ID_MATCH' | 'NAME_MATCH';
+  matchedBlacklist: BlacklistEntry;
 }
 
 const getVisitModeLabel = (mode?: string) => {
@@ -226,6 +315,77 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
   // Viewing Details Modal State
   const [viewingSecurityBooking, setViewingSecurityBooking] = useState<Booking | GateScanRecord | null>(null);
 
+  // Security Blacklist Warning Alert Modal State
+  const [securityAlertModal, setSecurityAlertModal] = useState<{
+    isOpen: boolean;
+    booking: Booking;
+    alerts: VisitorSecurityAlert[];
+    allEntries: VisitorIdRecord[];
+    hasIdMatch: boolean;
+    hasNameMatch: boolean;
+    hasCleanMembers: boolean;
+    groupStep?: 1 | 2; // 1: 補充證件號核驗, 2: 處置與放行判定
+  } | null>(null);
+
+  // Focus and Highlight ID input field when returning to fill ID
+  const [highlightedEntryId, setHighlightedEntryId] = useState<string | null>(null);
+
+  // Helper: Perform check and return matched blacklist issues
+  const detectBlacklistAlerts = (entries: VisitorIdRecord[]): VisitorSecurityAlert[] => {
+    const alerts: VisitorSecurityAlert[] = [];
+
+    entries.forEach(entry => {
+      const trimmedId = entry.idCardNumber.trim();
+      const normId = normalizeIdString(trimmedId);
+      const normName = normalizeNameString(entry.name);
+
+      // Check 1: ID Match (Exact match against blacklist idNumber)
+      if (normId.length > 0) {
+        const idMatched = MOCK_SECURITY_BLACKLIST.find(b => {
+          const blkNormId = normalizeIdString(b.idNumber);
+          return blkNormId === normId || (blkNormId.length >= 6 && normId.includes(blkNormId));
+        });
+
+        if (idMatched) {
+          alerts.push({
+            visitorEntryId: entry.id,
+            visitorName: entry.name,
+            enteredIdCard: trimmedId,
+            isPrimary: !!entry.isPrimary,
+            matchType: 'ID_MATCH',
+            matchedBlacklist: idMatched
+          });
+          return; // ID match takes precedence
+        }
+      }
+
+      // Check 2: Name Match (Chinese or English name matches blacklist)
+      if (normName.length > 0) {
+        const nameMatched = MOCK_SECURITY_BLACKLIST.find(b => {
+          const blkZh = normalizeNameString(b.nameZh);
+          const blkEn = normalizeNameString(b.nameEn);
+          return (
+            (blkZh.length > 1 && (normName.includes(blkZh) || blkZh.includes(normName))) ||
+            (blkEn.length > 3 && (normName.includes(blkEn) || blkEn.includes(normName)))
+          );
+        });
+
+        if (nameMatched) {
+          alerts.push({
+            visitorEntryId: entry.id,
+            visitorName: entry.name,
+            enteredIdCard: trimmedId,
+            isPrimary: !!entry.isPrimary,
+            matchType: 'NAME_MATCH',
+            matchedBlacklist: nameMatched
+          });
+        }
+      }
+    });
+
+    return alerts;
+  };
+
   // Helper to extract visitor list with ID card numbers for modal
   const getModalVisitorsList = (item: Booking | GateScanRecord) => {
     if ('visitors' in item && item.visitors && item.visitors.length > 0) {
@@ -374,12 +534,11 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
     }
   };
 
-  // Handler: Confirm Security Clearance (Check-In) & Save Multi-Visitor ID Credentials
-  const handleConfirmClearance = () => {
+  // Direct execution of check-in without check (used after verification/bypass)
+  const executeClearanceCheckIn = (entriesToPass: VisitorIdRecord[], customNotes?: string) => {
     if (!activeBooking) return;
 
-    const validEntries = multiVisitorEntries.filter(v => v.idCardNumber.trim() !== '');
-
+    const validEntries = entriesToPass.filter(v => v.idCardNumber.trim() !== '');
     if (validEntries.length === 0) {
       alert('⚠️ 請至少輸入主訪客的證件號碼 (如 HKID/護照號碼)，以完成安保放行備案！');
       return;
@@ -387,10 +546,8 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
     const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
-    // Format all visitor ID cards into a single string for storage and logging
-    // Example: "鄭嘉穎 (HKID): A928301(4) | 隨行訪客 #2 (HKID): B987654(3)"
-    const combinedIdCardsString = multiVisitorEntries
-      .filter(v => v.idCardNumber.trim() !== '')
+    // Format visitor ID cards into string
+    const combinedIdCardsString = validEntries
       .map(v => `${v.name} (${v.idCardType.split(' ')[0]}): ${v.idCardNumber.trim()}`)
       .join(' | ');
 
@@ -401,6 +558,8 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
     if (onUpdateBookingIdCard) {
       onUpdateBookingIdCard(activeBooking.id, combinedIdCardsString);
     }
+
+    const noteToSave = customNotes || securityNotes.trim() || undefined;
 
     // 2. Append new record to Scan Logs
     const newLogItem: GateScanRecord = {
@@ -423,7 +582,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
       scannedAt: nowStr,
       status: BookingStatus.CHECKED_IN,
       operatorGuard,
-      notes: securityNotes.trim() || undefined
+      notes: noteToSave
     };
 
     setScanLogs(prev => [newLogItem, ...prev]);
@@ -438,10 +597,91 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
     });
 
     setSecurityNotes('');
+    setSecurityAlertModal(null);
 
     setTimeout(() => {
       setScanToastMessage(null);
     }, 5000);
+  };
+
+  // Handler: Confirm Security Clearance (Check-In) with Blacklist & Name Match Detection
+  const handleConfirmClearance = () => {
+    if (!activeBooking) return;
+
+    // 1. Run blacklist and name-match detection across all entered visitor entries FIRST
+    const alerts = detectBlacklistAlerts(multiVisitorEntries);
+
+    if (alerts.length > 0) {
+      const hasIdMatch = alerts.some(a => a.matchType === 'ID_MATCH');
+      const hasNameMatch = alerts.some(a => a.matchType === 'NAME_MATCH');
+      const alertEntryIds = new Set(alerts.map(a => a.visitorEntryId));
+      const hasCleanMembers = multiVisitorEntries.some(v => !alertEntryIds.has(v.id));
+
+      // Trigger High Alert Sound
+      triggerSound(180, 'sawtooth', 0.4);
+      setTimeout(() => triggerSound(140, 'square', 0.5), 250);
+
+      // Open High-Visibility Security Warning Dialog
+      setSecurityAlertModal({
+        isOpen: true,
+        booking: activeBooking,
+        alerts,
+        allEntries: multiVisitorEntries,
+        hasIdMatch,
+        hasNameMatch,
+        hasCleanMembers,
+        groupStep: hasNameMatch ? 1 : 2
+      });
+      return;
+    }
+
+    // 2. If no blacklist/name alert, verify that at least one ID is entered
+    const validEntries = multiVisitorEntries.filter(v => v.idCardNumber.trim() !== '');
+    if (validEntries.length === 0) {
+      alert('請輸入證件號碼以完成簽入放行！');
+      return;
+    }
+
+    // No alert triggered: execute standard check-in clearance
+    executeClearanceCheckIn(multiVisitorEntries);
+  };
+
+  // Handler: Recheck visitor entries directly from inside the security alert modal
+  const handleRecheckInModal = () => {
+    if (!activeBooking) return;
+
+    // Check if any required ID is still empty
+    const unenteredAlert = securityAlertModal?.alerts.find(a => a.matchType === 'NAME_MATCH' && (!multiVisitorEntries.find(e => e.id === a.visitorEntryId)?.idCardNumber.trim()));
+    if (unenteredAlert) {
+      alert(`請先為訪客「${unenteredAlert.visitorName}」輸入證件號碼！`);
+      return;
+    }
+
+    const alerts = detectBlacklistAlerts(multiVisitorEntries);
+    if (alerts.length > 0) {
+      const hasIdMatch = alerts.some(a => a.matchType === 'ID_MATCH');
+      const hasNameMatch = alerts.some(a => a.matchType === 'NAME_MATCH');
+      const alertEntryIds = new Set(alerts.map(a => a.visitorEntryId));
+      const hasCleanMembers = multiVisitorEntries.some(v => !alertEntryIds.has(v.id));
+
+      triggerSound(180, 'sawtooth', 0.4);
+
+      // Update modal with fresh status (e.g. upgraded to ID match or another name alert)
+      setSecurityAlertModal({
+        isOpen: true,
+        booking: activeBooking,
+        alerts,
+        allEntries: multiVisitorEntries,
+        hasIdMatch,
+        hasNameMatch,
+        hasCleanMembers
+      });
+      return;
+    }
+
+    // No more alerts triggered - safe to check in
+    setSecurityAlertModal(null);
+    executeClearanceCheckIn(multiVisitorEntries, `[同名核驗正常放行] 已現場比對實體證件，證件號碼已登記備案。`);
   };
 
   // Handler: Confirm Visitor Check-Out (掃碼簽出離場)
@@ -690,6 +930,94 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
               >
                 <Scan size={16} className="shrink-0" />
                 <span className="whitespace-nowrap">🎯 觸發掃碼槍核驗</span>
+              </button>
+            </div>
+
+            {/* Quick Test Demo Cases */}
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1">
+                <Sparkles size={12} className="text-amber-500" /> 快速測試黑名單預警場景：
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeBooking) {
+                    setMultiVisitorEntries([
+                      {
+                        id: 'v-1',
+                        name: '張偉強 (Wai Keung Cheung)',
+                        idCardType: '香港身份證 (HKID)',
+                        idCardNumber: '',
+                        isPrimary: true
+                      }
+                    ]);
+                    triggerSound(600, 'sine', 0.1);
+                  }
+                }}
+                className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 text-[11px] font-bold rounded-lg cursor-pointer transition-all"
+              >
+                🧪 場景一：姓名命中黑名單（訪客同名預警）
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeBooking) {
+                    setMultiVisitorEntries([
+                      {
+                        id: 'v-1',
+                        name: '張偉強',
+                        idCardType: '香港身份證 (HKID)',
+                        idCardNumber: 'A123456(7)',
+                        isPrimary: true
+                      }
+                    ]);
+                    triggerSound(500, 'sawtooth', 0.1);
+                  }
+                }}
+                className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-800 text-[11px] font-bold rounded-lg cursor-pointer transition-all"
+              >
+                🧪 場景二：證件號命中黑名單（黑名單攔截）
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeBooking) {
+                    setMultiVisitorEntries([
+                      {
+                        id: 'v-1',
+                        name: '陳大文 (Tai Man Chan)',
+                        idCardType: '香港身份證 (HKID)',
+                        idCardNumber: 'Z123456(0)',
+                        isPrimary: true
+                      },
+                      {
+                        id: 'v-2',
+                        name: '黃志明 (Chi Ming Wong)',
+                        idCardType: '香港身份證 (HKID)',
+                        idCardNumber: 'K654321(9)',
+                        isPrimary: false
+                      },
+                      {
+                        id: 'v-3',
+                        name: '張偉強',
+                        idCardType: '香港身份證 (HKID)',
+                        idCardNumber: '',
+                        isPrimary: false
+                      },
+                      {
+                        id: 'v-4',
+                        name: '李小華',
+                        idCardType: '香港身份證 (HKID)',
+                        idCardNumber: 'C789012(3)',
+                        isPrimary: false
+                      }
+                    ]);
+                    triggerSound(700, 'sine', 0.1);
+                  }
+                }}
+                className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 text-[11px] font-bold rounded-lg cursor-pointer transition-all"
+              >
+                🧪 場景三：多人同行組（同名/黑名單/正常組員）
               </button>
             </div>
           </div>
@@ -964,11 +1292,21 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
                             {/* ID Number Input */}
                             <input
+                              id={`visitor-id-input-${visitor.id}`}
                               type="text"
                               value={visitor.idCardNumber}
-                              onChange={(e) => handleUpdateVisitorEntry(visitor.id, 'idCardNumber', e.target.value)}
+                              onChange={(e) => {
+                                handleUpdateVisitorEntry(visitor.id, 'idCardNumber', e.target.value);
+                                if (highlightedEntryId === visitor.id) {
+                                  setHighlightedEntryId(null);
+                                }
+                              }}
                               placeholder="請輸入證件號 (例: A123456)"
-                              className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                              className={`w-full px-2.5 py-1.5 bg-white dark:bg-slate-950 border rounded-xl text-[11px] font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none transition-all ${
+                                highlightedEntryId === visitor.id
+                                  ? 'border-amber-500 ring-2 ring-amber-400/50 bg-amber-50/30 dark:bg-amber-950/20'
+                                  : 'border-slate-200 dark:border-slate-800 focus:ring-1 focus:ring-emerald-500'
+                              }`}
                             />
                           </div>
                         </div>
@@ -1858,6 +2196,491 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                   <span>載入至掃碼核銷頁</span>
                 </button>
               )}
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ⚠️ 安保系統警告彈窗 (Security Warning & Blacklist Interception Modal Dialog) */}
+      {/* ========================================================================= */}
+      {securityAlertModal && securityAlertModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden my-8">
+            
+            {/* Modal Header banner */}
+            <div className={`p-6 text-white ${
+              securityAlertModal.hasIdMatch 
+                ? 'bg-gradient-to-r from-rose-600 via-rose-700 to-red-800' 
+                : 'bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600'
+            }`}>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 shadow-inner">
+                    {securityAlertModal.hasIdMatch ? (
+                      <ShieldX size={28} className="animate-pulse" />
+                    ) : (
+                      <AlertOctagon size={28} className="animate-bounce" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-white">
+                      {securityAlertModal.allEntries.length > 1
+                        ? ((securityAlertModal.groupStep || 1) === 1 ? '第一步：補充證件號' : '第二步：核驗與放行')
+                        : securityAlertModal.hasIdMatch
+                        ? '黑名單攔截'
+                        : '訪客命中黑名單預警'
+                      }
+                    </h3>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSecurityAlertModal(null)}
+                  className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+
+              {/* Multi-person Group Entry Warning Section */}
+              {securityAlertModal.allEntries.length > 1 ? (
+                <div className="space-y-4">
+                  {/* Step Progress Tabs for Group Scenario */}
+                  <div className="flex items-center justify-between p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+                    <div className={`flex-1 py-2 px-3 text-center text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      (securityAlertModal.groupStep || 1) === 1
+                        ? 'bg-white dark:bg-slate-900 text-amber-600 dark:text-amber-400 shadow-sm'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}>
+                      <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center font-black">1</span>
+                      <span>第一步：補充證件號</span>
+                    </div>
+                    <div className="text-slate-300 dark:text-slate-600 px-1">→</div>
+                    <div className={`flex-1 py-2 px-3 text-center text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
+                      securityAlertModal.groupStep === 2
+                        ? 'bg-white dark:bg-slate-900 text-indigo-600 dark:text-indigo-400 shadow-sm'
+                        : 'text-slate-500 dark:text-slate-400'
+                    }`}>
+                      <span className="w-4 h-4 rounded-full bg-indigo-500 text-white text-[10px] flex items-center justify-center font-black">2</span>
+                      <span>第二步：核驗與放行</span>
+                    </div>
+                  </div>
+
+                  {/* Step 1: 補充證件號 */}
+                  {(securityAlertModal.groupStep || 1) === 1 ? (
+                    <div className="space-y-4">
+                      <div className="p-4 bg-amber-50/80 dark:bg-amber-950/30 rounded-2xl border border-amber-200 dark:border-amber-900/40 space-y-2">
+                        <div className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-200">
+                          <AlertTriangle size={16} className="text-amber-600 shrink-0" />
+                          <span>該同行組中存在與黑名單同名訪客，請先為其補充實體證件號碼：</span>
+                        </div>
+                        <p className="text-[11px] text-amber-700/90 dark:text-amber-400 leading-relaxed">
+                          系統將在下一步比對黑名單證件號庫。若證件號不一致將自動判定為正常人員；若一致將精確攔截。
+                        </p>
+                      </div>
+
+                      {/* Group Members List with Input fields ONLY for those who matched by name (need ID fill) */}
+                      <div className="space-y-3">
+                        {securityAlertModal.allEntries
+                          .filter(entry => {
+                            const alertItem = securityAlertModal.alerts.find(a => a.visitorEntryId === entry.id);
+                            return alertItem?.matchType === 'NAME_MATCH';
+                          })
+                          .map((entry, idx) => {
+                            const alertItem = securityAlertModal.alerts.find(a => a.visitorEntryId === entry.id)!;
+
+                            return (
+                              <div 
+                                key={entry.id || idx}
+                                className="p-4 rounded-2xl border space-y-3 transition-all bg-amber-50/80 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800 ring-1 ring-amber-400/30"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500 text-white animate-pulse">
+                                      ⚠️ 同名待補證件號
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                                      {entry.name} {entry.isPrimary && '(主訪客)'}
+                                    </span>
+                                  </div>
+                                  <span className="text-[11px] text-amber-800 dark:text-amber-300 font-mono">
+                                    重名記錄：{alertItem.matchedBlacklist.nameZh} / {alertItem.matchedBlacklist.nameEn}
+                                  </span>
+                                </div>
+
+                                {/* Input Box for ID card */}
+                                <div>
+                                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                                    <span className="flex items-center gap-1.5">
+                                      <CreditCard size={13} className="text-amber-600" />
+                                      <span>訪客證件號碼（HKID/護照號）：</span>
+                                    </span>
+                                    {!entry.idCardNumber.trim() && (
+                                      <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold">* 必填核驗</span>
+                                    )}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={multiVisitorEntries.find(e => e.id === entry.id)?.idCardNumber || ''}
+                                    onChange={(e) => handleUpdateVisitorEntry(entry.id, 'idCardNumber', e.target.value)}
+                                    placeholder="請輸入此同名組員的證件號碼 (例: A123456(7))"
+                                    className={`w-full px-3.5 py-2 bg-white dark:bg-slate-950 border rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 shadow-sm ${
+                                      !entry.idCardNumber.trim()
+                                        ? 'border-amber-400 dark:border-amber-600 focus:ring-amber-500 bg-amber-50/20'
+                                        : 'border-slate-200 dark:border-slate-700 focus:ring-indigo-500'
+                                    }`}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Step 2: 核驗與放行處置 */
+                    <div className="space-y-4">
+                      {/* Status Summary Banner */}
+                      <div className={`p-4 rounded-2xl border space-y-2 ${
+                        securityAlertModal.hasIdMatch
+                          ? 'bg-rose-50/90 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60'
+                          : 'bg-emerald-50/90 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-900/60'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black flex items-center gap-1.5">
+                            {securityAlertModal.hasIdMatch ? (
+                              <>
+                                <ShieldX size={16} className="text-rose-600 shrink-0" />
+                                <span className="text-rose-900 dark:text-rose-100">核驗結果：發現黑名單受控人員！</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+                                <span className="text-emerald-900 dark:text-emerald-100">核驗結果：全員證件號均未命中黑名單，全部合格！</span>
+                              </>
+                            )}
+                          </span>
+                        </div>
+                        <p className={`text-[11px] leading-relaxed ${
+                          securityAlertModal.hasIdMatch ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'
+                        }`}>
+                          {securityAlertModal.hasIdMatch
+                            ? '同行組中存在證件號與黑名單庫完全一致的受控人員。可執行「放行正常組員」分離放行，或主管「特批全部強制簽入」。'
+                            : '同名訪客之實體證件號與黑名單庫不一致（同名不同人），已自動判定為正常人員，可安心放行簽入。'}
+                        </p>
+                      </div>
+
+                      {/* Itemized Member Final Status */}
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                          組員核驗明細清單：
+                        </h4>
+                        {securityAlertModal.allEntries.map((entry, idx) => {
+                          const alertItem = securityAlertModal.alerts.find(a => a.visitorEntryId === entry.id);
+                          const isIdMatch = alertItem?.matchType === 'ID_MATCH';
+
+                          return (
+                            <div
+                              key={entry.id || idx}
+                              className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs ${
+                                isIdMatch
+                                  ? 'bg-rose-50/80 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50 text-rose-900 dark:text-rose-200'
+                                  : 'bg-emerald-50/80 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                  isIdMatch ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
+                                }`}>
+                                  {isIdMatch ? '🚫 黑名單扣留人員' : '✓ 核驗通過 / 正常人員'}
+                                </span>
+                                <span className="font-bold">{entry.name} {entry.isPrimary && '(主訪客)'}</span>
+                              </div>
+                              <div className="text-[11px] font-mono opacity-90">
+                                證件號: <strong className="font-bold">{entry.idCardNumber.trim() || '未填寫'}</strong>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* Single Visitor Scenario 1 & 2 */
+                <div className="space-y-4">
+                  {securityAlertModal.alerts.map((alert, idx) => (
+                    <div 
+                      key={idx}
+                      className={`p-5 rounded-2xl border space-y-3 ${
+                        alert.matchType === 'ID_MATCH'
+                          ? 'bg-rose-50/70 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900/50'
+                          : 'bg-amber-50/70 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900/50'
+                      }`}
+                    >
+                      {alert.matchType === 'ID_MATCH' ? (
+                        /* 場景二：證件號命中黑名單（高危攔截） */
+                        <div className="space-y-2.5">
+                          <p className="text-sm font-bold text-rose-800 dark:text-rose-300 flex items-center gap-2">
+                            <ShieldX size={18} />
+                            <span>該訪客所持證件號碼與訪客黑名單一致：</span>
+                          </p>
+                          <div className="p-3.5 bg-rose-100/90 dark:bg-rose-900/50 rounded-xl space-y-1.5 border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-100">
+                            <div className="flex flex-wrap gap-x-4 gap-y-1">
+                              <span>中文名：<strong className="font-black">{alert.matchedBlacklist.nameZh}</strong></span>
+                              <span>英文名：<strong className="font-black">{alert.matchedBlacklist.nameEn}</strong></span>
+                              <span>證件號：<strong className="font-mono font-black text-rose-700 dark:text-rose-300">{alert.matchedBlacklist.idNumber}</strong></span>
+                            </div>
+                            <p className="text-[11px] text-rose-700 dark:text-rose-300 pt-1">
+                              管控原因：{alert.matchedBlacklist.reason}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        /* 場景一：姓名命中黑名單（中文名或英文名） */
+                        <div className="space-y-3">
+                          <p className="text-sm font-bold text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                            <AlertTriangle size={18} />
+                            <span>該姓名與系統管控名單重名，請輸入完整的證件號碼。</span>
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                            訪客姓名「<strong>{alert.visitorName}</strong>」與系統管控名單「<strong>{alert.matchedBlacklist.nameZh} / {alert.matchedBlacklist.nameEn}</strong>」重名。請在此填寫證件號碼進行核驗。
+                          </p>
+
+                          {/* Direct In-Modal ID Card Input */}
+                          <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/40">
+                            <label className="block text-xs font-bold text-amber-900 dark:text-amber-200 mb-1.5 flex items-center gap-1.5">
+                              <CreditCard size={14} className="text-amber-600" />
+                              <span>請輸入訪客證件號碼（HKID/護照號）：</span>
+                            </label>
+                            <input
+                              type="text"
+                              autoFocus
+                              value={multiVisitorEntries.find(e => e.id === alert.visitorEntryId)?.idCardNumber || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                handleUpdateVisitorEntry(alert.visitorEntryId, 'idCardNumber', val);
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  handleRecheckInModal();
+                                }
+                              }}
+                              placeholder="請輸入證件號碼 (例: A123456(7))"
+                              className="w-full px-3.5 py-2.5 bg-white dark:bg-slate-950 border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-mono font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center justify-end gap-2 flex-wrap">
+              
+              {/* Scenario 3 Actions: 多人通行組 */}
+              {securityAlertModal.allEntries.length > 1 ? (
+                <>
+                  {/* 取消 */}
+                  <button
+                    type="button"
+                    onClick={() => setSecurityAlertModal(null)}
+                    className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-all"
+                  >
+                    取消
+                  </button>
+
+                  {/* Step 1 Actions: 下一步核驗 */}
+                  {(securityAlertModal.groupStep || 1) === 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Check if any member with NAME_MATCH has NOT entered their ID card yet
+                        const unenteredNameAlerts = securityAlertModal.alerts.filter(
+                          a => a.matchType === 'NAME_MATCH' && (!multiVisitorEntries.find(e => e.id === a.visitorEntryId)?.idCardNumber.trim())
+                        );
+
+                        if (unenteredNameAlerts.length > 0) {
+                          alert(`請輸入證件號！同名訪客（${unenteredNameAlerts.map(a => a.visitorName).join('、')}）尚未填寫證件號碼。`);
+                          return;
+                        }
+
+                        // Re-run blacklist detection with all latest filled ID numbers
+                        const alerts = detectBlacklistAlerts(multiVisitorEntries);
+                        const hasIdMatch = alerts.some(a => a.matchType === 'ID_MATCH');
+                        const hasNameMatch = alerts.some(a => a.matchType === 'NAME_MATCH');
+                        const alertEntryIds = new Set(alerts.map(a => a.visitorEntryId));
+                        const hasCleanMembers = multiVisitorEntries.some(v => !alertEntryIds.has(v.id));
+
+                        if (hasIdMatch) {
+                          triggerSound(180, 'sawtooth', 0.4);
+                        }
+
+                        // Advance to Step 2
+                        setSecurityAlertModal({
+                          isOpen: true,
+                          booking: activeBooking!,
+                          alerts,
+                          allEntries: multiVisitorEntries,
+                          hasIdMatch,
+                          hasNameMatch,
+                          hasCleanMembers,
+                          groupStep: 2
+                        });
+                      }}
+                      className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                    >
+                      <span>下一步：核驗黑名單庫</span>
+                      <ChevronRight size={15} />
+                    </button>
+                  ) : (
+                    /* Step 2 Actions: 放行處置 */
+                    <>
+                      {/* 返回上一步修改 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSecurityAlertModal(prev => prev ? ({ ...prev, groupStep: 1 }) : null);
+                        }}
+                        className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs cursor-pointer transition-all flex items-center gap-1"
+                      >
+                        <ChevronLeft size={14} />
+                        <span>返回修改證件號</span>
+                      </button>
+
+                      {/* If no one matched ID blacklist: 全員合格放行 */}
+                      {!securityAlertModal.hasIdMatch ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSecurityAlertModal(null);
+                            executeClearanceCheckIn(
+                              securityAlertModal.allEntries,
+                              `[同行組核驗正常放行] 全部組員已現場比對實體證件，證件號碼核驗無誤安全放行。`
+                            );
+                          }}
+                          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                        >
+                          <CheckCircle size={15} />
+                          <span>全員合格，放行簽入</span>
+                        </button>
+                      ) : (
+                        /* If someone matched ID blacklist: 分離放行 or 強制簽入 */
+                        <>
+                          {/* 放行正常人員 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const actualIdMatchAlerts = securityAlertModal.alerts.filter(a => a.matchType === 'ID_MATCH');
+                              const blockedEntryIds = new Set(actualIdMatchAlerts.map(a => a.visitorEntryId));
+                              const safeEntries = securityAlertModal.allEntries.filter(e => !blockedEntryIds.has(e.id));
+                              const blockedNames = actualIdMatchAlerts.map(a => a.visitorName).join('、');
+
+                              executeClearanceCheckIn(
+                                safeEntries,
+                                `[安保分離處置] 同行組黑名單受控人員（${blockedNames}）已扣留攔截，僅放行正常隨行人員（${safeEntries.map(c => c.name).join('、')}）`
+                              );
+                            }}
+                            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                          >
+                            <Users size={14} />
+                            <span>放行正常組員（扣留黑名單）</span>
+                          </button>
+
+                          {/* 全部強制簽入 */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              executeClearanceCheckIn(
+                                securityAlertModal.allEntries,
+                                `[特批全部強制簽入] 安保隊長現場特批同行組全體人員強制簽入通行`
+                              );
+                            }}
+                            className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                          >
+                            <ShieldCheck size={14} />
+                            <span>全部強制簽入</span>
+                          </button>
+                        </>
+                      )}
+                    </>
+                  )}
+                </>
+              ) : securityAlertModal.hasIdMatch ? (
+                /* Scenario 2 Actions: 證件號命中黑名單 */
+                <>
+                  {/* 取消 */}
+                  <button
+                    type="button"
+                    onClick={() => setSecurityAlertModal(null)}
+                    className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-all"
+                  >
+                    取消
+                  </button>
+
+                  {/* 確定強制簽入 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      executeClearanceCheckIn(
+                        securityAlertModal.allEntries,
+                        `[特批強制簽入] 命中黑名單證件號，安保主管現場特批強制放行簽入`
+                      );
+                    }}
+                    className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                  >
+                    <ShieldAlert size={14} />
+                    <span>確定強制簽入</span>
+                  </button>
+                </>
+              ) : (
+                /* Scenario 1 Actions: 姓名命中黑名單（同名預警） */
+                <>
+                  {/* 取消 / 返回 */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetAlert = securityAlertModal.alerts[0];
+                      const targetEntryId = targetAlert ? targetAlert.visitorEntryId : 'v-1';
+                      setHighlightedEntryId(targetEntryId);
+                      setSecurityAlertModal(null);
+                      setTimeout(() => {
+                        const el = document.getElementById(`visitor-id-input-${targetEntryId}`);
+                        if (el) {
+                          el.focus();
+                          (el as HTMLInputElement).select?.();
+                        }
+                      }, 100);
+                    }}
+                    className="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs cursor-pointer transition-all flex items-center gap-1.5"
+                  >
+                    <Edit3 size={14} />
+                    <span>返回原表單填寫</span>
+                  </button>
+
+                  {/* 彈窗內核驗並簽入 */}
+                  <button
+                    type="button"
+                    onClick={handleRecheckInModal}
+                    className="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md flex items-center gap-1.5 transition-all"
+                  >
+                    <CheckCircle size={14} />
+                    <span>完成填寫並核驗簽入</span>
+                  </button>
+                </>
+              )}
+
             </div>
 
           </div>
