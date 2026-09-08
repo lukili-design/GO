@@ -10,7 +10,7 @@ export const INITIAL_VOTING_CAMPAIGNS: VotingCampaign[] = [
     id: 'CAMP-2026-001',
     title: '2026 萬千星輝台慶盛典年度總選（需全部投完統一提交）',
     coverImage: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
-    description: '年度電視城矚目焦點！全體同仁與觀眾共同票選年度最受歡迎藝員與旗艦作品，需依序完成五個評選項目後統一提交選票。',
+    description: '年度 TVB 矚目焦點！全體同仁與觀眾共同票選年度最受歡迎藝員與旗艦作品，需依序完成五個評選項目後統一提交選票。',
     resultVisibility: 'AFTER_VOTE',
     submissionMode: 'ALL_REQUIRED',
     status: 'ACTIVE',
@@ -666,7 +666,7 @@ export const INITIAL_VOTE_ARTICLES: VoteArticle[] = [
     author: 'TVB GO 互動編輯組',
     coverImage: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
     summary: '年度全城矚目的萬千星輝年度票選進入白熱化階段！多位實力派台前幕後同仁角逐榮譽，投票即日起全面開放，立即參與互動。',
-    content: `一年一度的電視城年度盛典正式進入白熱化階段！經過第一輪「40強初選淘汰賽」超過十萬票的熱烈角逐，備受矚目的 20 強候選人已正式誕生！
+    content: `一年一度的 TVB 年度盛典正式進入白熱化階段！經過第一輪「40強初選淘汰賽」超過十萬票的熱烈角逐，備受矚目的 20 強候選人已正式誕生！
 
 本輪「20進7 晉級賽」自即日起至 9 月 10 日截止，每位 TVB GO 會員每日均可投下寶貴的 3 票。快為你心目中最具代表性的優秀藝員加油打氣！
 
@@ -686,7 +686,7 @@ export const INITIAL_VOTE_ARTICLES: VoteArticle[] = [
     id: 'ART-2026-002',
     title: '【幕後特輯】向默默耕耘的創作者致敬：2026 最佳幕後創意節目大獎全解析',
     category: '幕後花絮',
-    author: '電視城特派記者',
+    author: 'TVB 特派記者',
     coverImage: 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?auto=format&fit=crop&w=1200&q=80',
     summary: '好劇集的背後離不開精雕細琢的劇本與創新導播，走進本屆入圍團隊的幕後創作故事。',
     content: `一部深入人心的經典劇集或綜藝節目，背後凝聚著數百位編劇、導演、剪輯、道具、燈光及音響工程師的心血。

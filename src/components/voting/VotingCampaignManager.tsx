@@ -2454,7 +2454,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   </div>
                   <div>
                     <div className="flex justify-between text-[11px] font-medium mb-1">
-                      <span className="text-slate-600 dark:text-slate-300">電視城員工內部 SSO 認證</span>
+                      <span className="text-slate-600 dark:text-slate-300">TVB 員工內部 SSO 認證</span>
                       <span className="font-mono font-bold text-slate-900 dark:text-white">16.8%</span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">

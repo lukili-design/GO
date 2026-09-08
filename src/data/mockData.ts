@@ -48,7 +48,7 @@ export const getVisitorTypeLabel = (type?: string): string => {
 export const INITIAL_BEACONS: BeaconRule[] = [
   {
     id: 'BCN-001',
-    name: '電視城主樓 1F 大堂 Beacon',
+    name: 'TVB 主樓 1F 大堂 Beacon',
     uuid: 'F7826DA6-4FA2-4E98-8024-BC5B71E0893E',
     major: 10001,
     minor: 20001,
@@ -80,7 +80,7 @@ export const INITIAL_WIFIS: WifiRule[] = [
     id: 'WIFI-001',
     ssid: 'TVB-Corp-5G',
     mac: '00:1A:2B:3C:4D:5E',
-    locationNote: '將軍澳電視城內部高速辦公網絡',
+    locationNote: '將軍澳 TVB 內部高速辦公網絡',
     isEnabled: true
   },
   {
@@ -103,15 +103,15 @@ export const INITIAL_GPS_CONFIG: GpsConfig = {
   centerLat: 22.3789,
   centerLng: 114.2698,
   radiusMeters: 300,
-  locationName: '香港將軍澳工業邨駿才街77號電視廣播城',
+  locationName: '香港將軍澳工業邨駿才街77號 TVB',
   isEnabled: true
 };
 
 export const INITIAL_GPS_FENCES: GpsFenceRule[] = [
   {
     id: 'GPS-001',
-    locationName: '將軍澳電視廣播城總部',
-    address: '香港將軍澳工業邨駿才街77號電視廣播城',
+    locationName: '將軍澳 TVB 總部',
+    address: '香港將軍澳工業邨駿才街77號 TVB',
     centerLat: 22.3789,
     centerLng: 114.2698,
     radiusMeters: 300,
@@ -439,7 +439,7 @@ export const INITIAL_BOOKINGS: Booking[] = [
     endDateTime: '2026-08-20T15:30',
     licensePlate: 'AB 8888, CD 6666',
     purpose: 'D',
-    destination: '一號錄影廠與電視城物流區',
+    destination: '一號錄影廠與 TVB 物流區',
     notes: '團隊參觀與設備搬運。',
     contactEmail: 'lee.wk@dhl.com',
     status: BookingStatus.PENDING,
@@ -681,7 +681,7 @@ export const INITIAL_BOOKINGS: Booking[] = [
     visitMode: 'SINGLE_VISIT',
     licensePlate: 'GD 5240',
     purpose: 'C',
-    destination: '電視城一號錄影廠 (Studio 1)',
+    destination: 'TVB 一號錄影廠 (Studio 1)',
     notes: '錄影廠舞台燈光線路保養與檢修工作。',
     contactEmail: 'chiho.lam@starryeng.com.hk',
     status: BookingStatus.CANCELLED,

@@ -34,13 +34,13 @@ export const SystemRequirementsDoc: React.FC = () => {
             <p className="font-semibold text-slate-900 dark:text-slate-100">APP【我的預約】4 個 Tab 頁面狀態規則：</p>
             <p><strong>待審核：</strong>等待審核中，可取消預約，不提供通行證下載/分享。-需要在CMS配置訪客預約需要審核才顯示此模塊。</p>
             <p><strong>待到訪：</strong>審核通過或免審自動生效，具備「查看通行證」按鈕（支援保存圖片、發送電郵、取消預約）。</p>
-            <p><strong>進行中：</strong>現場安保終端首次掃碼核銷成功後轉入，單次訪問當天有效，多次訪問在有效期內可重複通行。</p>
+            <p><strong>進行中：</strong>現場保安終端首次掃碼核銷成功後轉入，單次訪問當天有效，多次訪問在有效期內可重複通行。</p>
             <p><strong>歷史/已取消：</strong>已簽退離場或被主動取消的歸檔紀錄。</p>
           </div>
 
           <div className="space-y-2 pl-2 pt-2">
             <p className="font-semibold text-slate-900 dark:text-slate-100">二維碼有效性：</p>
-            <p><strong>單次有效：</strong>預約當天日期可以掃碼成功、到達第二個自然日/安保系統簽退自動變為【歷史】</p>
+            <p><strong>單次有效：</strong>預約當天日期可以掃碼成功、到達第二個自然日/保安系統簽退自動變為【歷史】</p>
             <p><strong>有效期內多次有效：</strong>預約開始當天-預約結束時間可以多次掃碼、達到結束時間自動變為【歷史】</p>
           </div>
         </div>
@@ -62,8 +62,8 @@ export const SystemRequirementsDoc: React.FC = () => {
           <div className="space-y-2 pl-2 pt-2">
             <p className="font-semibold text-slate-900 dark:text-slate-100">到訪狀態 ：</p>
             <p><strong>待到訪 ：</strong>已核准生效，訪客尚未掃碼。</p>
-            <p><strong>進行中：</strong>安保終端掃碼核銷成功，正在廠區內訪問。</p>
-            <p><strong>歷史/已簽退：</strong>訪客時間到期或單次預約到期/安保系統簽退。</p>
+            <p><strong>進行中：</strong>保安終端掃碼核銷成功，正在廠區內訪問。</p>
+            <p><strong>歷史/已簽退：</strong>訪客時間到期或單次預約到期/保安系統簽退。</p>
             <p><strong>已取消 (Cancelled)：</strong>預約遭取消。</p>
           </div>
         </div>

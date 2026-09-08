@@ -425,7 +425,7 @@ export const WorkspaceShell: React.FC = () => {
       type: 'success',
       text: status === BookingStatus.CHECKED_IN 
         ? `簽入核銷成功！已准予 [${name}] 通行入廠。` 
-        : `離場簽出成功！訪客 [${name}] 已結束今日電視城到訪。`,
+        : `離場簽出成功！訪客 [${name}] 已結束今日 TVB 到訪。`,
     });
     
     triggerSound(status === BookingStatus.CHECKED_IN ? 1000 : 600, 'sine', 0.12);
@@ -568,7 +568,7 @@ export const WorkspaceShell: React.FC = () => {
             }`}
           >
             <Laptop size={14} className="shrink-0" />
-            <span className="whitespace-nowrap">🖥️ 電視城 CMS 管理系統</span>
+            <span className="whitespace-nowrap">🖥️ TVB CMS 管理系統</span>
           </button>
 
           <button
@@ -584,7 +584,7 @@ export const WorkspaceShell: React.FC = () => {
             }`}
           >
             <Shield size={14} className="shrink-0" />
-            <span className="whitespace-nowrap">🛡️ 安保門禁系統</span>
+            <span className="whitespace-nowrap">🛡️ 保安門禁系統</span>
           </button>
         </div>
       </div>

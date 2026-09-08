@@ -199,7 +199,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
       locationDetail = `${scanResults.wifiSsid} (MAC Whitelisted)`;
     } else if (scanResults.gpsPassed) {
       chosenMethod = 'GPS';
-      locationDetail = `GPS TVB城內 (${scanResults.gpsDistance}m)`;
+      locationDetail = `GPS TVB 廠內 (${scanResults.gpsDistance}m)`;
     }
 
     const formattedTime = currentTime.toLocaleTimeString('en-US', {
@@ -456,7 +456,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                     TVB快訊
                   </h3>
                 </div>
-                <span className="text-[10px] text-slate-400 font-mono">電視城最新動態</span>
+                <span className="text-[10px] text-slate-400 font-mono">TVB 最新動態</span>
               </div>
 
               {/* 三個 Tab: 全部 / 公司公告 / 部門消息 */}
@@ -538,9 +538,9 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                     id: 'std-1',
                     category: 'ANNOUNCEMENT',
                     categoryName: '公司公告',
-                    title: '【公司公告】2026年度電視城行政與考勤管理制度升級指引',
+                    title: '【公司公告】2026年度 TVB 行政與考勤管理制度升級指引',
                     date: '2026-08-11',
-                    summary: '為方便全體同仁差勤登記，電視城已全面開通藍牙與Wi-Fi考勤，請參閱最新考勤指引。'
+                    summary: '為方便全體同仁差勤登記，TVB 已全面開通藍牙與Wi-Fi考勤，請參閱最新考勤指引。'
                   },
                   {
                     id: 'std-2',
@@ -556,13 +556,13 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                     categoryName: '公司公告',
                     title: '【公司公告】員工餐廳八月份特別菜單及八達通/飯卡增值優惠',
                     date: '2026-08-08',
-                    summary: '八月份電視城員工餐廳提供精選港式燒味套餐，使用電子飯卡消費可享85折優惠。'
+                    summary: '八月份 TVB 員工餐廳提供精選港式燒味套餐，使用電子飯卡消費可享85折優惠。'
                   },
                   {
                     id: 'std-4',
                     category: 'DEPT',
                     categoryName: '部門消息',
-                    title: '【部門消息】電視城員工巴士班次增設調景嶺/旺角直達線',
+                    title: '【部門消息】TVB 員工巴士班次增設調景嶺/旺角直達線',
                     date: '2026-08-05',
                     summary: '下班繁忙時間（18:15及18:30）特設直達調景嶺地鐵站及旺角雅蘭中心專車。'
                   }
@@ -971,7 +971,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
             <div className="bg-white dark:bg-slate-950 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
               <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
                 <Calendar size={16} className="text-purple-500" />
-                <span>電視城綜藝節目部 8月工作排班</span>
+                <span>TVB 綜藝節目部 8月工作排班</span>
               </h3>
 
               <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 pb-2 border-b border-slate-100 dark:border-slate-800">
@@ -1053,7 +1053,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
           <div className="p-3.5 space-y-3">
             <div className="bg-emerald-600 text-white p-3.5 rounded-2xl shadow-md space-y-1">
               <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-emerald-100">將軍澳電視城 Shuttle Bus</span>
+                <span className="text-[10px] font-bold text-emerald-100">將軍澳 TVB Shuttle Bus</span>
                 <span className="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-mono">LIVE</span>
               </div>
               <h3 className="text-sm font-black">下班班次倒數：00:24:15</h3>
@@ -1064,7 +1064,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
               <div className="space-y-2 text-xs">
                 <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 flex justify-between items-center">
                   <div>
-                    <span className="font-bold text-slate-900 dark:text-slate-100 block">TVB 城 ➔ 調景嶺 MTR (15分鐘一班)</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100 block">TVB ➔ 調景嶺 MTR (15分鐘一班)</span>
                     <span className="text-[10px] text-slate-400">下一班：18:15 / 18:30</span>
                   </div>
                   <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950 px-2 py-1 rounded-lg">
@@ -1074,7 +1074,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
 
                 <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 flex justify-between items-center">
                   <div>
-                    <span className="font-bold text-slate-900 dark:text-slate-100 block">TVB 城 ➔ 旺角雅蘭中心 (直達特快)</span>
+                    <span className="font-bold text-slate-900 dark:text-slate-100 block">TVB ➔ 旺角雅蘭中心 (直達特快)</span>
                     <span className="text-[10px] text-slate-400">下一班：18:30</span>
                   </div>
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-lg">

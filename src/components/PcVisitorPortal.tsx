@@ -56,7 +56,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
   const [endDateTime, setEndDateTime] = useState('2026-08-18 18:00');
   const [clientTier, setClientTier] = useState<'NORMAL' | 'VIP'>('NORMAL');
   const [purpose, setPurpose] = useState<PurposeCode>('M'); // Default 'M' for Meeting
-  const [destination, setDestination] = useState('電視城 1廠 (1st Studio)');
+  const [destination, setDestination] = useState('TVB 1廠 (1st Studio)');
   const [licensePlates, setLicensePlates] = useState<string[]>(['']);
   const [notes, setNotes] = useState('');
 
@@ -846,7 +846,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
                       type="text"
                       value={destination}
                       onChange={(e) => setDestination(e.target.value)}
-                      placeholder="例如: 電視城 1廠 / 主樓 3樓"
+                      placeholder="例如: TVB 1廠 / 主樓 3樓"
                       className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 dark:text-slate-100 focus:outline-none focus:border-blue-500"
                     />
                   </div>
@@ -1185,7 +1185,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
 
                             {/* 8. 目的地 */}
                             <td className="p-3.5 font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
-                              {b.destination || '電視城主樓'}
+                              {b.destination || 'TVB 主樓'}
                             </td>
 
                             {/* 9. 車牌號碼 */}
@@ -1526,7 +1526,7 @@ export const PcVisitorPortal: React.FC<PcVisitorPortalProps> = ({
                   <div>
                     <span className="text-slate-400 block text-[10px]">目的地 (Destination)</span>
                     <strong className="text-blue-600 dark:text-blue-400 font-bold block">
-                      📍 {viewingDetailBooking.destination || '電視城主樓'}
+                      📍 {viewingDetailBooking.destination || 'TVB 主樓'}
                     </strong>
                   </div>
                 </div>

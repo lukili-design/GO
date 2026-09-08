@@ -103,9 +103,9 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
     if (!mapSearchQuery.trim()) return;
     const q = mapSearchQuery.trim();
     
-    if (q.includes('將軍澳') || q.includes('電視城') || q.includes('廣播城')) {
-      setNewGpsName('將軍澳電視廣播城總部');
-      setNewGpsAddress('香港將軍澳工業邨駿才街77號電視廣播城');
+    if (q.includes('將軍澳') || q.includes('電視城') || q.includes('廣播城') || q.includes('TVB')) {
+      setNewGpsName('將軍澳 TVB 總部');
+      setNewGpsAddress('香港將軍澳工業邨駿才街77號 TVB');
       setNewGpsLat(22.3789);
       setNewGpsLng(114.2698);
     } else if (q.includes('灣仔') || q.includes('新聞')) {
@@ -1008,7 +1008,7 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
                   required
                   value={newBcnName}
                   onChange={e => setNewBcnName(e.target.value)}
-                  placeholder="例: 電視城一號廠門口 Beacon"
+                  placeholder="例: TVB 一號廠門口 Beacon"
                   className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 font-bold outline-none"
                 />
               </div>
@@ -1144,7 +1144,7 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
                   type="text"
                   value={newWifiNote}
                   onChange={e => setNewWifiNote(e.target.value)}
-                  placeholder="例: 將軍澳電視城內部專網"
+                  placeholder="例: 將軍澳 TVB 內部專網"
                   className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 font-medium outline-none"
                 />
               </div>
@@ -1213,7 +1213,7 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
                           handleMapSearch();
                         }
                       }}
-                      placeholder="搜尋 Google 地圖地點或地址 (例如: 將軍澳電視城)..."
+                      placeholder="搜尋 Google 地圖地點或地址 (例如: 將軍澳 TVB)..."
                       className="w-full pl-8 pr-7 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-xs font-medium outline-none focus:ring-1 focus:ring-blue-500"
                     />
                     <Search size={14} className="absolute left-2.5 text-slate-400 pointer-events-none" />
@@ -1322,7 +1322,7 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
                     required
                     value={newGpsName}
                     onChange={e => setNewGpsName(e.target.value)}
-                    placeholder="例: 將軍澳電視城主樓"
+                    placeholder="例: 將軍澳 TVB 主樓"
                     className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 font-bold outline-none"
                   />
                 </div>

@@ -707,7 +707,7 @@ export const BookingForm: React.FC<BookingFormProps> = ({ onSubmit, onViewRecord
                 setDestination(e.target.value);
                 if (errors.destination) setErrors((prev) => ({ ...prev, destination: '' }));
               }}
-              placeholder="例如：電視城行政大樓 7 樓會議室 B"
+              placeholder="例如：TVB 行政大樓 7 樓會議室 B"
               className={`w-full px-3 py-2 text-xs rounded-xl border bg-slate-50 dark:bg-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all ${
                 errors.destination
                   ? 'border-rose-400 focus:border-rose-500'

@@ -112,7 +112,7 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
                 ? '「多人分行」模式：每位成員均擁有獨立電子通行證，使用下方左右箭頭切換查看與分享！' 
                 : isMultiShared
                 ? '「多人同行」模式：共用一張電子通行證核銷入場，已列出全體同行訪客名單。'
-                : '預約成功！出示專屬 QR Code 或下載圖片即可掃碼核銷進入電視城。'
+                : '預約成功！出示專屬 QR Code 或下載圖片即可掃碼核銷進入 TVB。'
               }
             </p>
           </div>
@@ -209,8 +209,8 @@ export const InvitationCard: React.FC<InvitationCardProps> = ({
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium max-w-[90%] leading-relaxed">
               {isMultiIndiv 
-                ? '到訪時請持證者出示此個人條碼，於閘口或安保終端獨立掃碼入場。'
-                : '到訪時請將此條碼出示於閘口或前台安保終端掃碼入場。'
+                ? '到訪時請持證者出示此個人條碼，於閘口或保安終端獨立掃碼入場。'
+                : '到訪時請將此條碼出示於閘口或前台保安終端掃碼入場。'
               }
             </p>
           </div>
