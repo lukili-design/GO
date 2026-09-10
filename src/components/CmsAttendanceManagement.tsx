@@ -6,16 +6,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BeaconRule, WifiRule, GpsConfig, GpsFenceRule, ClockInLog, 
-  MonthlyReportSummary, MonthlyReportDetail 
+  MonthlyReportSummary, MonthlyReportDetail, AttendanceCycleConfig, AttendanceRuleScheme,
+  CyclePeriodType, WorkDayScheme
 } from '../types';
 import { 
   INITIAL_BEACONS, INITIAL_WIFIS, INITIAL_GPS_CONFIG, INITIAL_GPS_FENCES,
-  INITIAL_CLOCK_IN_LOGS, INITIAL_MONTHLY_REPORTS, INITIAL_MONTHLY_DETAILS 
+  INITIAL_CLOCK_IN_LOGS, INITIAL_MONTHLY_REPORTS, INITIAL_MONTHLY_DETAILS,
+  INITIAL_CYCLE_CONFIG, INITIAL_RULE_SCHEMES
 } from '../data/mockData';
 import { 
   Radio, Wifi, MapPin, Calendar, Clock, Download, Plus, 
   Trash2, Edit, CheckCircle2, AlertTriangle, Search, Filter, 
-  RefreshCw, FileSpreadsheet, ShieldCheck, Check, X, Sparkles, Navigation, Layers
+  RefreshCw, FileSpreadsheet, ShieldCheck, Check, X, Sparkles, Navigation, Layers,
+  Sliders, Settings, Calculator, CheckCircle, Info, ChevronRight, Save, RotateCcw, Building2, UserCheck, Play, ArrowRight
 } from 'lucide-react';
 
 interface CmsAttendanceManagementProps {
@@ -24,9 +27,11 @@ interface CmsAttendanceManagementProps {
 }
 
 export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = ({ triggerSound, initialTab }) => {
-  // Sub tab inside Attendance Management
-  // 'RULES' | 'REPORTS' | 'LOGS'
-  const [attendanceTab, setAttendanceTab] = useState<'RULES' | 'REPORTS' | 'LOGS'>(initialTab || 'LOGS');
+  // Sub tab inside Attendance Management: 'RULES' | 'REPORTS' | 'LOGS'
+  const [attendanceTab, setAttendanceTab] = useState<'RULES' | 'REPORTS' | 'LOGS'>(initialTab || 'RULES');
+
+  // Sub tab inside 考勤配置: 'CYCLE_AND_RULES' (週期與工時規則配置) vs 'HARDWARE_LOCATION' (打卡設備與地點圍欄)
+  const [rulesSubTab, setRulesSubTab] = useState<'CYCLE_AND_RULES' | 'HARDWARE_LOCATION'>('CYCLE_AND_RULES');
 
   useEffect(() => {
     if (initialTab) {
@@ -34,7 +39,16 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
     }
   }, [initialTab]);
 
-  // Rules State
+  // Attendance Cycle Configuration State (考勤週期配置)
+  const [dayCutoffTime, setDayCutoffTime] = useState<string>(INITIAL_CYCLE_CONFIG.dayCutoffTime || '04:00');
+
+  // Attendance Rules Configuration State (考勤规则配置)
+  const [dailyStandardHours, setDailyStandardHours] = useState<number>(8);
+
+  // Notice Banner for cycle & rules operations
+  const [cycleNotice, setCycleNotice] = useState<string | null>(null);
+
+  // Hardware Location Rules State
   const [beacons, setBeacons] = useState<BeaconRule[]>(INITIAL_BEACONS);
   const [wifis, setWifis] = useState<WifiRule[]>(INITIAL_WIFIS);
   const [gpsFences, setGpsFences] = useState<GpsFenceRule[]>(INITIAL_GPS_FENCES);
@@ -237,6 +251,22 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
     setNewGpsRadius(200);
     setShowAddGpsModal(false);
     triggerSound(900, 'sine', 0.12);
+  };
+
+  // ================= 考勤週期配置 Action Handlers =================
+  const handleSaveCycle = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setCycleNotice(`已保存「跨日排班截止打卡時間」：${dayCutoffTime}`);
+    triggerSound(950, 'sine', 0.12);
+    setTimeout(() => setCycleNotice(null), 3500);
+  };
+
+  // ================= 考勤規則配置 Action Handlers =================
+  const handleSaveRules = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setCycleNotice(`已保存「每日标准工时」：${dailyStandardHours}h`);
+    triggerSound(950, 'sine', 0.12);
+    setTimeout(() => setCycleNotice(null), 3500);
   };
 
   // 3. Action: Run Monthly Batch Job (次月 1 號 02:00 AM 自動跑批歸檔)
@@ -578,11 +608,170 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
         </div>
       )}
 
-      {/* ================= TAB 2: LOCATION RULES (考勤定位規則配置) ================= */}
+      {/* ================= TAB 2: RULES (考勤配置: 考勤週期、考勤規則、打卡硬體與地點) ================= */}
       {attendanceTab === 'RULES' && (
         <div className="space-y-6">
           
-          {/* SECTION 1: VENUE BEACONS */}
+          {/* Sub-tab Navigation Switcher */}
+          <div className="bg-white dark:bg-slate-950 p-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setRulesSubTab('CYCLE_AND_RULES');
+                  triggerSound(750, 'sine', 0.05);
+                }}
+                className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+                  rulesSubTab === 'CYCLE_AND_RULES'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <Calendar size={15} />
+                <span>考勤週期與規則配置</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setRulesSubTab('HARDWARE_LOCATION');
+                  triggerSound(780, 'sine', 0.05);
+                }}
+                className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 ${
+                  rulesSubTab === 'HARDWARE_LOCATION'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                }`}
+              >
+                <MapPin size={15} />
+                <span>打卡硬體與地點圍欄</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  rulesSubTab === 'HARDWARE_LOCATION' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                }`}>
+                  {beacons.length} Beacon / {wifis.length} WiFi / {gpsFences.length} GPS
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Operation Feedback Notice */}
+          {cycleNotice && (
+            <div className="p-3.5 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100 text-xs rounded-2xl flex items-center justify-between gap-2 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-blue-600 shrink-0" />
+                <span className="font-bold">{cycleNotice}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCycleNotice(null)}
+                className="text-blue-400 hover:text-blue-600 cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
+          {/* SUB-VIEW 1: CYCLE CONFIGURATION & WORK HOUR RULES */}
+          {rulesSubTab === 'CYCLE_AND_RULES' && (
+            <div className="space-y-6">
+
+              {/* 考勤週期配置 */}
+              <div className="bg-white dark:bg-slate-950 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-3">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Calendar size={18} className="text-blue-600" />
+                    <span>考勤週期配置</span>
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                      结算周期
+                    </label>
+                    <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200 font-bold">
+                      标准自然月
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                      每周工时制度
+                    </label>
+                    <div className="px-3.5 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-200 font-bold">
+                      每周5天工作制（周一到周五）
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                      跨日排班截止打卡時間
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="time"
+                        value={dayCutoffTime}
+                        onChange={e => setDayCutoffTime(e.target.value)}
+                        className="flex-1 px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-mono font-bold focus:outline-hidden focus:border-blue-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleSaveCycle}
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer transition-colors shrink-0"
+                      >
+                        保存
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 考勤规则配置 */}
+              <div className="bg-white dark:bg-slate-950 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-850 pb-3">
+                  <h3 className="text-sm font-black text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                    <Sliders size={18} className="text-blue-600" />
+                    <span>考勤规则配置</span>
+                  </h3>
+                </div>
+
+                <div className="max-w-xs text-xs">
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                    每日标准工时
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1 flex items-center">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="1"
+                        max="24"
+                        value={dailyStandardHours}
+                        onChange={e => setDailyStandardHours(Number(e.target.value))}
+                        className="w-full pl-3.5 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 font-mono font-bold focus:outline-hidden focus:border-blue-500"
+                      />
+                      <span className="absolute right-3 text-xs font-bold text-slate-400 pointer-events-none">
+                        h
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSaveRules}
+                      className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs cursor-pointer transition-colors shrink-0"
+                    >
+                      保存
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* SUB-VIEW 2: HARDWARE & LOCATION RULES (BEACONS, WIFI, GPS) */}
+          {rulesSubTab === 'HARDWARE_LOCATION' && (
+            <div className="space-y-6">
+              {/* SECTION 1: VENUE BEACONS */}
           <div className="bg-white dark:bg-slate-950 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-850 pb-3">
               <div>
@@ -798,6 +987,9 @@ export const CmsAttendanceManagement: React.FC<CmsAttendanceManagementProps> = (
               </table>
             </div>
           </div>
+
+            </div>
+          )}
 
         </div>
       )}

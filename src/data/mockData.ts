@@ -6,7 +6,7 @@
 import { 
   Booking, BookingStatus, PurposeOption, PurposeCode,
   BeaconRule, WifiRule, GpsConfig, GpsFenceRule, ClockInLog, MonthlyReportSummary, MonthlyReportDetail,
-  VotingCampaign, VoteArticle
+  VotingCampaign, VoteArticle, AttendanceCycleConfig, AttendanceRuleScheme
 } from '../types';
 
 export const PURPOSE_OPTIONS: PurposeOption[] = [
@@ -125,6 +125,85 @@ export const INITIAL_GPS_FENCES: GpsFenceRule[] = [
     centerLng: 114.1731,
     radiusMeters: 150,
     isEnabled: true
+  }
+];
+
+// Initial Attendance Cycle Configuration (考勤週期配置)
+export const INITIAL_CYCLE_CONFIG: AttendanceCycleConfig = {
+  id: 'CYCLE-CFG-DEFAULT',
+  name: '自然月考勤結算週期 (每月1日-月末)',
+  cycleType: 'CALENDAR_MONTH',
+  startDay: 1,
+  endDay: 31,
+  dayCutoffTime: '04:00', // 次日 04:00 AM 前打卡向前歸屬前一個出勤日
+  workDayScheme: '5_DAYS', // 5天工作制 (週一至週五)
+  currentPeriodName: '2026年07月考勤期',
+  currentPeriodRange: '2026.07.01 - 2026.07.31',
+  standardWorkingDays: 22,
+  standardMonthlyHours: 176.0,
+  isAutoArchiveEnabled: true,
+  autoArchiveTime: '次月 1 號 02:00 AM',
+  updatedAt: '2026-07-01 09:00'
+};
+
+// Initial Attendance Work Hour & Evaluation Schemes (考勤規則配置 - 週期內工作滿X小時才算正常)
+export const INITIAL_RULE_SCHEMES: AttendanceRuleScheme[] = [
+  {
+    id: 'SCHEME-001',
+    schemeName: '標準工時制 (行政/財務/後勤)',
+    targetCycleHours: 176, // 週期內累計出勤滿 176 小時才算正常
+    dailyStandardHours: 8.0,
+    halfDayHours: 4.0,
+    standardWorkStartTime: '09:00',
+    standardWorkEndTime: '18:00',
+    gracePeriodMinutes: 15,
+    lateThresholdMinutes: 15,
+    seriousLateThresholdMinutes: 30,
+    earlyLeaveThresholdMinutes: 15,
+    mealDeductionHours: 1.0,
+    maxMonthlyMissingPunches: 3,
+    applicableDepts: ['行政部', '財務部', '人力資源部'],
+    isDefault: true,
+    status: 'ACTIVE',
+    ruleDescription: '固定工時考勤方案。考勤週期內工作累計滿 176.0 小時判定為出勤合格；若未滿 176 小時則標記為工時不足異常。'
+  },
+  {
+    id: 'SCHEME-002',
+    schemeName: '綜合彈性工時制 (綜藝/新媒體/節目製作)',
+    targetCycleHours: 160, // 週期內工作滿 160 小時才算正常 (滿足用戶「比如周期内 工作满X小时才算正常」)
+    dailyStandardHours: 8.0,
+    halfDayHours: 4.0,
+    standardWorkStartTime: '10:00',
+    standardWorkEndTime: '19:00',
+    gracePeriodMinutes: 30,
+    lateThresholdMinutes: 30,
+    seriousLateThresholdMinutes: 60,
+    earlyLeaveThresholdMinutes: 30,
+    mealDeductionHours: 1.0,
+    maxMonthlyMissingPunches: 5,
+    applicableDepts: ['綜藝節目部', 'New Media Group', '製作部', '藝員管理部'],
+    isDefault: false,
+    status: 'ACTIVE',
+    ruleDescription: '彈性綜合工時制，以週期整體工時為考核基準。週期內累計出勤滿 160.0 小時即判定為出勤正常；不足 160 小時按缺工異常標註，超出 160 小時計入加班超額工時儲備。'
+  },
+  {
+    id: 'SCHEME-003',
+    schemeName: '外景及特殊輪班工時制 (外景新聞/工程設施)',
+    targetCycleHours: 168, // 週期內工作滿 168 小時才算正常
+    dailyStandardHours: 8.0,
+    halfDayHours: 4.0,
+    standardWorkStartTime: '08:30',
+    standardWorkEndTime: '17:30',
+    gracePeriodMinutes: 20,
+    lateThresholdMinutes: 20,
+    seriousLateThresholdMinutes: 45,
+    earlyLeaveThresholdMinutes: 20,
+    mealDeductionHours: 1.0,
+    maxMonthlyMissingPunches: 6,
+    applicableDepts: ['外景新聞組', '工程及設施部'],
+    isDefault: false,
+    status: 'ACTIVE',
+    ruleDescription: '外景採訪與電視城工程設施保障組，隨排班彈性出勤。週期內累計出勤滿 168.0 小時為正常合格標準。'
   }
 ];
 

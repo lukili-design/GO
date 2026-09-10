@@ -1128,14 +1128,14 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                 </div>
               </div>
 
-              {/* 互動投票管理 主菜單 */}
+              {/* 活動管理 主菜單 */}
               <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-850">
                 <div className="px-2 py-1 flex items-center gap-2 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   <BarChart2 size={14} className="text-blue-500" />
-                  <span>互動投票系統</span>
+                  <span>活動管理</span>
                 </div>
 
-                <div className="pl-1.5 space-y-1 border-l-2 border-slate-100 dark:border-slate-800/80 ml-2.5">
+                <div className="pl-1.5 space-y-1 border-l-2 border-slate-100 dark:border-slate-850 ml-2.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -1156,7 +1156,17 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                       </span>
                     </span>
                   </button>
+                </div>
+              </div>
 
+              {/* 內容管理 主菜單 */}
+              <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-850">
+                <div className="px-2 py-1 flex items-center gap-2 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <FileText size={14} className="text-purple-500" />
+                  <span>內容管理</span>
+                </div>
+
+                <div className="pl-1.5 space-y-1 border-l-2 border-slate-100 dark:border-slate-850 ml-2.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -1187,23 +1197,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                   <span>考勤管理</span>
                 </div>
 
-                <div className="pl-1.5 space-y-1 border-l-2 border-slate-100 dark:border-slate-800/80 ml-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveCmsTab('ATTENDANCE_LOGS');
-                      triggerSound(800, 'sine', 0.05);
-                    }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      activeCmsTab === 'ATTENDANCE_LOGS'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    <Clock size={15} />
-                    <span className="flex-1 text-left">考勤記錄</span>
-                  </button>
-
+                <div className="pl-1.5 space-y-1 border-l-2 border-slate-100 dark:border-slate-850 ml-2.5">
                   <button
                     type="button"
                     onClick={() => {
@@ -1218,6 +1212,22 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                   >
                     <ShieldCheck size={15} />
                     <span className="flex-1 text-left">考勤配置</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCmsTab('ATTENDANCE_LOGS');
+                      triggerSound(800, 'sine', 0.05);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCmsTab === 'ATTENDANCE_LOGS'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Clock size={15} />
+                    <span className="flex-1 text-left">考勤記錄</span>
                   </button>
 
                   <button

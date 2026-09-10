@@ -126,6 +126,46 @@ export interface GpsConfig {
   isEnabled: boolean;
 }
 
+export type CyclePeriodType = 'CALENDAR_MONTH' | 'CUSTOM_CUTOFF' | 'WEEKLY' | 'BI_WEEKLY';
+export type WorkDayScheme = '5_DAYS' | '5_POINT_5_DAYS' | 'SHIFT_BASED';
+
+export interface AttendanceCycleConfig {
+  id: string;
+  name: string;
+  cycleType: CyclePeriodType;
+  startDay: number;
+  endDay: number;
+  dayCutoffTime: string;
+  workDayScheme: WorkDayScheme;
+  currentPeriodName: string;
+  currentPeriodRange: string;
+  standardWorkingDays: number;
+  standardMonthlyHours: number;
+  isAutoArchiveEnabled: boolean;
+  autoArchiveTime: string;
+  updatedAt: string;
+}
+
+export interface AttendanceRuleScheme {
+  id: string;
+  schemeName: string;
+  targetCycleHours: number; // 週期內工作滿 X 小時才算正常 (如 160 或 176)
+  dailyStandardHours: number;
+  halfDayHours: number;
+  standardWorkStartTime: string;
+  standardWorkEndTime: string;
+  gracePeriodMinutes: number;
+  lateThresholdMinutes: number;
+  seriousLateThresholdMinutes: number;
+  earlyLeaveThresholdMinutes: number;
+  mealDeductionHours: number;
+  maxMonthlyMissingPunches: number;
+  applicableDepts: string[];
+  isDefault: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
+  ruleDescription: string;
+}
+
 export interface MonthlyReportSummary {
   month: string; // e.g. "2026-07"
   monthName: string; // e.g. "2026年7月"

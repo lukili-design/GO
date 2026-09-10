@@ -20,7 +20,7 @@ import {
   CalendarCheck, ArrowUpDown, CheckCircle, AlertTriangle, TrendingUp, PieChart,
   ListOrdered, ExternalLink, Tag, Grid, Columns, LayoutGrid, CheckSquare,
   Square, ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, FileText, Settings2,
-  Sparkle, Move, CheckCheck
+  Sparkle, Move, CheckCheck, ChevronRight
 } from 'lucide-react';
 
 // 🌟 經典大型活動 20~30 投票組件預設模板 (供管理員一鍵快速生成)
@@ -118,8 +118,14 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   onDeleteCampaign,
   triggerSound
 }) => {
-  // Mode: 'LIST' | 'FORM'
-  const [viewMode, setViewMode] = useState<'LIST' | 'FORM'>('LIST');
+  // Mode: 'LIST' (活動總列表) | 'WORKFLOW' (三步流程：生成活動 -> 投票管理/列表 -> 每個投票的編輯頁面)
+  const [viewMode, setViewMode] = useState<'LIST' | 'WORKFLOW'>('LIST');
+
+  // 🌟 3 步核心流程步驟：
+  // 1: 'GENERATE_CAMPAIGN' - 首先是生成活動
+  // 2: 'VOTE_LIST' - 然後是投票管理 (有個投票列表)
+  // 3: 'VOTE_ITEM_EDIT' - 最後再是每個投票的編輯頁面
+  const [workflowStep, setWorkflowStep] = useState<'GENERATE_CAMPAIGN' | 'VOTE_LIST' | 'VOTE_ITEM_EDIT'>('GENERATE_CAMPAIGN');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | VoteCampaignStatus>('ALL');
 
@@ -389,12 +395,13 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     setActiveVoteItemIndex(0);
     setActivePhaseIndex(0);
     setFormErrors([]);
-    setViewMode('FORM');
+    setWorkflowStep('GENERATE_CAMPAIGN');
+    setViewMode('WORKFLOW');
     triggerSound(600, 'sine', 0.1);
   };
 
   // Open Edit Form
-  const handleOpenEdit = (campaign: VotingCampaign) => {
+  const handleOpenEdit = (campaign: VotingCampaign, initialStep: 'GENERATE_CAMPAIGN' | 'VOTE_LIST' = 'GENERATE_CAMPAIGN') => {
     const items = getCampaignVoteItems(campaign);
     const timeRange = getCalculatedCampaignTimeRange(campaign.phases);
     const campaignCopy = JSON.parse(JSON.stringify(campaign));
@@ -412,7 +419,8 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     setActiveVoteItemIndex(0);
     setActivePhaseIndex(0);
     setFormErrors([]);
-    setViewMode('FORM');
+    setWorkflowStep(initialStep);
+    setViewMode('WORKFLOW');
     triggerSound(650, 'sine', 0.1);
   };
 
@@ -949,8 +957,8 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   };
 
   // Save/Submit Campaign Form
-  const handleSaveCampaignSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveCampaignSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!editingCampaign) return;
 
     const errors: string[] = [];
@@ -1008,6 +1016,40 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     onSaveCampaign(finalCampaign);
     setViewMode('LIST');
     triggerSound(880, 'sine', 0.15);
+  };
+
+  // 🌟 流程導航控制：從步驟1進入步驟2 (投票管理列表)
+  const handleProceedToVoteList = () => {
+    if (!editingCampaign) return;
+    if (!editingCampaign.title.trim()) {
+      setFormErrors(['請填寫活動名稱後再進入投票管理！']);
+      triggerSound(300, 'triangle', 0.2);
+      return;
+    }
+    setFormErrors([]);
+    setWorkflowStep('VOTE_LIST');
+    triggerSound(600, 'sine', 0.08);
+  };
+
+  // 🌟 流程導航控制：從步驟2進入步驟3 (進入特定投票項目的編輯頁面)
+  const handleEditVoteItem = (index: number) => {
+    setActiveVoteItemIndex(index);
+    setActivePhaseIndex(0);
+    setWorkflowStep('VOTE_ITEM_EDIT');
+    triggerSound(650, 'sine', 0.08);
+  };
+
+  // 🌟 流程導航控制：從步驟2新增投票項目並直接跳轉至步驟3 (編輯頁面)
+  const handleCreateAndEditVoteItem = () => {
+    handleAddVoteItem();
+    setWorkflowStep('VOTE_ITEM_EDIT');
+  };
+
+  // 🌟 流程導航控制：從步驟3返回步驟2 (投票管理列表)
+  const handleReturnToVoteList = () => {
+    setFormErrors([]);
+    setWorkflowStep('VOTE_LIST');
+    triggerSound(500, 'sine', 0.08);
   };
 
   // 📥 匯出當前活動的投票日誌為 CSV 檔案
@@ -1322,15 +1364,26 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                                 <span>明細</span>
                               </button>
 
-                              {/* 編輯按鈕 */}
+                              {/* 投票管理按鈕 (直接跳轉至步驟2：投票管理列表) */}
                               <button
-                                onClick={() => handleOpenEdit(camp)}
+                                onClick={() => handleOpenEdit(camp, 'VOTE_LIST')}
                                 type="button"
-                                title="編輯投票活動配置"
+                                title="進入該活動的投票管理列表"
+                                className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <Layers size={12} className="text-rose-600 dark:text-rose-400" />
+                                <span>投票管理 ({voteItems.length})</span>
+                              </button>
+
+                              {/* 編輯活動按鈕 (跳轉至步驟1：生成活動設定) */}
+                              <button
+                                onClick={() => handleOpenEdit(camp, 'GENERATE_CAMPAIGN')}
+                                type="button"
+                                title="編輯活動基本設置與排程"
                                 className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                               >
                                 <Edit3 size={12} className="text-blue-600 dark:text-blue-400" />
-                                <span>編輯</span>
+                                <span>編輯活動</span>
                               </button>
 
                               {/* 刪除按鈕 */}
@@ -1361,12 +1414,13 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 視圖二：新建/編輯投票活動表單 (🌟 核心頁面 - 基礎設定 + 賽制階段 + 選項) */}
+      {/* 視圖二：活動配置工作流 (三步：1.生成活動 ➔ 2.投票管理/投票列表 ➔ 3.每個投票的編輯頁面) */}
       {/* ========================================================================= */}
-      {viewMode === 'FORM' && editingCampaign && (
+      {(viewMode === 'WORKFLOW' || viewMode === 'FORM') && editingCampaign && (
         <form onSubmit={handleSaveCampaignSubmit} className="space-y-6">
-          {/* Top Bar */}
-          <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          {/* 🌟 頂部全域主導航與 3 步流程指示器 (Step Flow Navigation Bar) */}
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            {/* 左側：返回列表與活動資訊 */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -1374,34 +1428,119 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   setViewMode('LIST');
                   triggerSound(500, 'sine', 0.08);
                 }}
-                className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 transition-all cursor-pointer"
+                className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 transition-all cursor-pointer shrink-0"
+                title="返回活動總列表"
               >
                 <ArrowLeft size={16} />
               </button>
-              <div>
-                <h2 className="text-base font-black text-slate-900 dark:text-white">
-                  {campaigns.some(c => c.id === editingCampaign.id) ? '編輯投票活動' : '新建投票活動'}
-                </h2>
-                <p className="text-xs text-slate-400 font-mono">
-                  活動編號：{editingCampaign.id}
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono px-2 py-0.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-bold rounded-md border border-blue-200/60 dark:border-blue-900/60">
+                    {editingCampaign.id}
+                  </span>
+                  <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
+                    {editingCampaign.title || '未命名投票活動'}
+                  </h2>
+                </div>
+                <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
+                  {campaigns.some(c => c.id === editingCampaign.id) ? '編輯既有活動' : '生成新活動'} • 共 {getCampaignVoteItems(editingCampaign).length} 個評選投票
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* 中間：核心 3 步導航標籤 */}
+            <div className="flex items-center justify-center gap-1.5 sm:gap-2 p-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 overflow-x-auto">
+              {/* 步驟 1: 生成活動 */}
+              <button
+                type="button"
+                onClick={() => {
+                  setWorkflowStep('GENERATE_CAMPAIGN');
+                  triggerSound(600, 'sine', 0.05);
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                  workflowStep === 'GENERATE_CAMPAIGN'
+                    ? 'bg-blue-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/60'
+                }`}
+              >
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                  workflowStep === 'GENERATE_CAMPAIGN' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}>
+                  1
+                </span>
+                <span>生成活動</span>
+              </button>
+
+              <ChevronRight size={14} className="text-slate-400 shrink-0" />
+
+              {/* 步驟 2: 投票管理 (投票列表) */}
+              <button
+                type="button"
+                onClick={() => {
+                  handleProceedToVoteList();
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                  workflowStep === 'VOTE_LIST'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/60'
+                }`}
+              >
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                  workflowStep === 'VOTE_LIST' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}>
+                  2
+                </span>
+                <span>投票管理 (投票列表)</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                  workflowStep === 'VOTE_LIST' ? 'bg-white/20 text-white' : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
+                }`}>
+                  {getCampaignVoteItems(editingCampaign).length}
+                </span>
+              </button>
+
+              <ChevronRight size={14} className="text-slate-400 shrink-0" />
+
+              {/* 步驟 3: 編輯投票 */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (getCampaignVoteItems(editingCampaign).length > 0) {
+                    setWorkflowStep('VOTE_ITEM_EDIT');
+                    triggerSound(650, 'sine', 0.05);
+                  }
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                  workflowStep === 'VOTE_ITEM_EDIT'
+                    ? 'bg-purple-600 text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/60'
+                }`}
+              >
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                  workflowStep === 'VOTE_ITEM_EDIT' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                }`}>
+                  3
+                </span>
+                <span className="truncate max-w-[120px]">
+                  編輯投票
+                </span>
+              </button>
+            </div>
+
+            {/* 右側：返回列表與保存按鈕 */}
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setViewMode('LIST')}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
-                取消
+                返回列表
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
                 <Check size={15} />
-                <span>保存並發布</span>
+                <span>保存活動</span>
               </button>
             </div>
           </div>
@@ -1430,15 +1569,20 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
           )}
 
           {/* ========================================== */}
-          {/* 活動基礎設置與排程 */}
+          {/* 🌟 步驟 1：生成活動 (全域基礎設置、提交模式、時間排程與活動封面) */}
           {/* ========================================== */}
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                  活動基礎設置與排程
-                </h3>
-              </div>
+          {workflowStep === 'GENERATE_CAMPAIGN' && (
+            <div className="space-y-6">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={18} className="text-blue-500" />
+                    <h3 className="text-sm font-black text-slate-900 dark:text-white">
+                      步驟 1：生成活動 (全域基礎設置與排程)
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-400">第 1 步 / 共 3 步</span>
+                </div>
               <span className="text-xs text-slate-400">全域基礎設定</span>
             </div>
 
@@ -1644,167 +1788,491 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 />
               </div>
             </div>
+
+            {/* 步驟 1 底部操作導航條 */}
+            <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setViewMode('LIST')}
+                className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                返回活動列表
+              </button>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleSaveCampaignSubmit()}
+                  className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                >
+                  保存草稿
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProceedToVoteList}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                >
+                  <span>下一步：投票管理 (投票列表)</span>
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
           </div>
+        )}
 
-          {/* ========================================== */}
-          {/* 🌟 評選投票項目管理 (Multiple VoteItems & Phases) */}
-          {/* ========================================== */}
-          {(() => {
-            const voteItems = getCampaignVoteItems(editingCampaign);
-            const currentItemIndex = Math.min(activeVoteItemIndex, Math.max(0, voteItems.length - 1));
-            const currentItem = voteItems[currentItemIndex] || voteItems[0];
-            const phases = currentItem ? currentItem.phases : [];
-            const safePhaseIndex = Math.min(activePhaseIndex, Math.max(0, phases.length - 1));
-            const curPhase = phases[safePhaseIndex];
+        {/* ========================================================================= */}
+        {/* 🌟 步驟 2 & 步驟 3 的數據上下文與視圖渲染 */}
+        {/* ========================================================================= */}
+        {(workflowStep === 'VOTE_LIST' || workflowStep === 'VOTE_ITEM_EDIT') && (() => {
+          const voteItems = getCampaignVoteItems(editingCampaign);
+          const currentItemIndex = Math.min(activeVoteItemIndex, Math.max(0, voteItems.length - 1));
+          const currentItem = voteItems[currentItemIndex] || voteItems[0];
+          const phases = currentItem ? currentItem.phases : [];
+          const safePhaseIndex = Math.min(activePhaseIndex, Math.max(0, phases.length - 1));
+          const curPhase = phases[safePhaseIndex];
 
-            const updateCurrentItem = (updater: (item: VoteItem) => VoteItem) => {
-              const newItems = [...voteItems];
-              newItems[currentItemIndex] = updater(newItems[currentItemIndex]);
+          const updateCurrentItem = (updater: (item: VoteItem) => VoteItem) => {
+            const newItems = [...voteItems];
+            newItems[currentItemIndex] = updater(newItems[currentItemIndex]);
+            const updated = syncCampaignFromVoteItems({
+              ...editingCampaign,
+              voteItems: newItems
+            });
+            setEditingCampaign(updated);
+          };
+
+          const updateCurrentPhase = (updater: (p: VotePhase) => VotePhase) => {
+            const newItems = [...voteItems];
+            const itemToUpdate = newItems[currentItemIndex];
+            if (itemToUpdate && itemToUpdate.phases[safePhaseIndex]) {
+              itemToUpdate.phases[safePhaseIndex] = updater(itemToUpdate.phases[safePhaseIndex]);
               const updated = syncCampaignFromVoteItems({
                 ...editingCampaign,
                 voteItems: newItems
               });
               setEditingCampaign(updated);
-            };
+            }
+          };
 
-            const updateCurrentPhase = (updater: (p: VotePhase) => VotePhase) => {
-              const newItems = [...voteItems];
-              const itemToUpdate = newItems[currentItemIndex];
-              if (itemToUpdate && itemToUpdate.phases[safePhaseIndex]) {
-                itemToUpdate.phases[safePhaseIndex] = updater(itemToUpdate.phases[safePhaseIndex]);
-                const updated = syncCampaignFromVoteItems({
-                  ...editingCampaign,
-                  voteItems: newItems
-                });
-                setEditingCampaign(updated);
-              }
-            };
+          // 投票列表過濾篩選
+          const filteredVoteItemsWithIndex = voteItems
+            .map((item, originalIndex) => ({ item, originalIndex }))
+            .filter(({ item }) => {
+              const matchesSearch = !voteItemSearchQuery.trim() || 
+                item.title.toLowerCase().includes(voteItemSearchQuery.toLowerCase()) ||
+                (item.description && item.description.toLowerCase().includes(voteItemSearchQuery.toLowerCase())) ||
+                item.phases.some(p => p.options.some(o => o.name.toLowerCase().includes(voteItemSearchQuery.toLowerCase())));
+              const matchesStatus = voteItemStatusFilter === 'ALL' || item.status === voteItemStatusFilter;
+              return matchesSearch && matchesStatus;
+            });
 
-            // Filtered vote items based on search query and status filter
-            const filteredVoteItemsWithIndex = voteItems
-              .map((item, originalIndex) => ({ item, originalIndex }))
-              .filter(({ item }) => {
-                const matchesSearch = !voteItemSearchQuery.trim() || 
-                  item.title.toLowerCase().includes(voteItemSearchQuery.toLowerCase()) ||
-                  (item.description && item.description.toLowerCase().includes(voteItemSearchQuery.toLowerCase())) ||
-                  item.phases.some(p => p.options.some(o => o.name.toLowerCase().includes(voteItemSearchQuery.toLowerCase())));
-                const matchesStatus = voteItemStatusFilter === 'ALL' || item.status === voteItemStatusFilter;
-                return matchesSearch && matchesStatus;
-              });
+          return (
+            <>
+              {/* ========================================================================= */}
+              {/* 🌟 步驟 2：投票管理 (活動專屬投票列表) */}
+              {/* ========================================================================= */}
+              {workflowStep === 'VOTE_LIST' && (
+                <div className="space-y-6">
+                  {/* 頂部：投票管理總結卡片 */}
+                  <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2.5 bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 rounded-xl border border-rose-200/60 dark:border-rose-900/60">
+                          <Layers size={22} />
+                        </div>
+                        <div>
+                          <h3 className="text-base font-black text-slate-900 dark:text-white flex items-center gap-2">
+                            <span>步驟 2：投票管理 (投票列表)</span>
+                            <span className="px-2 py-0.5 bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300 text-[10px] font-bold rounded-md">
+                              第 2 步 / 共 3 步
+                            </span>
+                          </h3>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            本活動共包含 <strong className="text-rose-600 font-bold">{voteItems.length}</strong> 個評選投票項目。您可在此檢視投票清單、新增投票或點擊「編輯投票」進入具體獎項編輯頁面。
+                          </p>
+                        </div>
+                      </div>
 
-            return (
-              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-                {/* Section Header */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
-                      <Award size={18} className="text-rose-500" />
-                      <span>投票組件配置</span>
-                    </h3>
-                    <span className="px-2.5 py-0.5 bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 font-mono text-[11px] font-bold rounded-full border border-rose-200 dark:border-rose-900/60">
-                      已配置 {voteItems.length} 個組件
-                    </span>
+                      <button
+                        type="button"
+                        onClick={() => setWorkflowStep('GENERATE_CAMPAIGN')}
+                        className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1 cursor-pointer shrink-0"
+                      >
+                        <Edit3 size={13} />
+                        <span>修改活動基礎設置 (步驟 1)</span>
+                      </button>
+                    </div>
+
+                    {/* 操作工具條：搜尋、狀態過濾、新增投票、模板、排序 */}
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-4">
+                      <div className="flex flex-wrap items-center gap-2.5 flex-1">
+                        {/* 搜尋框 */}
+                        <div className="relative flex-1 min-w-[200px] max-w-md">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
+                          <input
+                            type="text"
+                            value={voteItemSearchQuery}
+                            onChange={(e) => setVoteItemSearchQuery(e.target.value)}
+                            placeholder="搜尋投票項目名稱或候選人..."
+                            className="w-full pl-9 pr-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-rose-500"
+                          />
+                        </div>
+
+                        {/* 狀態過濾 */}
+                        <select
+                          value={voteItemStatusFilter}
+                          onChange={(e) => setVoteItemStatusFilter(e.target.value as any)}
+                          className="px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-700 dark:text-slate-300 font-bold focus:outline-none"
+                        >
+                          <option value="ALL">全部狀態 ({voteItems.length})</option>
+                          <option value="ACTIVE">進行中</option>
+                          <option value="UPCOMING">未開始</option>
+                          <option value="ENDED">已結束</option>
+                        </select>
+                      </div>
+
+                      {/* 快捷操作按鈕群 */}
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* 調整排序按鈕 */}
+                        <button
+                          type="button"
+                          onClick={() => setShowReorderModal(true)}
+                          className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                          title="調整各投票在前端的排序"
+                        >
+                          <ArrowUpDown size={14} className="text-amber-500" />
+                          <span>調整順序</span>
+                        </button>
+
+                        {/* 一鍵套用經典模板 */}
+                        <button
+                          type="button"
+                          onClick={() => setShowBatchAddModal(true)}
+                          className="px-3.5 py-2 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                          title="套用 TVB 頒獎典禮 20大獎項或音樂盛典模板"
+                        >
+                          <Sparkles size={14} />
+                          <span>一鍵套用模板</span>
+                        </button>
+
+                        {/* ＋ 新增投票按鈕 */}
+                        <button
+                          type="button"
+                          onClick={handleCreateAndEditVoteItem}
+                          className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                        >
+                          <Plus size={15} />
+                          <span>＋ 新增投票</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Top Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                  {/* 🌟 核心：專屬投票列表 (Vote Items Table) */}
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-sm text-slate-900 dark:text-white">
+                          活動投票清單
+                        </span>
+                        <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono text-[11px] font-bold rounded-md">
+                          共 {voteItems.length} 項
+                        </span>
+                      </div>
+                      <span className="text-xs text-slate-400">
+                        點擊「編輯投票」即可單獨進入每個投票的編輯頁面
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/75 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 text-[11px] font-bold uppercase tracking-wider">
+                            <th className="py-3 px-4 w-16 text-center">序號</th>
+                            <th className="py-3 px-4 w-20">封面</th>
+                            <th className="py-3 px-4 min-w-[220px]">投票項目名稱</th>
+                            <th className="py-3 px-4 min-w-[160px]">賽制階段</th>
+                            <th className="py-3 px-4 w-24 text-center">候選人</th>
+                            <th className="py-3 px-4 min-w-[140px]">投票規則</th>
+                            <th className="py-3 px-4 w-20 text-center">狀態</th>
+                            <th className="py-3 px-4 w-24 text-right">累計得票</th>
+                            <th className="py-3 px-4 w-52 text-right">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                          {filteredVoteItemsWithIndex.length === 0 ? (
+                            <tr>
+                              <td colSpan={9} className="py-12 text-center text-slate-400">
+                                <Layers size={36} className="mx-auto mb-2 opacity-30" />
+                                <p className="font-bold text-sm">暫無符合條件的投票項目</p>
+                                <p className="text-xs mt-1 text-slate-500">點擊「＋ 新增投票」或「一鍵套用模板」開始配置！</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredVoteItemsWithIndex.map(({ item, originalIndex }, displayIdx) => {
+                              const totalCandidates = item.phases.reduce((sum, p) => sum + (p.options?.length || 0), 0);
+                              const totalVotes = item.phases.reduce((sum, p) => sum + (p.options?.reduce((s, o) => s + (o.votes || 0), 0) || 0), 0);
+                              const firstPhase = item.phases[0];
+
+                              return (
+                                <tr
+                                  key={item.id || originalIndex}
+                                  className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors"
+                                >
+                                  {/* 序號 */}
+                                  <td className="py-3.5 px-4 text-center">
+                                    <span className="font-mono text-xs font-black text-slate-400">
+                                      #{displayIdx + 1}
+                                    </span>
+                                  </td>
+
+                                  {/* 封面 */}
+                                  <td className="py-3.5 px-4">
+                                    <div className="w-14 h-10 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                                      {item.coverImage ? (
+                                        <img src={item.coverImage} alt={item.title} className="w-full h-full object-cover" />
+                                      ) : editingCampaign.coverImage ? (
+                                        <img src={editingCampaign.coverImage} alt={item.title} className="w-full h-full object-cover opacity-60" />
+                                      ) : (
+                                        <Award size={18} className="text-slate-400" />
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* 投票項目名稱與ID */}
+                                  <td className="py-3.5 px-4">
+                                    <div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                          {item.id}
+                                        </span>
+                                        <span className="font-bold text-slate-900 dark:text-white text-xs hover:text-blue-600 transition-colors">
+                                          {item.title}
+                                        </span>
+                                      </div>
+                                      {item.description && (
+                                        <p className="text-[11px] text-slate-400 line-clamp-1 mt-0.5">
+                                          {item.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* 賽制階段 */}
+                                  <td className="py-3.5 px-4">
+                                    <div className="space-y-0.5">
+                                      <span className="inline-flex items-center gap-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950 px-2 py-0.5 rounded-md border border-purple-200/60 dark:border-purple-800/60">
+                                        <Clock size={11} />
+                                        <span>{item.phases.length} 個階段</span>
+                                      </span>
+                                      <p className="text-[10px] text-slate-400 truncate max-w-[150px]">
+                                        {item.phases.map(p => p.name).join(' ➔ ')}
+                                      </p>
+                                    </div>
+                                  </td>
+
+                                  {/* 候選人數量 */}
+                                  <td className="py-3.5 px-4 text-center">
+                                    <span className="font-mono text-xs font-black text-slate-800 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                                      {totalCandidates} 位
+                                    </span>
+                                  </td>
+
+                                  {/* 投票規則 */}
+                                  <td className="py-3.5 px-4">
+                                    <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                                      <span className="font-bold">
+                                        {firstPhase?.mode === 'MULTIPLE' ? `多選 (最多${firstPhase.maxSelections || 3}票)` : '單選'}
+                                      </span>
+                                      <span className="text-slate-400 block text-[10px]">
+                                        {firstPhase?.frequencyLimit === 'ONCE_DAILY' ? '每日 1 次' : firstPhase?.frequencyLimit === 'ONCE_TOTAL' ? '終生 1 次' : '不限頻率'}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* 狀態 */}
+                                  <td className="py-3.5 px-4 text-center">
+                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                      item.status === 'ACTIVE'
+                                        ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                                        : item.status === 'UPCOMING'
+                                        ? 'bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'
+                                    }`}>
+                                      {item.status === 'ACTIVE' ? '進行中' : item.status === 'UPCOMING' ? '未開始' : '已結束'}
+                                    </span>
+                                  </td>
+
+                                  {/* 累計得票 */}
+                                  <td className="py-3.5 px-4 text-right">
+                                    <span className="font-mono font-bold text-xs text-blue-600 dark:text-blue-400">
+                                      {totalVotes.toLocaleString()}
+                                    </span>
+                                  </td>
+
+                                  {/* 操作按鈕 */}
+                                  <td className="py-3.5 px-4 text-right">
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      {/* 🌟 進入步驟 3：編輯該投票 */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditVoteItem(originalIndex)}
+                                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                                        title="進入編輯此投票的詳細配置與候選人"
+                                      >
+                                        <Edit3 size={12} />
+                                        <span>編輯投票</span>
+                                      </button>
+
+                                      {/* 複製 */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDuplicateVoteItem(originalIndex)}
+                                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 rounded-lg transition-colors cursor-pointer"
+                                        title="複製此投票項目"
+                                      >
+                                        <Copy size={13} />
+                                      </button>
+
+                                      {/* 上移 */}
+                                      <button
+                                        type="button"
+                                        disabled={originalIndex === 0}
+                                        onClick={() => handleMoveVoteItemDirect(originalIndex, 'UP')}
+                                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 disabled:opacity-20 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer"
+                                        title="上移"
+                                      >
+                                        <ArrowUp size={13} />
+                                      </button>
+
+                                      {/* 下移 */}
+                                      <button
+                                        type="button"
+                                        disabled={originalIndex === voteItems.length - 1}
+                                        onClick={() => handleMoveVoteItemDirect(originalIndex, 'DOWN')}
+                                        className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 disabled:opacity-20 disabled:cursor-not-allowed rounded-lg transition-colors cursor-pointer"
+                                        title="下移"
+                                      >
+                                        <ArrowDown size={13} />
+                                      </button>
+
+                                      {/* 刪除 */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveVoteItem(originalIndex)}
+                                        className="p-1 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                        title="刪除此投票"
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* 步驟 2 底部導航條 */}
+                  <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
                     <button
                       type="button"
-                      onClick={handleAddVoteItem}
-                      className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                      onClick={() => setWorkflowStep('GENERATE_CAMPAIGN')}
+                      className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                     >
-                      <Plus size={14} />
-                      <span>＋ 新增組件</span>
+                      <ArrowLeft size={14} />
+                      <span>上一步：生成活動設置</span>
                     </button>
+
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleCreateAndEditVoteItem}
+                        className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <Plus size={14} />
+                        <span>＋ 新增另一個投票</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveCampaignSubmit()}
+                        className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                      >
+                        <Check size={16} />
+                        <span>保存並發布活動</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {/* 雙欄主容器: 左欄為組件清單, 右欄為當前組件配置 */}
-                <div className="flex flex-col lg:flex-row gap-5 items-start">
-                  {/* 左欄：投票組件目錄清單 */}
-                  <div className="w-full lg:w-72 shrink-0 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-3.5 flex flex-col space-y-2.5 sticky top-4 shadow-2xs">
-                    <div className="flex items-center justify-between px-1 pb-2 border-b border-slate-200/80 dark:border-slate-700/80">
-                      <span className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
-                        <Layers size={14} className="text-rose-500" />
-                        <span>組件列表</span>
-                      </span>
-                      <span className="text-[11px] font-mono text-slate-400">
-                        {voteItems.length} 個項目
-                      </span>
+              {/* ========================================================================= */}
+              {/* 🌟 步驟 3：每個投票的編輯頁面 (單個投票專屬配置：基本資料、賽制階段、候選人名單) */}
+              {/* ========================================================================= */}
+              {workflowStep === 'VOTE_ITEM_EDIT' && currentItem && (
+                <div className="space-y-6">
+                  {/* 步驟 3 頂部專屬導航與快速切換欄 */}
+                  <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={handleReturnToVoteList}
+                        className="px-3 py-1.5 bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/60 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-rose-200/60 dark:border-rose-900/60 shadow-2xs"
+                      >
+                        <ArrowLeft size={14} />
+                        <span>返回投票列表</span>
+                      </button>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-mono px-2 py-0.5 bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400 font-bold rounded-md">
+                            {currentItem.id}
+                          </span>
+                          <h3 className="font-black text-slate-900 dark:text-white text-base truncate">
+                            {currentItem.title}
+                          </h3>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          步驟 3：編輯每個投票的詳細配置 • 共 {currentItem.phases.length} 個賽制階段
+                        </p>
+                      </div>
                     </div>
 
-                    {/* 組件按鈕清單 */}
-                    <div className="space-y-1.5 max-h-[580px] overflow-y-auto pr-0.5">
-                      {voteItems.map((item, idx) => {
-                        const isCurrent = currentItemIndex === idx;
-                        const totalCandidates = item.phases.reduce((sum, p) => sum + (p.options?.length || 0), 0);
+                    {/* 快速切換當前編輯的投票項目 */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                      <span className="text-xs text-slate-400 font-bold shrink-0">切換投票：</span>
+                      <select
+                        value={currentItemIndex}
+                        onChange={(e) => {
+                          const newIdx = parseInt(e.target.value);
+                          setActiveVoteItemIndex(newIdx);
+                          setActivePhaseIndex(0);
+                          triggerSound(600, 'sine', 0.05);
+                        }}
+                        className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white focus:outline-none"
+                      >
+                        {voteItems.map((item, idx) => (
+                          <option key={item.id || idx} value={idx}>
+                            #{idx + 1} {item.title} ({item.id})
+                          </option>
+                        ))}
+                      </select>
 
-                        return (
-                          <div
-                            key={item.id || idx}
-                            onClick={() => {
-                              setActiveVoteItemIndex(idx);
-                              setActivePhaseIndex(0);
-                              triggerSound(600, 'sine', 0.05);
-                            }}
-                            className={`group p-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer border flex items-center justify-between gap-2 relative ${
-                              isCurrent
-                                ? 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                                : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200/80 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-750'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0 flex-1">
-                              <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black shrink-0 ${
-                                isCurrent ? 'bg-white text-rose-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
-                              }`}>
-                                #{idx + 1}
-                              </span>
-                              <div className="flex flex-col min-w-0 flex-1">
-                                <span className="truncate text-xs leading-tight font-bold">
-                                  {item.title || `投票 ${idx + 1}`}
-                                </span>
-                                <span className={`text-[10px] font-mono mt-0.5 truncate ${
-                                  isCurrent ? 'text-white/80' : 'text-slate-400'
-                                }`}>
-                                  {item.phases.length} 階段 · {totalCandidates} 候選
-                                </span>
-                              </div>
-                            </div>
-
-                            {voteItems.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRemoveVoteItem(idx);
-                                }}
-                                className={`p-1 rounded-md hover:bg-black/20 transition-colors shrink-0 ${
-                                  isCurrent ? 'text-white/80 hover:text-white' : 'text-slate-400 hover:text-rose-600'
-                                }`}
-                                title="刪除此組件"
-                              >
-                                <X size={13} />
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
+                      <button
+                        type="button"
+                        onClick={handleReturnToVoteList}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                      >
+                        <Check size={14} />
+                        <span>完成此投票編輯</span>
+                      </button>
                     </div>
-
-                    {/* 底部快速新增按鈕 */}
-                    <button
-                      type="button"
-                      onClick={handleAddVoteItem}
-                      className="w-full py-2 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-700 dark:text-slate-300 hover:text-rose-600 dark:hover:text-rose-400 border border-dashed border-slate-300 dark:border-slate-700 hover:border-rose-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <Plus size={13} />
-                      <span>新增投票組件</span>
-                    </button>
                   </div>
 
-                  {/* 右欄：當前選中組件詳情配置 */}
-                  {currentItem && (
-                    <div className="flex-1 min-w-0 w-full p-5 bg-slate-50/80 dark:bg-slate-800/40 rounded-2xl border border-slate-200/90 dark:border-slate-800 space-y-6">
+                  {/* 每個投票的詳細配置編輯區 (Step 3 專屬表單) */}
+                  <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
                     {/* Item Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-200/60 dark:border-slate-700/60 pb-5">
                       {/* 投票ID */}
@@ -2291,7 +2759,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                                     </div>
                                   </div>
 
-                                  {/* 刪除選項按鈕 */}
+                                   {/* 刪除選項按鈕 */}
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveOption(optIdx)}
@@ -2307,32 +2775,45 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-          })()}
 
-          {/* Form Bottom Bar */}
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => setViewMode('LIST')}
-              className="px-6 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
-            >
-              取消
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
-            >
-              <Check size={16} />
-              <span>保存並發布投票活動</span>
-            </button>
-          </div>
-        </form>
-      )}
+                    {/* 步驟 3 底部導航條 */}
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <button
+                        type="button"
+                        onClick={handleReturnToVoteList}
+                        className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                      >
+                        <ArrowLeft size={14} />
+                        <span>返回投票列表</span>
+                      </button>
+
+                      <div className="flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={handleReturnToVoteList}
+                          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                        >
+                          <Check size={15} />
+                          <span>保存此投票並返回列表</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleSaveCampaignSubmit()}
+                          className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                        >
+                          <Check size={16} />
+                          <span>保存整個活動並發布</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()}
+      </form>
+    )}
 
       {/* ========================================================================= */}
       {/* 彈出視窗 1：總體數據統計看板 (Overall Statistics Modal) */}
