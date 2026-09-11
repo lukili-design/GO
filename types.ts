@@ -1,0 +1,365 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export enum BookingStatus {
+  PENDING = 'PENDING',
+  UPCOMING = 'UPCOMING',
+  CHECKED_IN = 'CHECKED_IN',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED'
+}
+
+export interface VisitorInfo {
+  name: string;
+  idNumber?: string; // 證件號 (選填)
+  email?: string; // 郵箱
+}
+
+export type PurposeCode = 'C' | 'D' | 'F' | 'I' | 'M' | 'N' | 'S' | 'V';
+
+export interface PurposeOption {
+  code: PurposeCode;
+  label: string;
+  color: string; // Tailwind color class for badges
+  bgColor: string; // Tailwind background color class for badges
+}
+
+export interface Booking {
+  id: string;
+  visitorName: string;
+  visitorType?: 'SINGLE' | 'MULTI' | 'MULTI_SHARED' | 'MULTI_INDIVIDUAL' | 'TEAM';
+  totalVisitorsCount?: number;
+  company?: string;
+  visitDateTime: string;
+  visitMode?: 'SINGLE_VISIT' | 'MULTI_PASS';
+  startDateTime?: string;
+  endDateTime?: string;
+  licensePlate?: string;
+  licensePlates?: string[];
+  purpose: PurposeCode;
+  destination: string;
+  notes?: string;
+  contactEmail?: string;
+  status: BookingStatus;
+  createdAt: string;
+  checkedInAt?: string;
+  checkedOutAt?: string;
+  invitationCode: string; // Unique alphanumeric code for QR
+  isPendingApproval?: boolean;
+  approvalNotes?: string;
+  isWalkIn?: boolean;
+  associatedBookingId?: string;
+  hostEmployeeId?: string;
+  hostEmployeeName?: string;
+  hostEmployeeDept?: string;
+  contactPerson?: string;
+  responsibleDept?: string;
+  contactPhone?: string;
+  clientTier?: 'NORMAL' | 'VIP';
+  visitorIdCard?: string; // 門禁放行登記之證件號碼 (HKID / Passport / Mainland Travel Permit)
+  visitors?: VisitorInfo[];
+}
+
+// APP Navigation Tabs
+export type AppBottomTab = 'NEWS' | 'BENEFITS' | 'DAILY_WORK' | 'EVENTS' | 'RESOURCES';
+export type DailyWorkSubModule = 'WORKBENCH' | 'CALENDAR' | 'CANTEEN' | 'BUS' | 'VISITOR' | 'CLOCK_IN' | 'CLOCK_RECORD' | 'VOTING';
+
+// Clock-In / Attendance Types
+export type ClockInType = 'IN' | 'OUT';
+export type LocationMethod = 'BEACON' | 'WIFI' | 'GPS';
+export type ClockInStatus = 'NORMAL' | 'LATE' | 'EARLY_LEAVE' | 'MISSING';
+
+export interface ClockInLog {
+  id: string;
+  employeeId: string;
+  employeeNameZh: string;
+  employeeNameEn: string;
+  employeeName?: string;
+  employeeType: string; // 全職員工 / 兼職員工 / 合約員工 / 外判人員
+  dept: string;
+  deviceId?: string; // 設備號 SN / Device ID
+  timestamp: string; // format: "YYYY-MM-DD HH:mm:ss"
+  clockType: 'CLOCK IN' | 'CLOCK OUT' | 'IN' | 'OUT';
+  method: LocationMethod;
+  locationDetail: string;
+  status: 'NORMAL' | 'ABNORMAL' | ClockInStatus;
+  notes?: string;
+  isCorrection?: boolean;
+}
+
+export interface BeaconRule {
+  id: string;
+  name: string;
+  uuid: string;
+  major: string | number;
+  minor?: string | number;
+  rssiThreshold?: number;
+  locationNote?: string;
+  isEnabled: boolean;
+}
+
+export interface WifiRule {
+  id: string;
+  ssid: string;
+  mac: string;
+  locationNote?: string;
+  isEnabled: boolean;
+}
+
+export interface GpsFenceRule {
+  id: string;
+  locationName: string;
+  address?: string;
+  centerLat: number;
+  centerLng: number;
+  radiusMeters: number;
+  isEnabled: boolean;
+}
+
+export interface GpsConfig {
+  centerLat: number;
+  centerLng: number;
+  radiusMeters: number;
+  locationName: string;
+  isEnabled: boolean;
+}
+
+export type CyclePeriodType = 'CALENDAR_MONTH' | 'CUSTOM_CUTOFF' | 'WEEKLY' | 'BI_WEEKLY';
+export type WorkDayScheme = '5_DAYS' | '5_POINT_5_DAYS' | 'SHIFT_BASED';
+
+export interface AttendanceCycleConfig {
+  id: string;
+  name: string;
+  cycleType: CyclePeriodType;
+  startDay: number;
+  endDay: number;
+  dayCutoffTime: string;
+  workDayScheme: WorkDayScheme;
+  currentPeriodName: string;
+  currentPeriodRange: string;
+  standardWorkingDays: number;
+  standardMonthlyHours: number;
+  isAutoArchiveEnabled: boolean;
+  autoArchiveTime: string;
+  updatedAt: string;
+}
+
+export interface AttendanceRuleScheme {
+  id: string;
+  schemeName: string;
+  targetCycleHours: number; // 週期內工作滿 X 小時才算正常 (如 160 或 176)
+  dailyStandardHours: number;
+  halfDayHours: number;
+  standardWorkStartTime: string;
+  standardWorkEndTime: string;
+  gracePeriodMinutes: number;
+  lateThresholdMinutes: number;
+  seriousLateThresholdMinutes: number;
+  earlyLeaveThresholdMinutes: number;
+  mealDeductionHours: number;
+  maxMonthlyMissingPunches: number;
+  applicableDepts: string[];
+  isDefault: boolean;
+  status: 'ACTIVE' | 'INACTIVE';
+  ruleDescription: string;
+}
+
+export interface MonthlyReportSummary {
+  month: string; // e.g. "2026-07"
+  monthName: string; // e.g. "2026年7月"
+  employeeCount: number; // 考勤僱員數
+  totalPunches: number; // 總有效打卡數
+  abnormalCount: number; // 異常打卡人次
+  generatedAt: string;
+}
+
+export interface MonthlyReportDetail {
+  id: string;
+  employeeId: string;
+  employeeNameZh: string;
+  employeeNameEn: string;
+  employeeName?: string;
+  employeeType: string;
+  dept: string;
+  month: string;
+  normalDays: number;
+  abnormalDays: number;
+  missingPunches: number;
+  totalHours: number;
+}
+
+// ==================== TVB GO 互動投票系統 (Voting Campaign Module) ====================
+
+export type VoteResultVisibility = 'AFTER_VOTE' | 'ALWAYS_PUBLIC' | 'ADMIN_ONLY' | 'AFTER_CAMPAIGN_END';
+export type VoteCampaignStatus = 'UPCOMING' | 'ACTIVE' | 'ENDED';
+export type VoteSelectionMode = 'SINGLE' | 'MULTIPLE';
+export type VoteFrequencyLimit = 'ONCE_TOTAL' | 'ONCE_DAILY';
+export type VoteSubmissionMode = 'ALL_REQUIRED' | 'INDIVIDUAL'; // 🌟 投票設置：需完成所有組件才能提交 vs 可單個組件獨立提交
+
+// 活動是獨立容器；投票、簽到、接龍等功能以模組方式關聯到活動。
+export type ActivityStatus = 'DRAFT' | 'PUBLISHED' | 'ENDED';
+export type ActivityModuleType = 'VOTING' | 'CHECK_IN' | 'RELAY' | 'FORM';
+export type ActivityVoterMethod = 'TVB_GO_MEMBER' | 'CSV_IMPORT' | 'INVITATION_CODE';
+
+export interface ActivityEmailParticipant {
+  id: string;
+  name: string;
+  email: string;
+  mailStatus: 'NOT_SENT' | 'SENT' | 'OPENED';
+  voteStatus: 'NOT_VOTED' | 'VOTED';
+}
+
+export interface ActivityEmailInviteConfig {
+  fileName: string;
+  importedAt: string;
+  totalCount: number;
+  validCount: number;
+  errorCount: number;
+  mailStatus: 'NOT_SENT' | 'SENDING' | 'SENT';
+  participants: ActivityEmailParticipant[];
+}
+
+export interface ActivityInviteCodeRecord {
+  code: string;
+  status: 'UNUSED' | 'USED' | 'EXPIRED';
+  usedAt?: string;
+}
+
+export interface ActivityInviteCodeConfig {
+  voteLink: string;
+  generatedAt: string;
+  codes: ActivityInviteCodeRecord[];
+}
+
+export interface ActivityModuleLink {
+  id: string;
+  type: ActivityModuleType;
+  title: string;
+  resourceId?: string; // VOTING 時指向獨立 VotingCampaign；其他模組可在後續接入自己的資源 ID
+  enabled: boolean;
+  order: number;
+}
+
+export interface Activity {
+  id: string;
+  title: string;
+  description: string;
+  rules?: string;
+  coverImage?: string;
+  headerBannerColor?: string;
+  footerBannerImage?: string;
+  footerBannerLink?: string;
+  startTime: string;
+  endTime: string;
+  status: ActivityStatus;
+  submissionMode?: VoteSubmissionMode;
+  voterMethods?: ActivityVoterMethod[];
+  voterCsvFileName?: string;
+  emailInviteConfig?: ActivityEmailInviteConfig;
+  invitationCodeCount?: number;
+  inviteCodeConfig?: ActivityInviteCodeConfig;
+  modules: ActivityModuleLink[];
+  creator: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VoteOption {
+  id: string;
+  name: string; // 選項名稱 (如：01號 - 張學友)
+  avatar: string; // 1:1 縮圖/頭像
+  description: string; // 100字內簡介
+  initialVotes: number; // 初始票數基數
+  votes: number; // 累計實時票數
+}
+
+export interface VotePhase {
+  id: string;
+  name: string; // 階段名稱 (如：40進20 淘汰賽)
+  status: VoteCampaignStatus; // 未開始 / 進行中 / 已結束
+  startTime: string; // YYYY-MM-DD HH:mm:ss
+  endTime: string; // YYYY-MM-DD HH:mm:ss
+  mode: VoteSelectionMode; // 單選 / 多選
+  maxSelections: number; // 多選時最多可選數量 (如: 3)
+  frequencyLimit: VoteFrequencyLimit; // 活動期間每人限投1次 / 每人每天限投1次
+  requireAuth: boolean; // 強制 TVB GO 會員實名投票
+  advanceRuleEnabled?: boolean; // 🌟 是否啟用「前X名自動晉級下個階段」規則
+  advanceTopCount?: number; // 🌟 晉級名額：前 X 名 (如 20 或 7)
+  advanceTargetPhaseId?: string; // 🌟 晉級之目標階段 ID
+  advanceSourcePhaseId?: string; // 🌟 來源階段 ID (從哪個階段導入)
+  advanceSourceTopCount?: number; // 🌟 導入上一階段的前 X 名
+  options: VoteOption[]; // 該階段之候選選項
+}
+
+export interface VoteItem {
+  publicationStatus?: 'DRAFT' | 'PUBLISHED';
+  id: string; // 投票項目 ID (如 ITEM-01, BEST-ACTOR, BEST-DRAMA)
+  title: string; // 投票項目名稱 (如：最佳女演員、最佳男演員、最佳劇集)
+  name?: string; // 投票項目名稱 (兼容別名)
+  description?: string; // 投票項目說明
+  coverImage?: string; // 投票項目專屬封面圖 (可選，留空則默認繼承活動封面)
+  displayStartTime?: string; // 前端開始展示時間
+  displayEndTime?: string; // 前端結束展示時間
+  phases: VotePhase[]; // 該投票項目的階段賽制 (單階段或多階段淘汰賽)
+  currentPhaseId: string; // 當前進行中階段 ID
+  status: VoteCampaignStatus; // 該投票項目狀態 (ACTIVE / UPCOMING / ENDED)
+  totalParticipants?: number;
+  totalVotes?: number;
+}
+
+export interface VotingCampaign {
+  id: string; // 活動 ID (如 CAMP-2026-001)
+  title: string; // 活動名稱
+  coverImage: string; // 16:9 封面圖
+  description: string; // 活動簡介
+  rules?: string; // 活動規則說明
+  resultVisibility: VoteResultVisibility; // 結果公開規則
+  submissionMode?: VoteSubmissionMode; // 🌟 投票設置：所有投票組件都投完才能提交 (ALL_REQUIRED) / 可以單個提交 (INDIVIDUAL)
+  status: VoteCampaignStatus; // 當前整體狀態
+  voteItems?: VoteItem[]; // 🌟 活動下的多個投票項目 (一個活動可以創建多個投票項目)
+  phases: VotePhase[]; // 分階段賽制配置 (解決 40進20、20進7，兼容單一投票賽制)
+  currentPhaseId: string; // 當前進行中階段 ID
+  totalParticipants: number; // 總參與人數
+  totalVotes: number; // 總票數
+  startTime: string; // 活動整體開始時間
+  endTime: string; // 活動整體結束時間
+  creator?: string; // 創建人
+  createdAt: string; // 創建時間
+  updatedAt: string; // 更新時間
+}
+
+export interface VoteLogRecord {
+  id: string; // 投票紀錄單號 (如 VLOG-8921471)
+  campaignId: string; // 所屬活動 ID
+  campaignTitle: string; // 所屬活動名稱
+  voteItemId?: string; // 投票組件 ID (如 ITEM-ACTOR 或 ITEM-01)
+  voteItemTitle?: string; // 投票組件名稱
+  phaseId: string; // 投票階段 ID
+  phaseName: string; // 投票階段名稱
+  voterId: string; // 投票人 ID (如 USR-82910)
+  voterName: string; // 投票人姓名 / 暱稱
+  voterPhone?: string; // 投票人綁定手機號碼 (去敏)
+  voterDevice: string; // 投票終端設備 (iOS App / Android App / Web)
+  voterIp: string; // 投票 IP 地址
+  authType: 'TVB_GO_MEMBER' | 'EMAIL_INVITE' | 'INVITATION_CODE' | 'SMS_VERIFIED' | 'STAFF_SSO' | 'GUEST_DEVICE'; // 認證方式
+  selectedOptionIds: string[]; // 所選選項 ID 列表
+  selectedOptionNames: string[]; // 所選選項名稱列表
+  votedAt: string; // 投票時間 (YYYY-MM-DD HH:mm:ss)
+  status: 'VALID' | 'ABNORMAL_INTERCEPTED' | 'REVOKED'; // 投票審計狀態
+}
+
+export interface VoteArticle {
+  id: string; // 文章 ID (如 ART-2026-001)
+  title: string; // 文章標題
+  category: string; // 分類標籤
+  author: string; // 發布人 / 編輯
+  coverImage: string; // 文章封面
+  summary: string; // 文章摘要
+  content: string; // 文章正文，包含 [VOTE_ID: CAMP-2026-001] 等短碼
+  linkedCampaignIds: string[]; // 關聯之投票活動 ID 列表
+  status: 'PUBLISHED' | 'DRAFT'; // 發布狀態
+  publishDate: string; // 發布日期
+  viewCount: number; // 瀏覽量
+}
