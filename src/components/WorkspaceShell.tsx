@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Booking, BookingStatus, PurposeCode, ClockInLog, VotingCampaign, VoteArticle } from '../types';
+import { Activity, Booking, BookingStatus, PurposeCode, ClockInLog, VotingCampaign, VoteArticle } from '../types';
 import { 
   INITIAL_BOOKINGS, INITIAL_CLOCK_IN_LOGS, INITIAL_BEACONS, INITIAL_WIFIS, 
   INITIAL_GPS_CONFIG, getPurposeOption 
@@ -108,6 +108,52 @@ export const WorkspaceShell: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('tvb_go_voting_campaigns_v5', JSON.stringify(votingCampaigns));
   }, [votingCampaigns]);
+
+  // Activities are independent containers. Existing voting data is linked as modules for backward-compatible migration.
+  const [activities, setActivities] = useState<Activity[]>(() => {
+    const saved = localStorage.getItem('tvb_go_activities_v1');
+    if (saved) {
+      try {
+        const parsed: Activity[] = JSON.parse(saved);
+        return parsed.map(activity => ({ ...activity, rules: activity.rules || '', submissionMode: activity.submissionMode || 'ALL_REQUIRED', voterMethods: activity.voterMethods || ['TVB_GO_MEMBER'], invitationCodeCount: activity.invitationCodeCount || 20, modules: activity.modules.flatMap(module => {
+          if (module.type !== 'VOTING' || !module.resourceId || module.resourceId.includes('::')) return module.type === 'VOTING' ? [module] : [];
+          const campaign = votingCampaigns.find(vote => vote.id === module.resourceId);
+          return campaign?.voteItems?.length
+            ? campaign.voteItems.map(item => ({ ...module, id: `${module.id}-${item.id}`, title: item.title, resourceId: `${campaign.id}::${item.id}` }))
+            : [module];
+        }).map((module, index) => ({ ...module, order: index + 1 })) }));
+      } catch {}
+    }
+    return INITIAL_VOTING_CAMPAIGNS.map((vote, index) => ({
+      id: `ACT-2026-${String(index + 1).padStart(3, '0')}`,
+      title: vote.title.replace(/（.*?）/g, ''),
+      description: vote.description,
+      rules: vote.rules || '',
+      coverImage: vote.coverImage,
+      startTime: vote.startTime,
+      endTime: vote.endTime,
+      status: vote.status === 'ACTIVE' ? 'PUBLISHED' : vote.status === 'ENDED' ? 'ENDED' : 'DRAFT',
+      submissionMode: vote.submissionMode || 'ALL_REQUIRED',
+      voterMethods: ['TVB_GO_MEMBER'],
+      invitationCodeCount: 20,
+      modules: vote.voteItems?.length
+        ? vote.voteItems.map((item, itemIndex) => ({ id: `MOD-${vote.id}-${item.id}`, type: 'VOTING' as const, title: item.title, resourceId: `${vote.id}::${item.id}`, enabled: true, order: itemIndex + 1 }))
+        : [{ id: `MOD-${vote.id}`, type: 'VOTING' as const, title: vote.title, resourceId: vote.id, enabled: true, order: 1 }],
+      creator: vote.creator || '系統管理員 (TVB GO)',
+      createdAt: vote.createdAt,
+      updatedAt: vote.updatedAt,
+    }));
+  });
+
+  useEffect(() => localStorage.setItem('tvb_go_activities_v1', JSON.stringify(activities)), [activities]);
+
+  const handleSaveActivity = (activity: Activity) => {
+    setActivities(prev => prev.some(item => item.id === activity.id)
+      ? prev.map(item => item.id === activity.id ? activity : item)
+      : [activity, ...prev]);
+  };
+
+  const handleDeleteActivity = (id: string) => setActivities(prev => prev.filter(item => item.id !== id));
 
   // Vote Articles State
   const [voteArticles, setVoteArticles] = useState<VoteArticle[]>(() => {
@@ -612,6 +658,9 @@ export const WorkspaceShell: React.FC = () => {
             onUpdateBookingStatus={handleUpdateBookingStatus}
             onCancelBooking={handleCancelBooking}
             onDeleteBooking={handleDeleteBooking}
+            activities={activities}
+            onSaveActivity={handleSaveActivity}
+            onDeleteActivity={handleDeleteActivity}
             votingCampaigns={votingCampaigns}
             onSaveVotingCampaign={handleSaveVotingCampaign}
             onDeleteVotingCampaign={handleDeleteVotingCampaign}

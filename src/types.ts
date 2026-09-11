@@ -198,6 +198,74 @@ export type VoteSelectionMode = 'SINGLE' | 'MULTIPLE';
 export type VoteFrequencyLimit = 'ONCE_TOTAL' | 'ONCE_DAILY';
 export type VoteSubmissionMode = 'ALL_REQUIRED' | 'INDIVIDUAL'; // 🌟 投票設置：需完成所有組件才能提交 vs 可單個組件獨立提交
 
+// 活動是獨立容器；投票、簽到、接龍等功能以模組方式關聯到活動。
+export type ActivityStatus = 'DRAFT' | 'PUBLISHED' | 'ENDED';
+export type ActivityModuleType = 'VOTING' | 'CHECK_IN' | 'RELAY' | 'FORM';
+export type ActivityVoterMethod = 'TVB_GO_MEMBER' | 'CSV_IMPORT' | 'INVITATION_CODE';
+
+export interface ActivityEmailParticipant {
+  id: string;
+  name: string;
+  email: string;
+  mailStatus: 'NOT_SENT' | 'SENT' | 'OPENED';
+  voteStatus: 'NOT_VOTED' | 'VOTED';
+}
+
+export interface ActivityEmailInviteConfig {
+  fileName: string;
+  importedAt: string;
+  totalCount: number;
+  validCount: number;
+  errorCount: number;
+  mailStatus: 'NOT_SENT' | 'SENDING' | 'SENT';
+  participants: ActivityEmailParticipant[];
+}
+
+export interface ActivityInviteCodeRecord {
+  code: string;
+  status: 'UNUSED' | 'USED' | 'EXPIRED';
+  usedAt?: string;
+}
+
+export interface ActivityInviteCodeConfig {
+  voteLink: string;
+  generatedAt: string;
+  codes: ActivityInviteCodeRecord[];
+}
+
+export interface ActivityModuleLink {
+  id: string;
+  type: ActivityModuleType;
+  title: string;
+  resourceId?: string; // VOTING 時指向獨立 VotingCampaign；其他模組可在後續接入自己的資源 ID
+  enabled: boolean;
+  order: number;
+}
+
+export interface Activity {
+  id: string;
+  title: string;
+  description: string;
+  rules?: string;
+  coverImage?: string;
+  headerBannerColor?: string;
+  footerBannerImage?: string;
+  footerBannerLink?: string;
+  startTime: string;
+  endTime: string;
+  status: ActivityStatus;
+  submissionMode?: VoteSubmissionMode;
+  voterMethods?: ActivityVoterMethod[];
+  voterCsvFileName?: string;
+  emailInviteConfig?: ActivityEmailInviteConfig;
+  invitationCodeCount?: number;
+  inviteCodeConfig?: ActivityInviteCodeConfig;
+  modules: ActivityModuleLink[];
+  creator: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface VoteOption {
   id: string;
   name: string; // 選項名稱 (如：01號 - 張學友)
@@ -231,6 +299,8 @@ export interface VoteItem {
   name?: string; // 投票項目名稱 (兼容別名)
   description?: string; // 投票項目說明
   coverImage?: string; // 投票項目專屬封面圖 (可選，留空則默認繼承活動封面)
+  displayStartTime?: string; // 前端開始展示時間
+  displayEndTime?: string; // 前端結束展示時間
   phases: VotePhase[]; // 該投票項目的階段賽制 (單階段或多階段淘汰賽)
   currentPhaseId: string; // 當前進行中階段 ID
   status: VoteCampaignStatus; // 該投票項目狀態 (ACTIVE / UPCOMING / ENDED)
@@ -292,4 +362,3 @@ export interface VoteArticle {
   publishDate: string; // 發布日期
   viewCount: number; // 瀏覽量
 }
-

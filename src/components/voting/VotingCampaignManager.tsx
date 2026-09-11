@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
-  VotingCampaign, VoteItem, VotePhase, VoteOption, VoteResultVisibility, 
+  Activity, VotingCampaign, VoteItem, VotePhase, VoteOption, VoteResultVisibility, 
   VoteCampaignStatus, VoteSelectionMode, VoteFrequencyLimit, VoteLogRecord,
   VoteSubmissionMode
 } from '../../types';
@@ -15,7 +15,7 @@ import {
   Search, Plus, Edit3, BarChart2, Trash2, CheckCircle2, 
   Calendar, Layers, Clock, ShieldCheck, ChevronDown, ChevronUp, 
   Sparkles, Image as ImageIcon, Check, Copy, AlertCircle, ArrowLeft,
-  Users, Award, HelpCircle, Eye, Sliders, X, Upload, RefreshCw, Lock,
+  Users, Award, HelpCircle, Eye, Sliders, X, Upload, RefreshCw, Lock, Vote,
   FileSpreadsheet, Download, Filter, User, Smartphone, Laptop, Globe,
   CalendarCheck, ArrowUpDown, CheckCircle, AlertTriangle, TrendingUp, PieChart,
   ListOrdered, ExternalLink, Tag, Grid, Columns, LayoutGrid, CheckSquare,
@@ -106,7 +106,9 @@ export const VOTE_ITEM_BATCH_PRESETS: { [key: string]: { name: string; icon: str
 };
 
 interface VotingCampaignManagerProps {
+  report?: { campaign: VotingCampaign; logs: VoteLogRecord[]; mode: 'STATS' | 'DETAILS'; onClose: () => void };
   campaigns: VotingCampaign[];
+  activities?: Activity[];
   onSaveCampaign: (campaign: VotingCampaign) => void;
   onDeleteCampaign: (campaignId: string) => void;
   triggerSound: (freq: number, type: OscillatorType, duration: number) => void;
@@ -114,6 +116,8 @@ interface VotingCampaignManagerProps {
 
 export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   campaigns,
+  report,
+  activities = [],
   onSaveCampaign,
   onDeleteCampaign,
   triggerSound
@@ -130,12 +134,12 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   const [statusFilter, setStatusFilter] = useState<'ALL' | VoteCampaignStatus>('ALL');
 
   // Selected campaign for viewing Overall Statistics Modal
-  const [statsCampaign, setStatsCampaign] = useState<VotingCampaign | null>(null);
+  const [statsCampaign, setStatsCampaign] = useState<VotingCampaign | null>(report?.mode === 'STATS' ? report.campaign : null);
   const [statsActiveVoteItemTab, setStatsActiveVoteItemTab] = useState<string>('ALL');
   const [statsActivePhaseTab, setStatsActivePhaseTab] = useState<string>('ALL');
 
   // Selected campaign for viewing Detail Logs Modal
-  const [detailLogsCampaign, setDetailLogsCampaign] = useState<VotingCampaign | null>(null);
+  const [detailLogsCampaign, setDetailLogsCampaign] = useState<VotingCampaign | null>(report?.mode === 'DETAILS' ? report.campaign : null);
   const [detailSearchTerm, setDetailSearchTerm] = useState('');
   const [detailVoteItemFilter, setDetailVoteItemFilter] = useState('ALL');
   const [detailPhaseFilter, setDetailPhaseFilter] = useState('ALL');
@@ -144,6 +148,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
 
   // Stored Vote Logs state (Mock repository for audit inspection)
   const [voteLogs, setVoteLogs] = useState<VoteLogRecord[]>(() => {
+    if (report) return report.logs;
     try {
       const saved = localStorage.getItem('tvb_voting_audit_logs');
       if (saved) return JSON.parse(saved);
@@ -152,6 +157,10 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     }
     return INITIAL_VOTE_LOGS;
   });
+
+  useEffect(() => {
+    if (report && !statsCampaign && !detailLogsCampaign) report.onClose();
+  }, [report, statsCampaign, detailLogsCampaign]);
 
   // Form Editing State
   const [editingCampaign, setEditingCampaign] = useState<VotingCampaign | null>(null);
@@ -319,13 +328,18 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   // Filtered Campaign List
   const filteredCampaigns = useMemo(() => {
     return campaigns.filter(c => {
-      const matchSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      const matchSearch = c.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (c.creator && c.creator.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchStatus = statusFilter === 'ALL' || c.status === statusFilter;
+                          (c.creator && c.creator.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          getCampaignVoteItems(c).some(item => `${item.id} ${item.title}`.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchStatus = statusFilter === 'ALL' || c.status === statusFilter || getCampaignVoteItems(c).some(item => item.status === statusFilter);
       return matchSearch && matchStatus;
     });
   }, [campaigns, searchTerm, statusFilter]);
+
+  const flatVoteRows = useMemo(() => filteredCampaigns.flatMap(campaign => getCampaignVoteItems(campaign)
+    .map((item, itemIndex) => ({ campaign, item, itemIndex }))
+    .filter(({ item }) => statusFilter === 'ALL' || item.status === statusFilter)), [filteredCampaigns, statusFilter]);
 
   // Open Create Form
   const handleOpenCreate = () => {
@@ -401,7 +415,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   };
 
   // Open Edit Form
-  const handleOpenEdit = (campaign: VotingCampaign, initialStep: 'GENERATE_CAMPAIGN' | 'VOTE_LIST' = 'GENERATE_CAMPAIGN') => {
+  const handleOpenEdit = (campaign: VotingCampaign, initialStep: 'GENERATE_CAMPAIGN' | 'VOTE_LIST' | 'VOTE_ITEM_EDIT' = 'GENERATE_CAMPAIGN', itemIndex = 0) => {
     const items = getCampaignVoteItems(campaign);
     const timeRange = getCalculatedCampaignTimeRange(campaign.phases);
     const campaignCopy = JSON.parse(JSON.stringify(campaign));
@@ -416,12 +430,20 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
       createdAt: campaign.createdAt || '2026-08-01 10:00:00',
       updatedAt: campaign.updatedAt || new Date().toISOString().replace('T', ' ').substring(0, 19)
     });
-    setActiveVoteItemIndex(0);
+    setActiveVoteItemIndex(itemIndex);
     setActivePhaseIndex(0);
     setFormErrors([]);
     setWorkflowStep(initialStep);
     setViewMode('WORKFLOW');
     triggerSound(650, 'sine', 0.1);
+  };
+
+  const deleteVoteFromList = (campaign: VotingCampaign, itemIndex: number, title: string) => {
+    if (!confirm(`確定要刪除投票「${title}」嗎？`)) return;
+    const items = getCampaignVoteItems(campaign);
+    if (items.length === 1) onDeleteCampaign(campaign.id);
+    else onSaveCampaign(syncCampaignFromVoteItems({ ...campaign, voteItems: items.filter((_, index) => index !== itemIndex), updatedAt: new Date().toISOString().replace('T', ' ').substring(0, 19) }));
+    triggerSound(350, 'triangle', 0.15);
   };
 
   // 🌟 新增投票項目 (Add VoteItem)
@@ -508,7 +530,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     if (!editingCampaign) return;
     const items = getCampaignVoteItems(editingCampaign);
     if (items.length <= 1) {
-      alert('活動至少需要保留一個投票組件！');
+      alert('此投票至少需要保留一個投票項目！');
       return;
     }
     const target = items[itemIdx];
@@ -661,7 +683,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     if (!editingCampaign || selectedVoteItemIndices.length === 0) return;
     const items = getCampaignVoteItems(editingCampaign);
     if (items.length - selectedVoteItemIndices.length < 1) {
-      alert('活動至少需要保留 1 個投票組件，無法全部刪除！');
+      alert('此投票至少需要保留 1 個投票項目，無法全部刪除！');
       return;
     }
 
@@ -707,7 +729,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     });
     setEditingCampaign(updatedCampaign);
     triggerSound(750, 'sine', 0.1);
-    alert(`✅ 已成功將活動起止時間 (${start} ~ ${end}) 同步給 ${targetIndices.length} 個投票組件！`);
+    alert(`✅ 已成功將投票起止時間 (${start} ~ ${end}) 同步給 ${targetIndices.length} 個投票項目！`);
   };
 
   // 🌟 批量設置組件狀態 (Batch Set Status)
@@ -964,12 +986,12 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     const errors: string[] = [];
 
     if (!editingCampaign.title.trim()) {
-      errors.push('活動名稱不能為空！');
+      errors.push('投票名稱不能為空！');
     }
 
     const items = getCampaignVoteItems(editingCampaign);
     if (items.length === 0) {
-      errors.push('活動必須包含至少一個評選投票項目！');
+      errors.push('投票必須包含至少一個投票項目！');
     }
 
     items.forEach((item, itemIdx) => {
@@ -1022,7 +1044,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   const handleProceedToVoteList = () => {
     if (!editingCampaign) return;
     if (!editingCampaign.title.trim()) {
-      setFormErrors(['請填寫活動名稱後再進入投票管理！']);
+      setFormErrors(['請填寫投票名稱後再進入投票項目管理！']);
       triggerSound(300, 'triangle', 0.2);
       return;
     }
@@ -1056,7 +1078,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   const handleExportCSV = (campaign: VotingCampaign) => {
     const logs = voteLogs.filter(log => log.campaignId === campaign.id);
     if (logs.length === 0) {
-      alert('目前該活動尚無投票日誌明細可匯出！');
+      alert('目前該投票尚無日誌明細可匯出！');
       return;
     }
 
@@ -1130,9 +1152,9 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
     <div className="w-full space-y-6">
 
       {/* ========================================================================= */}
-      {/* 視圖一：投票活動管理列表 (Campaign List) */}
+      {/* 視圖一：獨立投票管理列表 */}
       {/* ========================================================================= */}
-      {viewMode === 'LIST' && (
+      {!report && viewMode === 'LIST' && (
         <div className="space-y-6">
           {/* Header & Actions */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
@@ -1144,10 +1166,10 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 <span className="text-xs text-slate-400">中台配置與數據審計中心</span>
               </div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white mt-1">
-                投票活動管理列表
+                投票管理列表
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                完整管理全台多階段賽制投票活動，支援開始/結束時間排程、創建審計追蹤、總體數據指標與投票日誌明細查詢。
+                每次新增一個獨立投票；建立後可由活動管理一次勾選多個投票，並支援題目、階段、排程與投票日誌設定。
               </p>
             </div>
 
@@ -1157,7 +1179,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer shrink-0"
             >
               <Plus size={16} />
-              <span>新建投票活動</span>
+              <span>新建投票</span>
             </button>
           </div>
 
@@ -1167,7 +1189,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
               <input
                 type="text"
-                placeholder="按活動名稱、編號或創建人搜尋..."
+                placeholder="按投票名稱、編號或創建人搜尋..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:border-blue-500"
@@ -1187,7 +1209,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                   }`}
                 >
-                  {st === 'ALL' && '全部活動'}
+                  {st === 'ALL' && '全部投票'}
                   {st === 'ACTIVE' && '進行中'}
                   {st === 'UPCOMING' && '未開始'}
                   {st === 'ENDED' && '已結束'}
@@ -1196,15 +1218,48 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
             </div>
           </div>
 
-          {/* Data Table */}
+          {/* 每一列代表一個可獨立關聯的投票 */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead><tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold whitespace-nowrap">
+                  <th className="py-3 px-3.5 min-w-[150px]">關聯活動 ID</th><th className="py-3 px-3.5">投票 ID</th><th className="py-3 px-3.5 min-w-[240px]">投票名稱</th><th className="py-3 px-3.5 min-w-[180px]">所屬投票組</th><th className="py-3 px-3.5 text-center">候選項</th><th className="py-3 px-3.5 text-center">狀態</th><th className="py-3 px-3.5">開始時間</th><th className="py-3 px-3.5">結束時間</th><th className="py-3 px-3.5 text-center">累計票數</th><th className="py-3 px-3.5">創建人</th><th className="py-3 px-3.5 text-right sticky right-0 bg-slate-50 dark:bg-slate-800">操作</th>
+                </tr></thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {flatVoteRows.map(({ campaign, item, itemIndex }) => {
+                    const phase = item.phases.find(value => value.id === item.currentPhaseId) || item.phases[0];
+                    const resourceId = `${campaign.id}::${item.id}`;
+                    const linkedActivities = activities.filter(activity => activity.modules.some(module => module.type === 'VOTING' && (module.resourceId === resourceId || module.resourceId === campaign.id)));
+                    const optionCount = item.phases.reduce((max, value) => Math.max(max, value.options.length), 0);
+                    return <tr key={resourceId} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40">
+                      <td className="py-3.5 px-3.5">{linkedActivities.length ? <div className="flex flex-wrap gap-1">{linkedActivities.map(activity => <span key={activity.id} className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-md text-[10px] font-mono font-bold">{activity.id}</span>)}</div> : <span className="text-[10px] text-slate-400">未關聯</span>}</td>
+                      <td className="py-3.5 px-3.5 font-mono font-bold text-blue-600 whitespace-nowrap">{item.id}</td>
+                      <td className="py-3.5 px-3.5"><div className="flex items-center gap-3">{item.coverImage || campaign.coverImage ? <img src={item.coverImage || campaign.coverImage} alt="" className="w-12 h-9 object-cover rounded-lg border border-slate-200"/> : <div className="w-12 h-9 bg-rose-50 rounded-lg flex items-center justify-center"><Vote size={14} className="text-rose-500"/></div>}<div><div className="font-bold text-slate-900 dark:text-white">{item.title}</div><div className="text-[10px] text-slate-400 line-clamp-1">{item.description || '暫無投票說明'}</div></div></div></td>
+                      <td className="py-3.5 px-3.5 text-[10px] text-slate-500">{campaign.title}</td>
+                      <td className="py-3.5 px-3.5 text-center font-mono font-bold">{optionCount}</td>
+                      <td className="py-3.5 px-3.5 text-center"><span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${item.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : item.status === 'UPCOMING' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>{item.status === 'ACTIVE' ? '進行中' : item.status === 'UPCOMING' ? '未開始' : '已結束'}</span></td>
+                      <td className="py-3.5 px-3.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">{phase?.startTime || campaign.startTime || '—'}</td><td className="py-3.5 px-3.5 font-mono text-[10px] text-slate-500 whitespace-nowrap">{phase?.endTime || campaign.endTime || '—'}</td>
+                      <td className="py-3.5 px-3.5 text-center font-mono font-bold text-blue-600">{(item.totalVotes || item.phases.reduce((sum, value) => sum + value.options.reduce((total, option) => total + option.votes, 0), 0)).toLocaleString()}</td>
+                      <td className="py-3.5 px-3.5 text-[10px] text-slate-500 whitespace-nowrap">{campaign.creator || '系統管理員'}</td>
+                      <td className="py-3.5 px-3.5 text-right sticky right-0 bg-white/95 dark:bg-slate-900/95"><div className="flex justify-end gap-1.5"><button type="button" onClick={() => handleOpenEdit(campaign, 'VOTE_ITEM_EDIT', itemIndex)} className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg font-bold text-[11px] flex items-center gap-1"><Edit3 size={12}/>編輯</button><button type="button" onClick={() => deleteVoteFromList(campaign, itemIndex, item.title)} className="p-1.5 text-slate-400 hover:text-rose-600"><Trash2 size={13}/></button></div></td>
+                    </tr>;
+                  })}
+                  {!flatVoteRows.length && <tr><td colSpan={11} className="py-14 text-center text-slate-400"><Award size={34} className="mx-auto mb-2 opacity-40"/>未找到符合條件的投票</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 舊版分組表格保留供資料兼容，不在介面顯示 */}
+          <div className="hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold whitespace-nowrap">
-                    <th className="py-3 px-3.5">活動編號</th>
-                    <th className="py-3 px-3.5 min-w-[200px]">活動名稱</th>
-                    <th className="py-3 px-3.5 text-center">關聯投票組件數量</th>
+                    <th className="py-3 px-3.5">投票編號</th>
+                    <th className="py-3 px-3.5 min-w-[200px]">投票名稱</th>
+                    <th className="py-3 px-3.5 text-center">題目數量</th>
+                    <th className="py-3 px-3.5 min-w-[160px]">引用活動</th>
                     <th className="py-3 px-3.5 text-center">參與人數 / 總票數</th>
                     <th className="py-3 px-3.5 text-center">狀態</th>
                     <th className="py-3 px-3.5">開始時間</th>
@@ -1218,9 +1273,9 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {filteredCampaigns.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="py-14 text-center text-slate-400">
+                      <td colSpan={12} className="py-14 text-center text-slate-400">
                         <Award size={36} className="mx-auto mb-2 opacity-40" />
-                        <p className="font-bold">未找到符合條件的投票活動</p>
+                        <p className="font-bold">未找到符合條件的投票</p>
                         <p className="text-[11px] text-slate-400 mt-1">請嘗試調整搜尋關鍵字或狀態篩選器</p>
                       </td>
                     </tr>
@@ -1234,15 +1289,16 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                       const displayCreator = camp.creator || '系統管理員 (TVB GO)';
                       const displayCreatedAt = camp.createdAt || '2026-08-01 10:00:00';
                       const displayUpdatedAt = camp.updatedAt || displayCreatedAt;
+                      const referencedActivities = activities.filter(activity => activity.modules.some(module => module.type === 'VOTING' && (module.resourceId === camp.id || module.resourceId?.startsWith(`${camp.id}::`))));
 
                       return (
                         <tr key={camp.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                          {/* 活動編號 */}
+                          {/* 投票編號 */}
                           <td className="py-3.5 px-3.5 font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                             {camp.id}
                           </td>
 
-                          {/* 活動名稱 & 封面 */}
+                          {/* 投票名稱 & 封面 */}
                           <td className="py-3.5 px-3.5">
                             <div className="flex items-center gap-3 min-w-[200px]">
                               <img
@@ -1261,6 +1317,15 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                             <span className="font-bold text-slate-800 dark:text-slate-200 font-mono text-xs">
                               {voteItems.length}
                             </span>
+                          </td>
+
+                          {/* 引用活動 */}
+                          <td className="py-3.5 px-3.5">
+                            {referencedActivities.length ? (
+                              <div className="flex flex-wrap gap-1">
+                                {referencedActivities.map(activity => <span key={activity.id} className="px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 rounded-md text-[10px] font-bold" title={activity.id}>{activity.title}</span>)}
+                              </div>
+                            ) : <span className="text-[10px] text-slate-400">未被活動引用</span>}
                           </td>
 
                           {/* 參與人數 / 總票數 */}
@@ -1339,7 +1404,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                                   triggerSound(750, 'sine', 0.08);
                                 }}
                                 type="button"
-                                title="查看活動總體統計數據看板"
+                                title="查看投票總體統計數據看板"
                                 className="px-2.5 py-1 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                               >
                                 <BarChart2 size={13} className="text-emerald-600 dark:text-emerald-400" />
@@ -1368,34 +1433,34 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                               <button
                                 onClick={() => handleOpenEdit(camp, 'VOTE_LIST')}
                                 type="button"
-                                title="進入該活動的投票管理列表"
+                                title="進入投票題目設定"
                                 className="px-2.5 py-1 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                               >
                                 <Layers size={12} className="text-rose-600 dark:text-rose-400" />
-                                <span>投票管理 ({voteItems.length})</span>
+                                <span>題目設定 ({voteItems.length})</span>
                               </button>
 
                               {/* 編輯活動按鈕 (跳轉至步驟1：生成活動設定) */}
                               <button
                                 onClick={() => handleOpenEdit(camp, 'GENERATE_CAMPAIGN')}
                                 type="button"
-                                title="編輯活動基本設置與排程"
+                                title="編輯投票基本設置與排程"
                                 className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                               >
                                 <Edit3 size={12} className="text-blue-600 dark:text-blue-400" />
-                                <span>編輯活動</span>
+                                <span>編輯投票</span>
                               </button>
 
                               {/* 刪除按鈕 */}
                               <button
                                 onClick={() => {
-                                  if (confirm(`確定要刪除「${camp.title}」投票活動嗎？此操作無法撤銷。`)) {
+                                  if (confirm(`確定要刪除「${camp.title}」投票嗎？已關聯活動將保留，但需重新選擇投票。`)) {
                                     onDeleteCampaign(camp.id);
                                     triggerSound(350, 'triangle', 0.15);
                                   }
                                 }}
                                 type="button"
-                                title="刪除投票活動"
+                                title="刪除投票"
                                 className="p-1 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-400 hover:text-rose-600 rounded-lg transition-all cursor-pointer"
                               >
                                 <Trash2 size={13} />
@@ -1429,27 +1494,28 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   triggerSound(500, 'sine', 0.08);
                 }}
                 className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 transition-all cursor-pointer shrink-0"
-                title="返回活動總列表"
+                title="返回投票列表"
               >
                 <ArrowLeft size={16} />
+                <span className="text-xs font-bold">返回</span>
               </button>
-              <div className="min-w-0">
+              <div className="hidden min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-mono px-2 py-0.5 bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-bold rounded-md border border-blue-200/60 dark:border-blue-900/60">
                     {editingCampaign.id}
                   </span>
                   <h2 className="text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
-                    {editingCampaign.title || '未命名投票活動'}
+                    {editingCampaign.title || '未命名投票'}
                   </h2>
                 </div>
                 <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
-                  {campaigns.some(c => c.id === editingCampaign.id) ? '編輯既有活動' : '生成新活動'} • 共 {getCampaignVoteItems(editingCampaign).length} 個評選投票
+                  {campaigns.some(c => c.id === editingCampaign.id) ? '編輯既有投票' : '建立新投票'} • 共 {getCampaignVoteItems(editingCampaign).length} 個投票題目
                 </p>
               </div>
             </div>
 
             {/* 中間：核心 3 步導航標籤 */}
-            <div className="flex items-center justify-center gap-1.5 sm:gap-2 p-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 overflow-x-auto">
+            <div className="hidden items-center justify-center gap-1.5 sm:gap-2 p-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-2xl border border-slate-200/70 dark:border-slate-700/70 overflow-x-auto">
               {/* 步驟 1: 生成活動 */}
               <button
                 type="button"
@@ -1468,7 +1534,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 }`}>
                   1
                 </span>
-                <span>生成活動</span>
+                <span>建立投票</span>
               </button>
 
               <ChevronRight size={14} className="text-slate-400 shrink-0" />
@@ -1490,7 +1556,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 }`}>
                   2
                 </span>
-                <span>投票管理 (投票列表)</span>
+                <span>投票題目清單</span>
                 <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
                   workflowStep === 'VOTE_LIST' ? 'bg-white/20 text-white' : 'bg-rose-100 dark:bg-rose-950 text-rose-600 dark:text-rose-400'
                 }`}>
@@ -1531,7 +1597,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               <button
                 type="button"
                 onClick={() => setViewMode('LIST')}
-                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                className="hidden px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
                 返回列表
               </button>
@@ -1540,7 +1606,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
               >
                 <Check size={15} />
-                <span>保存活動</span>
+                <span>保存投票</span>
               </button>
             </div>
           </div>
@@ -1578,7 +1644,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   <div className="flex items-center gap-2">
                     <Sparkles size={18} className="text-blue-500" />
                     <h3 className="text-sm font-black text-slate-900 dark:text-white">
-                      步驟 1：生成活動 (全域基礎設置與排程)
+                      步驟 1：建立投票 (基礎設置與排程)
                     </h3>
                   </div>
                   <span className="text-xs text-slate-400">第 1 步 / 共 3 步</span>
@@ -1587,10 +1653,10 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* 活動名稱 */}
+              {/* 投票名稱 */}
               <div className="md:col-span-2 space-y-1">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  活動名稱 <span className="text-rose-500">*</span>
+                  投票名稱 <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -1632,7 +1698,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   <option value="AFTER_VOTE">投票後可見 (用戶投完票即刻顯示實時進度)</option>
                   <option value="ALWAYS_PUBLIC">一直公開 (無需投票即可查看當前票數)</option>
                   <option value="ADMIN_ONLY">僅後台可見 (完全隱藏結果，僅管理端可查看)</option>
-                  <option value="AFTER_CAMPAIGN_END">活動結束後公開 (進行中保密，結束後公佈)</option>
+                  <option value="AFTER_CAMPAIGN_END">投票結束後公開 (進行中保密，結束後公佈)</option>
                 </select>
               </div>
 
@@ -1640,7 +1706,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    活動開始時間 <span className="text-rose-500">*</span>
+                    投票開始時間 <span className="text-rose-500">*</span>
                   </label>
                   <button
                     type="button"
@@ -1669,7 +1735,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    活動結束時間 <span className="text-rose-500">*</span>
+                    投票結束時間 <span className="text-rose-500">*</span>
                   </label>
                   <button
                     type="button"
@@ -1697,7 +1763,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               {/* 活動封面圖 */}
               <div className="md:col-span-2 space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  活動封面圖 <span className="text-rose-500">*</span>
+                  投票封面圖 <span className="text-rose-500">*</span>
                 </label>
                 <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
                   <input
@@ -1716,7 +1782,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                     >
                       {editingCampaign.coverImage ? (
                         <>
-                          <img src={editingCampaign.coverImage} alt="活動封面預覽" className="w-full h-full object-cover" />
+                          <img src={editingCampaign.coverImage} alt="投票封面預覽" className="w-full h-full object-cover" />
                           <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-bold transition-opacity">
                             <Upload size={14} />
                             <span className="mt-0.5 text-[10px]">更換封面</span>
@@ -1763,13 +1829,13 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               {/* 活動簡介 */}
               <div className="md:col-span-2 space-y-1">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  活動簡介
+                  投票簡介
                 </label>
                 <textarea
                   rows={3}
                   value={editingCampaign.description}
                   onChange={(e) => setEditingCampaign({ ...editingCampaign, description: e.target.value })}
-                  placeholder="介紹本投票活動之背景、賽制與簡要介紹..."
+                  placeholder="介紹本投票的背景、賽制與簡要說明..."
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -1777,13 +1843,13 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               {/* 活動規則 */}
               <div className="md:col-span-2 space-y-1">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  活動規則
+                  投票規則
                 </label>
                 <textarea
                   rows={4}
                   value={editingCampaign.rules || ''}
                   onChange={(e) => setEditingCampaign({ ...editingCampaign, rules: e.target.value })}
-                  placeholder="詳細填寫活動具體參與規則、防作弊規範、投票時間限制與免責條款說明..."
+                  placeholder="詳細填寫投票規則、防作弊規範、投票時間限制與免責條款說明..."
                   className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
                 />
               </div>
@@ -1796,7 +1862,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 onClick={() => setViewMode('LIST')}
                 className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
               >
-                返回活動列表
+                返回投票列表
               </button>
 
               <div className="flex items-center gap-3">
@@ -1888,7 +1954,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                             </span>
                           </h3>
                           <p className="text-xs text-slate-400 mt-0.5">
-                            本活動共包含 <strong className="text-rose-600 font-bold">{voteItems.length}</strong> 個評選投票項目。您可在此檢視投票清單、新增投票或點擊「編輯投票」進入具體獎項編輯頁面。
+                            此投票共包含 <strong className="text-rose-600 font-bold">{voteItems.length}</strong> 個投票項目。您可在此檢視清單、新增項目或點擊「編輯投票」進入具體設定頁面。
                           </p>
                         </div>
                       </div>
@@ -1899,7 +1965,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                         className="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline flex items-center gap-1 cursor-pointer shrink-0"
                       >
                         <Edit3 size={13} />
-                        <span>修改活動基礎設置 (步驟 1)</span>
+                        <span>修改投票基礎設置 (步驟 1)</span>
                       </button>
                     </div>
 
@@ -1973,7 +2039,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                     <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-black text-sm text-slate-900 dark:text-white">
-                          活動投票清單
+                          投票項目清單
                         </span>
                         <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-mono text-[11px] font-bold rounded-md">
                           共 {voteItems.length} 項
@@ -2184,7 +2250,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                       className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                     >
                       <ArrowLeft size={14} />
-                      <span>上一步：生成活動設置</span>
+                      <span>上一步：投票基礎設置</span>
                     </button>
 
                     <div className="flex items-center gap-3">
@@ -2202,7 +2268,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                         className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
                       >
                         <Check size={16} />
-                        <span>保存並發布活動</span>
+                        <span>保存並發布投票</span>
                       </button>
                     </div>
                   </div>
@@ -2215,7 +2281,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               {workflowStep === 'VOTE_ITEM_EDIT' && currentItem && (
                 <div className="space-y-6">
                   {/* 步驟 3 頂部專屬導航與快速切換欄 */}
-                  <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="hidden bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
                       <button
                         type="button"
@@ -2362,11 +2428,33 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                                 )}
                               </div>
                               <p className="text-[11px] text-slate-400">
-                                支援 JPG, PNG, WebP 格式 (選填，未上傳則默認使用活動封面)
+                                支援 JPG, PNG, WebP 格式 (選填，未上傳則默認使用投票封面)
                               </p>
                             </div>
                           </div>
                         </div>
+                      </div>
+
+                      {/* 展示時間 */}
+                      <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/50 rounded-xl">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                          展示開始時間
+                          <input
+                            type="datetime-local"
+                            value={(currentItem.displayStartTime || currentItem.phases[0]?.startTime || '').replace(' ', 'T').slice(0, 16)}
+                            onChange={(e) => updateCurrentItem(item => ({ ...item, displayStartTime: e.target.value.replace('T', ' ') }))}
+                            className="mt-1.5 w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                          />
+                        </label>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                          展示結束時間
+                          <input
+                            type="datetime-local"
+                            value={(currentItem.displayEndTime || currentItem.phases[0]?.endTime || '').replace(' ', 'T').slice(0, 16)}
+                            onChange={(e) => updateCurrentItem(item => ({ ...item, displayEndTime: e.target.value.replace('T', ' ') }))}
+                            className="mt-1.5 w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono focus:outline-none focus:border-blue-500"
+                          />
+                        </label>
                       </div>
 
                       {/* 投票說明 */}
@@ -2802,7 +2890,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                           className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer"
                         >
                           <Check size={16} />
-                          <span>保存整個活動並發布</span>
+                          <span>保存整個投票並發布</span>
                         </button>
                       </div>
                     </div>
@@ -2878,6 +2966,28 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               </div>
             </div>
 
+            {report && <p className="text-xs text-slate-500">參與人數按現有有效明細去重；票數及排行榜按已關聯投票的各階段數據汇總。</p>}
+            {report && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {([
+                { title: '投票終端設備分佈', field: 'voterDevice', icon: <Smartphone size={14}/> },
+                { title: '投票者認證方式佔比', field: 'authType', icon: <ShieldCheck size={14}/> },
+              ] as const).map(({title, field, icon}) => {
+                const validLogs = report.logs.filter(log => log.status === 'VALID');
+                const groups = new Map<string, number>();
+                const authLabels: Record<string, string> = { TVB_GO_MEMBER: 'TVB GO 會員', SMS_VERIFIED: '手機短訊驗證', STAFF_SSO: '員工 SSO', GUEST_DEVICE: '訪客設備' };
+                validLogs.forEach(log => { const label = field === 'authType' ? authLabels[log.authType] || log.authType : log.voterDevice || '未知設備'; groups.set(label, (groups.get(label) || 0) + 1); });
+                return <div key={field} className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
+                  <h4 className="text-xs font-bold flex items-center gap-1.5">{icon}{title}</h4>
+                  <p className="text-[10px] text-slate-500">按本活動 {validLogs.length} 筆有效投票記錄計算</p>
+                  {[...groups].sort((a,b)=>b[1]-a[1]).map(([label,count]) => { const percent = count / validLogs.length * 100; return <div key={label}>
+                    <div className="flex justify-between gap-3 text-[11px] mb-1"><span>{label}</span><span className="font-mono whitespace-nowrap">{percent.toFixed(1)}%（{count} 筆）</span></div>
+                    <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden"><div className={field==='authType'?'h-full bg-emerald-500':'h-full bg-blue-500'} style={{width: `${percent}%`}}/></div>
+                  </div>; })}
+                  {!validLogs.length && <p className="text-xs text-slate-400 py-4">暫無有效投票記錄</p>}
+                </div>;
+              })}
+            </div>}
+            {!report && <>
             {/* 額外分析維度：終端設備與認證方式佔比 */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* 終端設備分佈 */}
@@ -2955,6 +3065,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               </div>
             </div>
 
+            </>}
             {/* 賽制各階段得票排行榜 */}
             <div className="space-y-4 pt-1">
               <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
@@ -2964,7 +3075,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 </h4>
 
                 {/* 階段切換 Tab */}
-                <div className="flex items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setStatsActivePhaseTab('ALL')}
@@ -3142,7 +3253,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   type="button"
                   onClick={() => handleExportCSV(detailLogsCampaign)}
                   className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                  title="匯出當前活動的全部投票日誌 (CSV 格式)"
+                  title="匯出當前投票的全部日誌 (CSV 格式)"
                 >
                   <Download size={14} />
                   <span>匯出 CSV 明細</span>
