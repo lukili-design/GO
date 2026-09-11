@@ -178,6 +178,15 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
   // Scanner Simulator State
   const [scanInputCode, setScanInputCode] = useState('');
+  const [showTemporaryVisitor, setShowTemporaryVisitor] = useState(false);
+  const [temporaryVisitors, setTemporaryVisitors] = useState<VisitorIdRecord[]>([
+    { id: 'temporary-initial', name: '', idCardType: '香港身份證 (HKID)', idCardNumber: '' },
+  ]);
+  const [temporaryVisitorNotes, setTemporaryVisitorNotes] = useState('');
+  const updateTemporaryVisitor = (id: string, field: 'name' | 'idCardType' | 'idCardNumber', value: string) => {
+    setTemporaryVisitors(prev => prev.map(visitor => visitor.id === id ? { ...visitor, [field]: value } : visitor));
+  };
+  const [temporaryVisitorError, setTemporaryVisitorError] = useState('');
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(
     bookings.find(b => b.status === BookingStatus.UPCOMING || b.isPendingApproval)?.id || bookings[0]?.id || null
   );
@@ -892,16 +901,43 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
     executeClearanceCheckIn(multiVisitorEntries, `[同名核驗正常放行] 已現場比對實體證件，證件號碼已登記備案。`);
   };
 
+  const handleTemporaryVisitor = () => {
+    if (!temporaryVisitors.length || temporaryVisitors.some(visitor => !visitor.name.trim() || !visitor.idCardNumber.trim())) {
+      setTemporaryVisitorError('請至少添加一位訪客，並填寫每位訪客的姓名及證件號。');
+      return;
+    }
+    const scannedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
+    const records: GateScanRecord[] = temporaryVisitors.map(visitor => {
+      const id = 'TEMP-' + crypto.randomUUID();
+      return {
+        id, bookingId: id, invitationCode: '臨時訪客（無預約）',
+        visitorName: visitor.name.trim(), visitorType: 'INDIVIDUAL', company: '臨時訪客',
+        visitorIdCard: visitor.idCardNumber.trim(), idCardType: visitor.idCardType,
+        hostEmployeeName: '—', hostEmployeeDept: '—', destination: '—',
+        gateLocation, operatorGuard, scannedAt, status: BookingStatus.CHECKED_IN,
+        notes: '[臨時訪客・簽入] ' + temporaryVisitorNotes.trim(),
+      };
+    });
+    setScanLogs(prev => [...records, ...prev]);
+    setScanToastMessage({ type: 'success', text: '已成功簽入 ' + records.length + ' 位臨時訪客，已逐人記錄於門崗日誌。' });
+    triggerSound(800, 'sine', 0.15);
+    setTemporaryVisitors([{ id: crypto.randomUUID(), name: '', idCardType: '香港身份證 (HKID)', idCardNumber: '' }]);
+    setTemporaryVisitorNotes('');
+    setTemporaryVisitorError('');
+    setShowTemporaryVisitor(false);
+  };
+
   // Handler: Confirm Visitor Check-Out (掃碼簽出離場)
   const handleConfirmCheckOut = (targetBookingId?: string) => {
     const bId = targetBookingId || activeBooking?.id;
     if (!bId) return;
 
-    const target = bookings.find(b => b.id === bId) || activeBooking;
+    const target = bookings.find(b => b.id === bId) || scanLogs.find(log => log.bookingId === bId) || activeBooking;
+    if (!target || target.status === BookingStatus.CANCELLED) return;
     const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
     // 1. Update Booking Status to COMPLETED (歷史 / 已完成離場)
-    onUpdateBookingStatus(bId, BookingStatus.COMPLETED, nowStr);
+    if (bookings.some(b => b.id === bId)) onUpdateBookingStatus(bId, BookingStatus.COMPLETED, nowStr);
 
     // 2. Update or Add to scanLogs with checkedOutAt timestamp
     setScanLogs(prev => {
@@ -931,7 +967,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
           destination: target.destination || 'TVB 大樓',
           licensePlate: target.licensePlate,
           gateLocation,
-          scannedAt: target.checkedInAt || nowStr,
+          scannedAt: ('checkedInAt' in target ? target.checkedInAt : undefined) || nowStr,
           checkedOutAt: nowStr,
           status: BookingStatus.COMPLETED,
           operatorGuard,
@@ -971,7 +1007,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
   };
 
   const isTodayScanLog = (log: GateScanRecord) => {
-    return isTodayDateString(log.scannedAt);
+    return isTodayDateString(log.scannedAt) || log.scannedAt.startsWith(new Date().toISOString().slice(0, 10));
   };
 
   // Filtered Scan Logs according to Time Range ('TODAY' vs 'ALL')
@@ -1139,7 +1175,67 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                 <Scan size={16} className="shrink-0" />
                 <span className="whitespace-nowrap">🎯 觸發掃碼槍核驗</span>
               </button>
+              <button
+                type="button"
+                onClick={() => { setShowTemporaryVisitor(!showTemporaryVisitor); setTemporaryVisitorError(''); }}
+                aria-expanded={showTemporaryVisitor}
+                aria-controls="temporary-visitor-form"
+                className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl text-xs cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <Plus size={16} /> 臨時訪客
+              </button>
             </div>
+
+            {showTemporaryVisitor && (
+              <form id="temporary-visitor-form" onSubmit={(e) => { e.preventDefault(); handleTemporaryVisitor(); }} className="p-5 bg-blue-50/60 dark:bg-slate-900 border border-blue-200 dark:border-slate-700 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-black text-slate-900 dark:text-slate-100">臨時訪客登記</h4>
+                    <p className="text-xs text-slate-500 mt-1">無需預約，填寫訪客資料後辦理入場。</p>
+                  </div>
+                  <button type="button" onClick={() => setShowTemporaryVisitor(false)} aria-label="關閉臨時訪客登記" className="p-2 text-slate-500 hover:bg-slate-200 rounded-lg"><X size={18} /></button>
+                </div>
+                <div className="space-y-3">
+                  {temporaryVisitors.map((visitor, index) => (
+                    <div key={visitor.id} className="p-4 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">訪客 {index + 1}</span>
+                        <button type="button" onClick={() => setTemporaryVisitors(prev => prev.filter(item => item.id !== visitor.id))} aria-label={'刪除訪客 ' + (index + 1)} className="flex items-center gap-1 p-1 text-xs text-slate-400 hover:text-rose-600"><Trash2 size={14} />刪除</button>
+                      </div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 space-y-2">
+                        <span>訪客姓名 <span className="text-rose-500">*</span></span>
+                        <input autoFocus={index === 0} required value={visitor.name} onChange={e => updateTemporaryVisitor(visitor.id, 'name', e.target.value)} placeholder="請輸入訪客姓名" className="block w-full px-3 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      </label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 space-y-2">
+                          <span>證件類型</span>
+                          <select value={visitor.idCardType} onChange={e => updateTemporaryVisitor(visitor.id, 'idCardType', e.target.value)} className="w-full px-2.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="香港身份證 (HKID)">香港身份證 (HKID)</option>
+                            <option value="護照 (Passport)">護照 (Passport)</option>
+                            <option value="港澳居民來往內地通行證">港澳通行證 (回鄉證)</option>
+                            <option value="中華人民共和國居民身份證">內地居民身份證</option>
+                            <option value="其它有效駕駛執照/工作證">其它駕駛執照/工作證</option>
+                          </select>
+                        </label>
+                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 space-y-2">
+                          <span>證件號 <span className="text-rose-500">*</span></span>
+                          <input required value={visitor.idCardNumber} onChange={e => updateTemporaryVisitor(visitor.id, 'idCardNumber', e.target.value)} placeholder="請輸入證件號 (例: A123456)" className="block w-full px-2.5 py-2.5 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] font-mono font-bold focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </label>
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => setTemporaryVisitors(prev => [...prev, { id: crypto.randomUUID(), name: '', idCardType: '香港身份證 (HKID)', idCardNumber: '' }])} className="w-full flex items-center justify-center gap-2 py-3 border border-dashed border-blue-300 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-100 dark:hover:bg-slate-800"><Plus size={16} />新增訪客</button>
+                </div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 space-y-2">
+                  <span>備註 <span className="font-normal text-slate-400">（選填）</span></span>
+                  <textarea rows={3} value={temporaryVisitorNotes} onChange={e => setTemporaryVisitorNotes(e.target.value)} placeholder="請輸入到訪事由或其他備註" className="block w-full px-3 py-2.5 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </label>
+                {temporaryVisitorError && <p role="alert" className="text-xs text-rose-600">{temporaryVisitorError}</p>}
+                <div className="flex gap-3">
+                  <button type="submit" className="flex-1 flex items-center justify-center gap-2 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl"><UserCheck size={16} />簽入</button>
+                </div>
+              </form>
+            )}
 
             {/* Quick Test Demo Cases */}
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center gap-2 flex-wrap">
@@ -1620,7 +1716,9 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
                         {/* 3. 掃碼簽出時間 */}
                         <td className="p-3.5 whitespace-nowrap">
-                          {log.checkedOutAt ? (
+                          {log.status === BookingStatus.CANCELLED ? (
+                            <span className="text-xs text-rose-600 font-bold">未入場</span>
+                          ) : log.checkedOutAt ? (
                             <span className="font-mono font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
                               {log.checkedOutAt}
                             </span>
@@ -1706,7 +1804,9 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
 
                         {/* 16. 到訪狀態 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
-                          {log.checkedOutAt || log.status === BookingStatus.COMPLETED ? (
+                          {log.status === BookingStatus.CANCELLED ? (
+                            <span className="px-2.5 py-0.5 text-[10.5px] font-black text-rose-700 bg-rose-50 rounded-full border border-rose-200">拒絕入場</span>
+                          ) : log.checkedOutAt || log.status === BookingStatus.COMPLETED ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 text-[10.5px] font-black text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-full border border-slate-300 dark:border-slate-700 whitespace-nowrap">
                               📜 歷史/已簽退
                             </span>
@@ -1720,7 +1820,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                         {/* 17. 安保操作 */}
                         <td className="p-3.5 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1">
-                            {!log.checkedOutAt && (
+                            {!log.checkedOutAt && log.status !== BookingStatus.CANCELLED && (
                               <button
                                 type="button"
                                 onClick={() => handleConfirmCheckOut(log.bookingId)}
@@ -2125,7 +2225,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                     <span className="px-3 py-1 bg-slate-600 text-white font-black text-xs rounded-full shadow-2xs">
                       📜 歷史/已簽退
                     </span>
-                  ) : (viewingSecurityBooking.checkedInAt || viewingSecurityBooking.status === BookingStatus.CHECKED_IN) ? (
+                  ) : (('checkedInAt' in viewingSecurityBooking && viewingSecurityBooking.checkedInAt) || viewingSecurityBooking.status === BookingStatus.CHECKED_IN) ? (
                     <span className="px-3 py-1 bg-emerald-600 text-white font-black text-xs rounded-full shadow-2xs">
                       🟢 進行中 (在大樓內)
                     </span>
@@ -2316,7 +2416,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
               </button>
 
               {/* Direct Check-out Action Button in Modal */}
-              {(!('checkedOutAt' in viewingSecurityBooking) || !viewingSecurityBooking.checkedOutAt) && (
+              {viewingSecurityBooking.status !== BookingStatus.CANCELLED && (!('checkedOutAt' in viewingSecurityBooking) || !viewingSecurityBooking.checkedOutAt) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -2331,7 +2431,7 @@ export const SecurityConsole: React.FC<SecurityConsoleProps> = ({
                 </button>
               )}
 
-              {'invitationCode' in viewingSecurityBooking && (
+              {'invitationCode' in viewingSecurityBooking && !('bookingId' in viewingSecurityBooking && viewingSecurityBooking.bookingId.startsWith('TEMP-')) && (
                 <button
                   type="button"
                   onClick={() => {
