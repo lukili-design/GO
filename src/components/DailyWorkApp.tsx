@@ -6,9 +6,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   AppBottomTab, DailyWorkSubModule, ClockInLog, LocationMethod, 
-  BeaconRule, WifiRule, GpsConfig, VotingCampaign, VoteArticle 
+  BeaconRule, WifiRule, GpsConfig, VotingCampaign, VoteArticle, Activity
 } from '../types';
 import { AppArticleDetailView } from './voting/AppArticleDetailView';
+import { ActivityCard, AppActivityDetail, publishedActivities } from './activity/AppActivityViews';
 import { AppVotingListView } from './voting/AppVotingListView';
 import { AppVotingDetailView } from './voting/AppVotingDetailView';
 import { 
@@ -28,6 +29,7 @@ interface DailyWorkAppProps {
   gpsConfig: GpsConfig;
   onOpenVisitorBooking: () => void;
   onOpenVisitorRecords?: () => void;
+  activities?: Activity[];
   votingCampaigns?: VotingCampaign[];
   voteArticles?: VoteArticle[];
   userVotes?: Record<string, string[]>;
@@ -43,6 +45,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   gpsConfig,
   onOpenVisitorBooking,
   onOpenVisitorRecords,
+  activities = [],
   votingCampaigns = [],
   voteArticles = [],
   userVotes = {},
@@ -63,7 +66,11 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   const [selectedVoteItemId, setSelectedVoteItemId] = useState<string | undefined>(undefined);
 
   // TVB Express News Tab State: 全部 / 公司公告 / 部門消息
-  const [newsTab, setNewsTab] = useState<'ALL' | 'ANNOUNCEMENT' | 'DEPT'>('ALL');
+  const [newsTab, setNewsTab] = useState<'ALL' | 'ANNOUNCEMENT' | 'DEPT' | 'ACTIVITY'>('ALL');
+
+  const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const visibleActivities = publishedActivities(activities);
+  const selectedActivity = visibleActivities.find(a => a.id === selectedActivityId);
 
   // Attendance History Calendar State
   const [selectedYear, setSelectedYear] = useState<string>('2026');
@@ -245,10 +252,15 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   const [canteenCategory, setCanteenCategory] = useState<'A' | 'B' | 'DRINK'>('A');
 
   // If viewing an article detail, render the specialized article reader (Page with single back button)
+  if (selectedActivity) {
+    return <AppActivityDetail key={selectedActivity.id} activity={selectedActivity} campaigns={votingCampaigns} userVotes={userVotes} onVoteSubmit={onVoteSubmit} onBack={() => setSelectedActivityId(null)} />;
+  }
   if (selectedArticle) {
     return (
       <AppArticleDetailView
         article={selectedArticle}
+        activities={visibleActivities}
+        onSelectActivity={activity => setSelectedActivityId(activity.id)}
         campaigns={votingCampaigns}
         onBack={() => setSelectedArticle(null)}
         onSelectCampaign={(campaign, voteItemId) => {
@@ -494,12 +506,16 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 >
                   部門消息
                 </button>
+                <button type="button" onClick={() => setNewsTab('ACTIVITY')} className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg whitespace-nowrap ${newsTab === 'ACTIVITY' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-xs' : 'text-slate-500'}`}>活動</button>
               </div>
 
               {/* 文章內容 (第一篇文章為包含投票組件的專題文章，點擊進入即可看到文章與關聯投票組件效果) */}
               <div className="space-y-2.5 pt-1">
+                {(newsTab === 'ALL' || newsTab === 'ACTIVITY') && visibleActivities.map(activity => <ActivityCard key={activity.id} activity={activity} onOpen={() => setSelectedActivityId(activity.id)}/>)}
+                {newsTab === 'ACTIVITY' && !visibleActivities.length && <div className="p-8 text-center text-sm text-slate-500">暫時沒有已發布活動，請稍後再來看看。</div>}
                 {/* 渲染專題與投票關聯文章 */}
                 {voteArticles
+                  .filter(art => art.status === 'PUBLISHED')
                   .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告'))) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門'))))
                   .map(article => (
                     <div
@@ -687,20 +703,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 </span>
               </button>
 
-              {/* 7. 互動投票專區 (炫彩漸變特色入口) */}
-              <button
-                type="button"
-                onClick={() => setSubModule('VOTING')}
-                className="bg-gradient-to-br from-rose-50/90 to-pink-50/90 dark:from-rose-950/40 dark:to-pink-950/40 hover:from-rose-100/90 hover:to-pink-100/90 border border-rose-200/70 dark:border-rose-900/50 rounded-2xl py-4.5 px-3 flex flex-col items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer shadow-2xs group"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-600 text-white flex items-center justify-center shadow-md shadow-pink-500/25 group-hover:scale-105 transition-transform relative">
-                  <Award size={26} className="stroke-[2.2]" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white animate-ping"></span>
-                </div>
-                <span className="text-xs font-black text-rose-950 dark:text-rose-100 tracking-tight">
-                  互動投票
-                </span>
-              </button>
+
 
             </div>
           </div>

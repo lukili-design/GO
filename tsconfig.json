@@ -1,4 +1,7 @@
 {
+  "include": ["src/**/*", "vite.config.ts"],
+  // Unused legacy copy; the application imports components/voting/VotingCampaignManager.tsx.
+  "exclude": ["node_modules", "dist", ".pnpm-store", "src/VotingCampaignManager.tsx"],
   "compilerOptions": {
     "target": "ES2022",
     "experimentalDecorators": true,

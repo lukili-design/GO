@@ -249,6 +249,7 @@ export interface Activity {
   rules?: string;
   coverImage?: string;
   headerBannerColor?: string;
+  headerBannerImage?: string;
   footerBannerImage?: string;
   footerBannerLink?: string;
   startTime: string;
@@ -342,7 +343,7 @@ export interface VoteLogRecord {
   voterPhone?: string; // 投票人綁定手機號碼 (去敏)
   voterDevice: string; // 投票終端設備 (iOS App / Android App / Web)
   voterIp: string; // 投票 IP 地址
-  authType: 'TVB_GO_MEMBER' | 'SMS_VERIFIED' | 'STAFF_SSO' | 'GUEST_DEVICE'; // 認證方式
+  authType: 'TVB_GO_MEMBER' | 'EMAIL_INVITATION' | 'INVITATION_CODE' | 'SMS_VERIFIED' | 'STAFF_SSO' | 'GUEST_DEVICE'; // 認證方式（保留舊記錄類型）
   selectedOptionIds: string[]; // 所選選項 ID 列表
   selectedOptionNames: string[]; // 所選選項名稱列表
   votedAt: string; // 投票時間 (YYYY-MM-DD HH:mm:ss)
@@ -358,6 +359,7 @@ export interface VoteArticle {
   summary: string; // 文章摘要
   content: string; // 文章正文，包含 [VOTE_ID: CAMP-2026-001] 等短碼
   linkedCampaignIds: string[]; // 關聯之投票活動 ID 列表
+  linkedActivityIds?: string[]; // 關聯活動 ID，舊文章可透過投票關係推導
   status: 'PUBLISHED' | 'DRAFT'; // 發布狀態
   publishDate: string; // 發布日期
   viewCount: number; // 瀏覽量

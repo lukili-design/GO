@@ -4,8 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { VoteArticle, VotingCampaign } from '../../types';
+import { VoteArticle, VotingCampaign, Activity } from '../../types';
 import { getCampaignVoteItems } from '../../utils/votingHelpers';
+import { ActivityCard } from '../activity/AppActivityViews';
 import { AppVotingWidget } from './AppVotingWidget';
 import { 
   ArrowLeft, Share2, Heart, MessageSquare, Bookmark, 
@@ -16,6 +17,8 @@ import {
 interface AppArticleDetailViewProps {
   article: VoteArticle;
   campaigns: VotingCampaign[];
+  activities?: Activity[];
+  onSelectActivity?: (activity: Activity) => void;
   onBack: () => void;
   onSelectCampaign?: (campaign: VotingCampaign, voteItemId?: string) => void;
   onVoteSubmit?: (campaignId: string, phaseId: string, optionIds: string[]) => void;
@@ -26,6 +29,8 @@ interface AppArticleDetailViewProps {
 export const AppArticleDetailView: React.FC<AppArticleDetailViewProps> = ({
   article,
   campaigns,
+  activities = [],
+  onSelectActivity,
   onBack,
   onSelectCampaign,
   onVoteSubmit,
@@ -56,6 +61,7 @@ export const AppArticleDetailView: React.FC<AppArticleDetailViewProps> = ({
   };
 
   // Parse article content and replace [VOTE_ID: xxx] with voting cards
+  const linkedActivities = activities.filter(activity => article.linkedActivityIds?.includes(activity.id) || (!article.linkedActivityIds && activity.modules.some(module => module.type === 'VOTING' && (article.linkedCampaignIds || []).includes((module.resourceId || '').split('::')[0]))));
   const contentParts = article.content.split(/(\[VOTE_ID:\s*[^\]]+\])/g);
 
   return (
@@ -154,9 +160,11 @@ export const AppArticleDetailView: React.FC<AppArticleDetailViewProps> = ({
 
         {/* Dynamic Body Rendering: 正文直接白底黑字連續閱讀，只有投票卡片保持卡片樣式 */}
         <div className="space-y-4 pt-1">
+          {linkedActivities.map(activity => <ActivityCard key={activity.id} activity={activity} onOpen={() => onSelectActivity?.(activity)}/>)}
           {contentParts.map((part, idx) => {
             const match = part.match(/\[VOTE_ID:\s*([^\]]+)\]/);
             if (match) {
+              if (onSelectActivity) return null;
               const campaignId = match[1].trim();
               const targetCampaign = campaigns.find(c => c.id === campaignId);
 

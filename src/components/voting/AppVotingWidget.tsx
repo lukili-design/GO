@@ -20,6 +20,7 @@ interface AppVotingWidgetProps {
   onRequireLogin?: () => void;
   triggerSound?: (freq: number, type: OscillatorType, duration: number) => void;
   initialVoteItemId?: string;
+  hideHeader?: boolean;
 }
 
 export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
@@ -29,7 +30,8 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
   isLoggedIn = true,
   onRequireLogin,
   triggerSound,
-  initialVoteItemId
+  initialVoteItemId,
+  hideHeader = false
 }) => {
   // Extract all VoteItems
   const voteItems = getCampaignVoteItems(campaign);
@@ -123,12 +125,16 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
   // 預設第 1、第 2 個投票 tab 為已完成投票狀態，第 3、第 4、第 5 個為未投票狀態
   const [votedItemsMap, setVotedItemsMap] = useState<Record<string, string[]>>(() => {
     const initialMap: Record<string, string[]> = {};
-    if (voteItems.length >= 1 && voteItems[0]?.phases?.[0]?.options?.[0]?.id) {
+    if (!hideHeader && voteItems.length >= 1 && voteItems[0]?.phases?.[0]?.options?.[0]?.id) {
       initialMap[voteItems[0].id] = [voteItems[0].phases[0].options[0].id];
     }
-    if (voteItems.length >= 2 && voteItems[1]?.phases?.[0]?.options?.[0]?.id) {
+    if (!hideHeader && voteItems.length >= 2 && voteItems[1]?.phases?.[0]?.options?.[0]?.id) {
       initialMap[voteItems[1].id] = [voteItems[1].phases[0].options[0].id];
     }
+    if (hideHeader) voteItems.forEach(item => {
+      const ids = item.phases.flatMap(phase => phase.options.map(option => option.id)).filter(id => userVotedOptionIds.includes(id));
+      if (ids.length) initialMap[item.id] = ids;
+    });
     return initialMap;
   });
 
@@ -418,14 +424,14 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
     : (voteItems.findIndex(v => v.id === activeVoteItemId) + 1 || 1);
 
   return (
-    <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden font-sans select-none transition-all">
+    <div className={hideHeader ? 'activity-voting-flat w-full font-sans' : 'w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md overflow-hidden font-sans select-none transition-all'}>
       
       {/* ========================================================================= */}
       {/* 頂部封面圖與投票狀態（進行中） */}
       {/* ========================================================================= */}
-      <div className="relative w-full h-40 sm:h-48 bg-slate-950 overflow-hidden">
+      <div className={`relative w-full h-40 sm:h-48 bg-slate-950 overflow-hidden ${hideHeader ? 'hidden' : ''}`}>
         <img
-          src={campaign.coverImage}
+          src={campaign.coverImage || undefined}
           alt={campaign.title}
           className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-700"
         />

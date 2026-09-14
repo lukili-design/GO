@@ -233,7 +233,7 @@ export const WorkspaceShell: React.FC = () => {
     // 1. Record user vote
     setUserVotes(prev => ({
       ...prev,
-      [campaignId]: optionIds
+      [campaignId]: Array.from(new Set([...(prev[campaignId] || []), ...optionIds]))
     }));
 
     // 2. Increment votes in the campaign
@@ -256,6 +256,15 @@ export const WorkspaceShell: React.FC = () => {
       });
       return {
         ...camp,
+        voteItems: camp.voteItems?.map(item => ({
+          ...item,
+          phases: item.phases.map(phase => phase.id !== phaseId ? phase : {
+            ...phase,
+            options: phase.options.map(option => optionIds.includes(option.id) ? { ...option, votes: option.votes + 1 } : option)
+          }),
+          totalVotes: (item.totalVotes || item.phases.reduce((sum, phase) => sum + phase.options.reduce((total, option) => total + option.votes, 0), 0)) + item.phases.filter(phase => phase.id === phaseId).reduce((sum, phase) => sum + phase.options.filter(option => optionIds.includes(option.id)).length, 0)
+        })),
+        totalVotes: camp.totalVotes + optionIds.length,
         totalParticipants: camp.totalParticipants + 1,
         phases: updatedPhases
       };
@@ -758,6 +767,7 @@ export const WorkspaceShell: React.FC = () => {
                         onOpenVisitorBooking={() => setMobileView('FORM')}
                         onOpenVisitorRecords={() => setMobileView('RECORDS')}
                         votingCampaigns={votingCampaigns}
+                        activities={activities}
                         voteArticles={voteArticles}
                         userVotes={userVotes}
                         onVoteSubmit={handleVoteSubmit}

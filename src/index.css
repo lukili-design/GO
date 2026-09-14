@@ -12,6 +12,18 @@
   font-weight: 700;
 }
 
+.activity-voting-flat > div {
+  background: transparent;
+  color: inherit;
+  padding-left: 0;
+  padding-right: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.activity-voting-flat h3,
+.activity-voting-flat p {
+  color: inherit;
+}
 .secondary-action {
   display: inline-flex;
   align-items: center;
