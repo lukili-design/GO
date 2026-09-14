@@ -257,6 +257,8 @@ export interface Activity {
   status: ActivityStatus;
   submissionMode?: VoteSubmissionMode;
   voterMethods?: ActivityVoterMethod[];
+  voteNotificationEmails?: string; // Comma-separated recipients for daily voting statistics
+  voteNotificationTime?: string; // HH:mm:ss, Asia/Hong_Kong
   voterCsvFileName?: string;
   emailInviteConfig?: ActivityEmailInviteConfig;
   invitationCodeCount?: number;

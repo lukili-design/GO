@@ -9,7 +9,7 @@ import {
   INITIAL_BOOKINGS, INITIAL_CLOCK_IN_LOGS, INITIAL_BEACONS, INITIAL_WIFIS, 
   INITIAL_GPS_CONFIG, getPurposeOption 
 } from '../data/mockData';
-import { INITIAL_VOTING_CAMPAIGNS, INITIAL_VOTE_ARTICLES } from '../data/voteMockData';
+import { INITIAL_VOTING_CAMPAIGNS as ORIGINAL_VOTING_CAMPAIGNS, INITIAL_VOTE_ARTICLES } from '../data/voteMockData';
 import { BookingForm } from './BookingForm';
 import { BookingRecords } from './BookingRecords';
 import { InvitationCard } from './InvitationCard';
@@ -24,6 +24,10 @@ import {
   ArrowRight, MapPin, Sparkles, Building, User, Info, SmartphoneIcon, 
   ExternalLink, Laptop, Monitor, Sliders, Database, Calendar, LogOut
 } from 'lucide-react';
+
+import { createActivityDemos, includeMissingActivityDemos } from '../data/activityDemos';
+const activityDemos = createActivityDemos(ORIGINAL_VOTING_CAMPAIGNS);
+const INITIAL_VOTING_CAMPAIGNS = [...ORIGINAL_VOTING_CAMPAIGNS, ...activityDemos.campaigns];
 
 export const WorkspaceShell: React.FC = () => {
   // Authentication State
@@ -115,16 +119,16 @@ export const WorkspaceShell: React.FC = () => {
     if (saved) {
       try {
         const parsed: Activity[] = JSON.parse(saved);
-        return parsed.map(activity => ({ ...activity, rules: activity.rules || '', submissionMode: activity.submissionMode || 'ALL_REQUIRED', voterMethods: activity.voterMethods || ['TVB_GO_MEMBER'], invitationCodeCount: activity.invitationCodeCount || 20, modules: activity.modules.flatMap(module => {
+        return includeMissingActivityDemos(parsed.map(activity => ({ ...activity, rules: activity.rules || '', submissionMode: activity.submissionMode || 'ALL_REQUIRED', voterMethods: activity.voterMethods || ['TVB_GO_MEMBER'], invitationCodeCount: activity.invitationCodeCount || 20, modules: activity.modules.flatMap(module => {
           if (module.type !== 'VOTING' || !module.resourceId || module.resourceId.includes('::')) return module.type === 'VOTING' ? [module] : [];
           const campaign = votingCampaigns.find(vote => vote.id === module.resourceId);
           return campaign?.voteItems?.length
             ? campaign.voteItems.map(item => ({ ...module, id: `${module.id}-${item.id}`, title: item.title, resourceId: `${campaign.id}::${item.id}` }))
             : [module];
-        }).map((module, index) => ({ ...module, order: index + 1 })) }));
+        }).map((module, index) => ({ ...module, order: index + 1 })) })), activityDemos.activities);
       } catch {}
     }
-    return INITIAL_VOTING_CAMPAIGNS.map((vote, index) => ({
+    return includeMissingActivityDemos(ORIGINAL_VOTING_CAMPAIGNS.map((vote, index) => ({
       id: `ACT-2026-${String(index + 1).padStart(3, '0')}`,
       title: vote.title.replace(/（.*?）/g, ''),
       description: vote.description,
@@ -142,7 +146,7 @@ export const WorkspaceShell: React.FC = () => {
       creator: vote.creator || '系統管理員 (TVB GO)',
       createdAt: vote.createdAt,
       updatedAt: vote.updatedAt,
-    }));
+    })), activityDemos.activities);
   });
 
   useEffect(() => localStorage.setItem('tvb_go_activities_v1', JSON.stringify(activities)), [activities]);

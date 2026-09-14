@@ -509,10 +509,11 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 <button type="button" onClick={() => setNewsTab('ACTIVITY')} className={`flex-1 py-1.5 px-2 text-xs font-bold rounded-lg whitespace-nowrap ${newsTab === 'ACTIVITY' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-xs' : 'text-slate-500'}`}>活動</button>
               </div>
 
+
               {/* 文章內容 (第一篇文章為包含投票組件的專題文章，點擊進入即可看到文章與關聯投票組件效果) */}
               <div className="space-y-2.5 pt-1">
-                {(newsTab === 'ALL' || newsTab === 'ACTIVITY') && visibleActivities.map(activity => <ActivityCard key={activity.id} activity={activity} onOpen={() => setSelectedActivityId(activity.id)}/>)}
-                {newsTab === 'ACTIVITY' && !visibleActivities.length && <div className="p-8 text-center text-sm text-slate-500">暫時沒有已發布活動，請稍後再來看看。</div>}
+                {(newsTab === 'ALL' || newsTab === 'ACTIVITY') && visibleActivities.map(activity => <ActivityCard key={activity.id} activity={activity} campaigns={votingCampaigns} onOpen={() => setSelectedActivityId(activity.id)}/>)}
+                {newsTab === 'ACTIVITY' && !visibleActivities.length && <div className="p-8 text-center text-sm text-slate-500">暫時沒有已發布的活動。</div>}
                 {/* 渲染專題與投票關聯文章 */}
                 {voteArticles
                   .filter(art => art.status === 'PUBLISHED')

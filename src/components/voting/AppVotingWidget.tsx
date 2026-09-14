@@ -465,7 +465,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
         {/* 活動主標題 */}
         <div className="absolute bottom-3 left-3 right-3 z-10 text-white space-y-1">
-          <h2 className="text-base sm:text-lg font-black tracking-tight leading-snug drop-shadow-md line-clamp-1">
+          <h2 className="text-base sm:text-lg font-black tracking-tight leading-snug drop-shadow-md whitespace-pre-wrap break-words">
             {campaign.title}
           </h2>
           <div className="flex items-center gap-2 text-xs text-slate-200 font-medium">
@@ -541,9 +541,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
             {currentVoteItemTitle}
           </h3>
           {currentVoteItem.description && (
-            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-              {currentVoteItem.description}
-            </p>
+            <VoteIntroduction key={currentVoteItem.id} text={currentVoteItem.description}/>
           )}
         </div>
 
@@ -552,8 +550,6 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
           <span className="px-2 py-0.5 rounded-md font-bold text-xs bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60">
             {currentPhase.mode === 'SINGLE' ? '單選' : `多選(最多可選${currentPhase.maxSelections || 3}項)`}
           </span>
-          <span className="text-slate-400">•</span>
-          <span className="text-slate-500 dark:text-slate-400 font-medium">候選項目共 {currentPhase.options.length} 項</span>
         </div>
       </div>
 
@@ -621,14 +617,14 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <span className={`font-black text-xs sm:text-sm truncate ${
+                          <span className={`font-black text-xs sm:text-sm whitespace-pre-wrap break-words ${
                             isSelected ? 'text-purple-700 dark:text-purple-300' : 'text-slate-900 dark:text-white'
                           }`}>
                             {option.name}
                           </span>
                         </div>
                         {option.description && (
-                          <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-pre-wrap break-words mt-0.5">
                             {option.description}
                           </p>
                         )}
@@ -872,7 +868,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
               <div className="text-[11px] font-bold text-slate-400">已提交評選項目：</div>
               {voteItems.map((v, i) => (
                 <div key={v.id || i} className="flex items-center justify-between text-slate-700 dark:text-slate-200">
-                  <span className="truncate">投票 {i + 1}. {v.title || v.name}</span>
+                  <span className="whitespace-pre-wrap break-words">投票 {i + 1}. {v.title || v.name}</span>
                   <Check size={13} className="text-emerald-500 shrink-0" />
                 </div>
               ))}
@@ -932,4 +928,26 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
     </div>
   );
+};
+
+const VoteIntroduction: React.FC<{ text: string }> = ({ text }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const paragraph = React.useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    const element = paragraph.current;
+    if (!element) return;
+    const measure = () => {
+      const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
+      setOverflows(element.scrollHeight > lineHeight * 2 + 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [text, expanded]);
+  return <div>
+    <p ref={paragraph} className={`text-xs text-slate-600 dark:text-slate-400 break-words leading-6 ${expanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>{text}</p>
+    {(overflows || expanded) && <button type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)} className="py-1 text-xs font-bold text-blue-600 dark:text-blue-400">{expanded ? '收起' : '展開'}</button>}
+  </div>;
 };

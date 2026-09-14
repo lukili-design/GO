@@ -2,7 +2,7 @@ import React from 'react';
 import { Activity, VoteItem, VotingCampaign } from '../../types';
 import { getCampaignVoteItems } from '../../utils/votingHelpers';
 import { AppVotingWidget } from '../voting/AppVotingWidget';
-import { ArrowLeft, Calendar, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Calendar, ChevronRight, Users, Award } from 'lucide-react';
 
 export function activityState(activity: Activity, now = Date.now()) {
   if (activity.status === 'DRAFT') return '草稿';
@@ -16,16 +16,24 @@ export function publishedActivities(activities: Activity[]) {
   return activities.filter(a => a.status !== 'DRAFT').sort((a, b) => order[activityState(a)] - order[activityState(b)] || b.startTime.localeCompare(a.startTime));
 }
 
-export const ActivityCard: React.FC<{ activity: Activity; onOpen: () => void }> = ({ activity, onOpen }) => {
+export const ActivityCard: React.FC<{ activity: Activity; campaigns?: VotingCampaign[]; onOpen: () => void }> = ({ activity, campaigns = [], onOpen }) => {
   const state = activityState(activity);
+  const bundle = activityVotingBundle(activity, campaigns);
+  const campaignIds = new Set([...bundle.sources.values()].map(source => source.campaignId));
+  const participants = campaigns.filter(c => campaignIds.has(c.id)).reduce((sum, c) => sum + (c.totalParticipants || 0), 0);
+  const voteCount = bundle.campaign.voteItems?.length || 0;
   return <button type="button" onClick={onOpen} className="w-full text-left overflow-hidden rounded-2xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-sm">
     {activity.coverImage ? <img src={activity.coverImage} alt="" className="w-full aspect-[2/1] object-cover" /> : <div className="h-24 flex items-center justify-center text-white" style={{ backgroundColor: activity.headerBannerColor || '#2563eb' }}><Calendar size={32}/></div>}
     <div className="p-4 space-y-2">
-      <div className="flex justify-between text-[10px] font-bold"><span className="text-blue-600">活動</span><span className={state === '進行中' ? 'text-emerald-600' : 'text-slate-500'}>{state}</span></div>
+      <div className="flex justify-between text-[10px] font-bold"><span className="text-blue-600">活動</span><span className={state === '進行中' ? 'text-emerald-600' : 'text-slate-500'}>{state === '未開始' ? '待開始' : state}</span></div>
       <h3 className="text-sm font-bold text-slate-900 dark:text-white">{activity.title}</h3>
       <p className="text-xs text-slate-500 line-clamp-2">{activity.description}</p>
       <p className="text-[10px] text-slate-500">{activity.startTime} — {activity.endTime}</p>
-      <span className="flex items-center justify-between text-xs font-bold text-blue-600 pt-2">查看活動<ChevronRight size={14}/></span>
+      <div className="pt-1"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-xs font-bold border border-rose-100 dark:border-rose-900/50"><Award size={13} className="text-rose-500 shrink-0"/>共 {voteCount} 個投票</span></div>
+      <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
+        <span className="inline-flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400"><Users size={13} className="text-blue-500 shrink-0"/><strong className="text-slate-800 dark:text-slate-200">{participants.toLocaleString()}</strong><span>人參與投票{campaignIds.size > 1 ? '（累計）' : ''}</span></span>
+        <span className="px-3.5 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0">查看活動<ChevronRight size={13}/></span>
+      </div>
     </div>
   </button>;
 }
@@ -86,8 +94,8 @@ export const AppActivityDetail: React.FC<{
   ].join('\n');
   const footerLink = activity.footerBannerLink && /^https?:\/\//i.test(activity.footerBannerLink) ? activity.footerBannerLink : undefined;
   const footer = activity.footerBannerImage
-    ? <img src={activity.footerBannerImage} alt="活動底部圖片" className="w-full h-auto block"/>
-    : <svg viewBox="0 0 640 200" role="img" aria-label="TVB GO 活動頁尾" className="w-full block">
+    ? <img src={activity.footerBannerImage} alt="活動底部圖片" className="w-full aspect-video object-cover block"/>
+    : <svg viewBox="0 0 640 200" role="img" aria-label="TVB GO 活動頁尾" className="w-full aspect-video block" preserveAspectRatio="xMidYMid slice">
         <path d="M0 70 Q160 0 320 80 T640 70 V200 H0Z" fill="currentColor" opacity=".08"/>
         <path d="M0 130 Q160 50 320 125 T640 120 V200 H0Z" fill="currentColor" opacity=".10"/>
         <text x="320" y="120" textAnchor="middle" fill="currentColor" fontFamily="sans-serif" fontSize="32" fontWeight="800">TVB GO</text>
@@ -95,18 +103,18 @@ export const AppActivityDetail: React.FC<{
       </svg>;
   return <div className="h-full overflow-y-auto activity-detail-flat" style={{ backgroundColor: background, color: foreground }}>
     <div className="sticky top-0 z-20 p-3 backdrop-blur border-b border-current/15" style={{ backgroundColor: background }}><button onClick={onBack} className="flex items-center gap-2 text-xs font-bold"><ArrowLeft size={16}/>返回 TVB 快訊</button></div>
-    {(activity.headerBannerImage || activity.coverImage) && <img src={activity.headerBannerImage || activity.coverImage} alt={activity.title} className="w-full h-auto block"/>}
+    {(activity.headerBannerImage || activity.coverImage) && <img src={activity.headerBannerImage || activity.coverImage} alt={activity.title} className="w-full aspect-video object-cover block"/>}
     <div className="px-5 py-6 space-y-7">
-      <section className="space-y-3"><span className="text-xs font-bold opacity-75">{state}</span><h1 className="text-2xl font-black leading-snug">{activity.title}</h1><p className="text-xs opacity-75">{activity.startTime} — {activity.endTime}</p><p className="text-sm whitespace-pre-wrap leading-relaxed">{activity.description}</p></section>
-      <section className="pt-5 border-t border-current/20 space-y-3"><h2 className="text-base font-bold">活動規則</h2><p className="text-sm whitespace-pre-wrap leading-relaxed">{rules}</p></section>
+      <section className="space-y-3"><span className="text-xs font-bold opacity-75">{state === '未開始' ? '待開始' : state}</span><h1 className="text-2xl font-black leading-snug">{activity.title}</h1><p className="text-xs opacity-75">{activity.startTime} — {activity.endTime}</p><p className="text-sm whitespace-pre-wrap leading-relaxed">{activity.description}</p></section>
       {state !== '進行中' && <p className="py-3 text-sm">{state === '未開始' ? '活動尚未開始，請於開始時間後參與。' : '活動已結束，感謝支持。'}</p>}
-      <section className="space-y-4 pt-5 border-t border-current/20"><h2 className="text-base font-bold">活動投票</h2><p className="text-xs opacity-75">{activity.submissionMode === 'INDIVIDUAL' ? '各項獨立提交' : '完成所有投票後統一提交'}</p>
+      <section className="space-y-4 pt-5 border-t border-current/20">
         {bundle.campaign.voteItems?.length ? canVote ? <AppVotingWidget key={`${activity.id}:${activity.submissionMode}`} campaign={bundle.campaign} hideHeader userVotedOptionIds={[...bundle.optionSources].filter(([,source]) => userVotes[source.campaignId]?.includes(source.optionId)).map(([id]) => id)} onVoteSubmit={(_,phaseId,ids) => {
           if (activityState(activity) !== '進行中') return;
           const source = bundle.sources.get(phaseId);
           if (source) onVoteSubmit?.(source.campaignId, source.phaseId, ids.map(id => source.options.get(id)).filter((id): id is string => Boolean(id)));
         }}/> : bundle.campaign.voteItems.map(item => <div key={item.id} className="py-4 border-b border-current/20 text-sm">{item.title}<p className="mt-1 text-xs opacity-75">目前不可提交投票</p></div>) : <p className="py-4 text-sm">活動內容即將公布。</p>}
       </section>
+      <section className="pt-5 border-t border-current/20"><h2 className="text-base font-bold py-2">活動規則</h2><p className="pt-3 text-sm whitespace-pre-wrap break-words leading-7">{rules}</p></section>
     </div>
     {footerLink ? <a href={footerLink} target="_blank" rel="noopener noreferrer" className="block">{footer}</a> : footer}
   </div>;
