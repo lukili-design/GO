@@ -1,3 +1,4 @@
+import { GoBanner, GoButton } from '../ui/GoUI';
 import React from 'react';
 import { Activity, VoteItem, VotingCampaign } from '../../types';
 import { getCampaignVoteItems } from '../../utils/votingHelpers';
@@ -94,7 +95,7 @@ export const AppActivityDetail: React.FC<{
   ].join('\n');
   const footerLink = activity.footerBannerLink && /^https?:\/\//i.test(activity.footerBannerLink) ? activity.footerBannerLink : undefined;
   const footer = activity.footerBannerImage
-    ? <img src={activity.footerBannerImage} alt="活動底部圖片" className="w-full aspect-video object-cover block"/>
+    ? <GoBanner src={activity.footerBannerImage} alt="活動底部圖片"/>
     : <svg viewBox="0 0 640 200" role="img" aria-label="TVB GO 活動頁尾" className="w-full aspect-video block" preserveAspectRatio="xMidYMid slice">
         <path d="M0 70 Q160 0 320 80 T640 70 V200 H0Z" fill="currentColor" opacity=".08"/>
         <path d="M0 130 Q160 50 320 125 T640 120 V200 H0Z" fill="currentColor" opacity=".10"/>
@@ -102,9 +103,9 @@ export const AppActivityDetail: React.FC<{
         <text x="320" y="153" textAnchor="middle" fill="currentColor" fontFamily="sans-serif" fontSize="16">精彩活動 · 一起參與</text>
       </svg>;
   return <div className="h-full overflow-y-auto activity-detail-flat" style={{ backgroundColor: background, color: foreground }}>
-    <div className="sticky top-0 z-20 p-3 backdrop-blur border-b border-current/15" style={{ backgroundColor: background }}><button onClick={onBack} className="flex items-center gap-2 text-xs font-bold"><ArrowLeft size={16}/>返回 TVB 快訊</button></div>
-    {(activity.headerBannerImage || activity.coverImage) && <img src={activity.headerBannerImage || activity.coverImage} alt={activity.title} className="w-full aspect-video object-cover block"/>}
-    <div className="px-5 py-6 space-y-7">
+    <div className="go-app-header" style={{ backgroundColor: background }}><GoButton variant="quiet" onClick={onBack}><ArrowLeft size={16}/>返回 TVB 快訊</GoButton></div>
+    {(activity.headerBannerImage || activity.coverImage) && <GoBanner src={activity.headerBannerImage || activity.coverImage} alt={activity.title}/>}
+    <div className="go-app-body">
       <section className="space-y-3"><span className="text-xs font-bold opacity-75">{state === '未開始' ? '待開始' : state}</span><h1 className="text-2xl font-black leading-snug">{activity.title}</h1><p className="text-xs opacity-75">{activity.startTime} — {activity.endTime}</p><p className="text-sm whitespace-pre-wrap leading-relaxed">{activity.description}</p></section>
       {state !== '進行中' && <p className="py-3 text-sm">{state === '未開始' ? '活動尚未開始，請於開始時間後參與。' : '活動已結束，感謝支持。'}</p>}
       <section className="space-y-4 pt-5 border-t border-current/20">

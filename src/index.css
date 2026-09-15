@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./components/ui/go-ui.css";
 
 .primary-action {
   display: inline-flex;

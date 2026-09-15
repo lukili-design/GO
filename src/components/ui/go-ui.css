@@ -1,0 +1,26 @@
+/* Shared foundation for CMS and APP. Activity theme colors remain user-configured. */
+:root { --go-primary: #2563eb; --go-radius-control: 12px; --go-radius-panel: 16px; --go-focus: #60a5fa; }
+.go-button { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:40px; padding:9px 16px; border:1px solid transparent; border-radius:var(--go-radius-control); font-size:12px; font-weight:700; line-height:20px; white-space:nowrap; cursor:pointer; transition:background-color .15s, box-shadow .15s; }
+.go-button--primary { background:var(--go-primary); color:white; }
+.go-button--primary:hover { background:#1d4ed8; }
+.go-button--secondary { background:white; border-color:#cbd5e1; color:#334155; }
+.go-button--secondary:hover { background:#f1f5f9; }
+.go-button--quiet { background:transparent; color:inherit; }
+.go-button--quiet:hover { background:rgba(100,116,139,.12); }
+.go-button:focus-visible, .go-control:focus-visible { outline:3px solid var(--go-focus); outline-offset:2px; }
+.go-button:disabled { cursor:not-allowed; opacity:.45; }
+.go-control { width:100%; min-height:40px; padding:10px 12px; border:1px solid #cbd5e1; border-radius:var(--go-radius-control); background:white; color:#0f172a; font-size:13px; line-height:20px; }
+textarea.go-control { resize:vertical; min-height:88px; }
+.go-control::placeholder { color:#94a3b8; }
+.go-control:disabled { opacity:.6; cursor:not-allowed; }
+.go-surface { overflow:hidden; border:1px solid #e2e8f0; border-radius:var(--go-radius-panel); background:white; box-shadow:0 1px 2px rgb(15 23 42 / .03); }
+.go-banner { display:block; width:100%; aspect-ratio:16/9; object-fit:cover; }
+.go-notice { border:1px solid #fecdd3; border-radius:var(--go-radius-control); padding:12px 16px; background:#fff1f2; color:#be123c; font-size:13px; line-height:20px; }
+.go-app-header { position:sticky; top:0; z-index:20; padding:4px 12px; backdrop-filter:blur(12px); border-bottom:1px solid rgb(100 116 139 / .2); }
+.go-app-header .go-button { min-height:44px; padding-left:0; }
+.go-app-body { padding:24px 20px; display:flex; flex-direction:column; gap:28px; }
+.dark .go-control { background:#020617; color:#f1f5f9; border-color:#334155; }
+.dark .go-surface { background:#0f172a; border-color:#1e293b; }
+.dark .go-button--secondary { background:#1e293b; color:#e2e8f0; border-color:#475569; }
+.dark .go-button--secondary:hover { background:#334155; }
+@media (prefers-reduced-motion: reduce) { .go-button { transition:none; } }
