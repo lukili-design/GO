@@ -8,7 +8,7 @@ description: 用於 lukili-design/GO 的 APP、CMS、保安及訪客 HTML 演示
 ## 工作位置與範圍
 - 本專案是 React/TypeScript 互動演示。按本次要求修改，不把表單配置默認擴展成真實寄信、定時任務或後端服務；清楚交代模擬與實際功能。
 - 此台電腦工作副本為 `/Users/luki/Documents/GitHub/GO`；`/Users/luki/Documents/ChatGPT/TVB GO` 是舊副本，不再修改。另一台電腦允許不同路徑，以 `git remote -v` 確認連接 `lukili-design/GO`。
-- 開始代碼工作時確認工作目錄、分支及未提交修改。不要自動覆蓋、清空、重設本機資料或從遠端替換整個專案。需要寫入權限時走正常授權流程。
+- 開始代碼工作時確認工作目錄、分支及未提交修改。不要自動覆蓋、清空、重設本機資料或從遠端替換整個專案。需要寫入權限時走正常授權流程。 
 - GitHub Desktop 與 Codex 應操作同一份代碼；預覽服務也要從該目錄啟動。`localhost` 網址相同不代表服務指向正確資料夾。
 
 ## 保留內容，精確修改
