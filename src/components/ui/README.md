@@ -52,3 +52,17 @@ import { GoButton, GoSurface, GoBanner, GoNotice, formControlClass } from '../ui
 - `src/components/activity/AppActivityViews.tsx`：APP 活動詳情。
 
 元件庫與專案一起由 GitHub Desktop 提交、推送，另一台電腦拉取後即可使用。
+
+## 共用文字規格（按頁面啟用）
+
+在頁面容器加上 `go-type`，即可統一系統字體及以下規格，毋須載入外部字體：
+
+| 用途 | 字號 | 字重 | 行高 |
+| --- | --- | --- | --- |
+| 頁面標題 | 20px | 600 | 1.4 |
+| 區塊標題 | 16px | 600 | 1.4 |
+| 正文、表單、按鈕、Tab | 14px | 正文 400；操作 500；選中 600 | 1.5 |
+| 輔助文字、候選簡介、投票進度 | 12px | 400–600 | 1.5 |
+
+新元件優先使用 `--go-text-title`、`--go-text-section`、`--go-text-body`、`--go-text-caption` 變數；可用 `go-text-section`／`go-text-caption` 標記語意。避免另設 10px、11px 文字或 900 字重。
+目前啟用於 CMS 投票新增／編輯和 APP 活動投票詳情。其他舊頁面不批次改動。

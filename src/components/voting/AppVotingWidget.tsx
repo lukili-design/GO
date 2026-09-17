@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { VotingCampaign, VotePhase, VoteOption, VoteItem } from '../../types';
+import { VotingCampaign, VotePhase, VoteOption, VoteItem, VoteOptionImageRatio } from '../../types';
 import { getCampaignVoteItems } from '../../utils/votingHelpers';
 import { 
   Check, Clock, ShieldCheck, AlertCircle, Sparkles, CheckCircle2, 
@@ -586,7 +586,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
               const isVotedByMe = currentItemVotedIds.includes(option.id);
               const votePercent = ((option.votes / phaseTotalVotes) * 100).toFixed(1);
 
-              if (hideHeader) return <ActivityCandidateCard key={option.id} option={option} index={idx}
+              if (hideHeader) return <ActivityCandidateCard key={option.id} option={option} index={idx} imageRatio={currentVoteItem.optionImageRatio || '3:4'}
                 selected={isSelected || isVotedByMe} disabled={hasUserVotedThisItem || isPhaseEnded}
                 label={isVotedByMe ? '已投票' : isSelected ? '已選' : hasUserVotedThisItem ? '已完成投票' : isPhaseEnded ? '已結束' : '選擇'}
                 onSelect={() => handleToggleOption(option.id)} />;
@@ -609,10 +609,11 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                       {/* Avatar */}
-                      {option.avatar ? (
+                      {currentVoteItem.optionImageRatio === 'NONE' ? null : option.avatar ? (
                         <img
                           src={option.avatar}
                           alt={option.name}
+                          style={currentVoteItem.optionImageRatio ? {height:'auto', aspectRatio:currentVoteItem.optionImageRatio.replace(':',' / ')} : undefined}
                           className="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0 shadow-2xs"
                         />
                       ) : (
@@ -958,7 +959,7 @@ const VoteIntroduction: React.FC<{ text: string }> = ({ text }) => {
   </div>;
 };
 
-const ActivityCandidateCard: React.FC<{ option: VoteOption; index: number; selected: boolean; disabled: boolean; label: string; onSelect: () => void }> = ({ option, index, selected, disabled, label, onSelect }) => {
+const ActivityCandidateCard: React.FC<{ option: VoteOption; index: number; imageRatio: VoteOptionImageRatio; selected: boolean; disabled: boolean; label: string; onSelect: () => void }> = ({ option, index, imageRatio, selected, disabled, label, onSelect }) => {
   const descriptionRef = React.useRef<HTMLSpanElement>(null);
   const dialogRef = React.useRef<HTMLDialogElement>(null);
   const [overflows, setOverflows] = useState(false);
@@ -973,7 +974,7 @@ const ActivityCandidateCard: React.FC<{ option: VoteOption; index: number; selec
   }, [option.description]);
   return <article className={`activity-candidate ${selected ? 'is-selected' : ''}`}>
     <button type="button" className="candidate-select" aria-label={`選擇 ${option.name}`} aria-pressed={selected} disabled={disabled} onClick={onSelect}>
-      {option.avatar ? <img src={option.avatar} alt="" className="activity-candidate-image"/> : <div className="activity-candidate-image flex items-center justify-center text-3xl opacity-50">{index + 1}</div>}
+      {imageRatio !== 'NONE' && (option.avatar ? <img src={option.avatar} alt="" className="activity-candidate-image" style={{aspectRatio:imageRatio.replace(':', ' / ')}}/> : <div className="activity-candidate-image flex items-center justify-center text-3xl opacity-50" style={{aspectRatio:imageRatio.replace(':', ' / ')}}>{index + 1}</div>)}
       <span className="block px-1 pt-2 text-sm font-bold whitespace-pre-wrap break-words">{option.name}</span>
     </button>
     {option.description && <button type="button" className="candidate-description" disabled={!overflows} aria-label={overflows ? `查看 ${option.name} 完整資料` : undefined} onClick={() => dialogRef.current?.showModal()}>
@@ -984,7 +985,7 @@ const ActivityCandidateCard: React.FC<{ option: VoteOption; index: number; selec
     <dialog ref={dialogRef} className="candidate-dialog" aria-label={`${option.name} 完整資料`} onClick={event => { if (event.target === event.currentTarget) dialogRef.current?.close(); }}>
       <div className="candidate-dialog-body">
         <button autoFocus type="button" className="candidate-dialog-close" onClick={() => dialogRef.current?.close()}>關閉</button>
-        {option.avatar && <img src={option.avatar} alt={option.name} className="w-full max-h-64 object-contain rounded-lg"/>}
+        {imageRatio !== 'NONE' && option.avatar && <img src={option.avatar} alt={option.name} className="w-full max-h-64 object-contain rounded-lg" style={{aspectRatio:imageRatio.replace(':', ' / ')}}/>}
         <h2 className="text-lg font-bold mt-3">{option.name}</h2>
         <p className="mt-3 text-sm leading-6 whitespace-pre-wrap break-words">{option.description}</p>
       </div>

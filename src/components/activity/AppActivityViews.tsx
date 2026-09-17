@@ -90,7 +90,10 @@ export const AppActivityDetail: React.FC<{
   const trendTotal = trendPhase?.options.reduce((sum, option) => sum + option.votes, 0) || 0;
   const state = activityState(activity);
   const canVote = state === '進行中' && (activity.voterMethods || ['TVB_GO_MEMBER']).includes('TVB_GO_MEMBER');
-  const background = /^#[0-9a-f]{6}$/i.test(activity.headerBannerColor || '') ? activity.headerBannerColor! : '#dbeafe';
+  const validColor = (color: string | undefined, fallback: string) => /^#[0-9a-f]{6}$/i.test(color || '') ? color! : fallback;
+  const background = validColor(activity.backgroundGradientStart, validColor(activity.headerBannerColor, '#dbeafe'));
+  const backgroundEnd = validColor(activity.backgroundGradientEnd, validColor(activity.headerBannerColor, background));
+  const gradient = `linear-gradient(180deg, ${background}, ${backgroundEnd})`;
   const rgb = [1, 3, 5].map(index => parseInt(background.slice(index, index + 2), 16));
   const foreground = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 < 150 ? '#ffffff' : '#172554';
   const rules = activity.rules?.trim() || [
@@ -107,7 +110,7 @@ export const AppActivityDetail: React.FC<{
         <text x="320" y="120" textAnchor="middle" fill="currentColor" fontFamily="sans-serif" fontSize="32" fontWeight="800">TVB GO</text>
         <text x="320" y="153" textAnchor="middle" fill="currentColor" fontFamily="sans-serif" fontSize="16">精彩活動 · 一起參與</text>
       </svg>;
-  return <div className="h-full overflow-y-auto activity-detail-flat" style={{ backgroundColor: background, color: foreground, '--activity-bg': background, '--activity-ink': foreground, '--activity-panel': `color-mix(in srgb, ${background} 50%, ${foreground === '#ffffff' ? '#000000' : '#ffffff'})` } as React.CSSProperties}>
+  return <div className="h-full overflow-y-auto activity-detail-flat go-type" style={{ backgroundColor: background, color: foreground, backgroundImage: gradient, '--activity-bg': background, '--activity-ink': foreground, '--activity-panel': activity.contentOverlay === 'LIGHT' ? 'rgba(255,255,255,.16)' : activity.contentOverlay === 'DARK' ? 'rgba(0,0,0,.5)' : `color-mix(in srgb, ${background} 50%, ${foreground === '#ffffff' ? '#000000' : '#ffffff'})` } as React.CSSProperties}>
     <div className="go-app-header" style={{ backgroundColor: background }}><GoButton variant="quiet" onClick={onBack}><ArrowLeft size={16}/>返回 TVB 快訊</GoButton></div>
     {(activity.headerBannerImage || activity.coverImage) && <GoBanner src={activity.headerBannerImage || activity.coverImage} alt={activity.title}/>}
     <div className="go-app-body">

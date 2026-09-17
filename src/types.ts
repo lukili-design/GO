@@ -248,7 +248,10 @@ export interface Activity {
   description: string;
   rules?: string;
   coverImage?: string;
-  headerBannerColor?: string;
+  headerBannerColor?: string; // 舊版單色背景
+  backgroundGradientStart?: string;
+  backgroundGradientEnd?: string;
+  contentOverlay?: 'DARK' | 'LIGHT';
   headerBannerImage?: string;
   footerBannerImage?: string;
   footerBannerLink?: string;
@@ -297,8 +300,11 @@ export interface VotePhase {
   options: VoteOption[]; // 該階段之候選選項
 }
 
+export type VoteOptionImageRatio = 'NONE' | '1:1' | '3:4' | '9:16' | '16:9';
+
 export interface VoteItem {
   id: string; // 投票項目 ID (如 ITEM-01, BEST-ACTOR, BEST-DRAMA)
+  optionImageRatio?: VoteOptionImageRatio; // 全部階段候選項統一圖片比例
   title: string; // 投票項目名稱 (如：最佳女演員、最佳男演員、最佳劇集)
   name?: string; // 投票項目名稱 (兼容別名)
   description?: string; // 投票項目說明

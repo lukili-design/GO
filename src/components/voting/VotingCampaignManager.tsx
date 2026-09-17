@@ -7,7 +7,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   Activity, VotingCampaign, VoteItem, VotePhase, VoteOption, VoteResultVisibility, 
   VoteCampaignStatus, VoteSelectionMode, VoteFrequencyLimit, VoteLogRecord,
-  VoteSubmissionMode
+  VoteSubmissionMode, VoteOptionImageRatio
 } from '../../types';
 import { INITIAL_VOTE_LOGS } from '../../data/voteMockData';
 import { getCampaignVoteItems, syncCampaignFromVoteItems, calculatePhaseAutoStatus } from '../../utils/votingHelpers';
@@ -1489,7 +1489,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
       {/* 視圖二：活動配置工作流 (三步：1.生成活動 ➔ 2.投票管理/投票列表 ➔ 3.每個投票的編輯頁面) */}
       {/* ========================================================================= */}
       {(viewMode === 'WORKFLOW' || viewMode === 'FORM') && editingCampaign && (
-        <form onSubmit={handleSaveCampaignSubmit} className="space-y-6">
+        <form onSubmit={handleSaveCampaignSubmit} className="space-y-6 go-type">
           {/* 🌟 頂部全域主導航與 3 步流程指示器 (Step Flow Navigation Bar) */}
           <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             {/* 左側：返回列表與活動資訊 */}
@@ -2575,6 +2575,14 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                                 <option value="ONCE_DAILY">每日一次 (每天零點刷新)</option>
                                 <option value="UNLIMITED">不限制 (用於測試)</option>
                               </select>
+                            </div>
+
+                            <div className="md:col-span-3 space-y-2">
+                              <label htmlFor="option-image-ratio" className="block text-xs font-bold text-slate-700 dark:text-slate-300">候選項圖片比例</label>
+                              <select id="option-image-ratio" value={currentItem.optionImageRatio || '3:4'} onChange={e => updateCurrentItem(item => ({...item, optionImageRatio:e.target.value as VoteOptionImageRatio}))} className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs">
+                                <option value="NONE">不需要圖片</option><option value="1:1">1:1（正方形）</option><option value="3:4">3:4（直向）</option><option value="9:16">9:16（長直向）</option><option value="16:9">16:9（橫向）</option>
+                              </select>
+                              <p className="text-[11px] text-slate-500">統一套用至此投票所有階段的候選項。選擇「不需要圖片」會隱藏圖片，已上傳的圖片仍會保留。</p>
                             </div>
                           </div>
 
