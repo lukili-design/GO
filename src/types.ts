@@ -280,6 +280,7 @@ export interface VoteOption {
 
 export interface VotePhase {
   id: string;
+  description?: string; // 此投票階段的說明，舊資料可沿用投票項目說明
   name: string; // 階段名稱 (如：40進20 淘汰賽)
   status: VoteCampaignStatus; // 未開始 / 進行中 / 已結束
   startTime: string; // YYYY-MM-DD HH:mm:ss

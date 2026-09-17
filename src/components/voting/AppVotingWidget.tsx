@@ -184,7 +184,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
     let updated: string[];
     if (currentPhase.mode === 'SINGLE') {
-      updated = [optId];
+      updated = hideHeader && existing.includes(optId) ? [] : [optId];
       if (triggerSound) triggerSound(700, 'sine', 0.05);
     } else {
       if (existing.includes(optId)) {
@@ -480,7 +480,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
       {/* ========================================================================= */}
       {/* 顯示投票1 / 投票2 / 投票3 / 投票4 / 投票5 Tab 切換列 + 進度條 */}
       {/* ========================================================================= */}
-      <div className="bg-slate-900 text-white p-2.5 border-b border-slate-800 space-y-2">
+      <div className="activity-vote-navigation bg-slate-900 text-white p-2.5 border-b border-slate-800 space-y-2">
         {/* 投票1 ~ 投票N 按鈕 Tab 列 */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
           {voteItems.map((item, idx) => {
@@ -493,6 +493,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
             return (
               <button
                 key={item.id || idx}
+                aria-pressed={isCurrent}
                 type="button"
                 onClick={() => {
                   if (isAllRequiredMode) {
@@ -509,10 +510,10 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                     : 'bg-slate-800/60 text-slate-300 border border-slate-700/80 hover:bg-slate-800 font-medium'
                 }`}
               >
-                {isFinished ? (
+                {isFinished && !hideHeader ? (
                   <Check size={13} strokeWidth={3} className="text-emerald-400 shrink-0" />
                 ) : null}
-                <span className="text-xs">投票{idx + 1}</span>
+                <span className="text-xs">{hideHeader ? (item.title || item.name || `投票${idx + 1}`).replace(/^[^\p{L}\p{N}]+/u, '') : `投票${idx + 1}`}</span>
               </button>
             );
           })}
@@ -540,15 +541,15 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
           <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-snug">
             {currentVoteItemTitle}
           </h3>
-          {currentVoteItem.description && (
-            <VoteIntroduction key={currentVoteItem.id} text={currentVoteItem.description}/>
+          {(currentPhase.description ?? currentVoteItem.description) && (
+            <VoteIntroduction key={`${currentVoteItem.id}:${currentPhase.id}`} text={currentPhase.description ?? currentVoteItem.description ?? ''}/>
           )}
         </div>
 
         {/* 模式提示：單選 / 多選(最多可選3項) */}
         <div className="flex items-center gap-2 pt-1 text-xs">
           <span className="px-2 py-0.5 rounded-md font-bold text-xs bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200/80 dark:border-rose-900/60">
-            {currentPhase.mode === 'SINGLE' ? '單選' : `多選(最多可選${currentPhase.maxSelections || 3}項)`}
+            {currentPhase.mode === 'SINGLE' ? '最多可選 1 項' : `最多可選 ${currentPhase.maxSelections || 3} 項`} · 已選 {currentSelectedOptionIds.length} 項
           </span>
         </div>
       </div>
@@ -579,11 +580,16 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
             <p className="text-xs font-bold">本階段暫未公佈候選名單</p>
           </div>
         ) : (
-          <div className={layoutMode === 'GRID' ? 'grid grid-cols-2 gap-3' : 'space-y-2.5'}>
+          <div className={hideHeader || layoutMode === 'GRID' ? 'grid grid-cols-2 gap-3' : 'space-y-2.5'}>
             {currentPhase.options.map((option, idx) => {
               const isSelected = currentSelectedOptionIds.includes(option.id);
               const isVotedByMe = currentItemVotedIds.includes(option.id);
               const votePercent = ((option.votes / phaseTotalVotes) * 100).toFixed(1);
+
+              if (hideHeader) return <ActivityCandidateCard key={option.id} option={option} index={idx}
+                selected={isSelected || isVotedByMe} disabled={hasUserVotedThisItem || isPhaseEnded}
+                label={isVotedByMe ? '已投票' : isSelected ? '已選' : hasUserVotedThisItem ? '已完成投票' : isPhaseEnded ? '已結束' : '選擇'}
+                onSelect={() => handleToggleOption(option.id)} />;
 
               return (
                 <div
@@ -684,7 +690,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
       {/* ========================================================================= */}
       {/* 底部投票控制列 (Action Bottom Bar) */}
       {/* ========================================================================= */}
-      <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
+      <div className="activity-vote-actions p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
         
         {/* 🌟 1. ALL_REQUIRED 統一提交模式下的底部控制列 (上個投票 / 下個投票 / 提交所有投票) */}
         {isAllRequiredMode && (
@@ -950,4 +956,38 @@ const VoteIntroduction: React.FC<{ text: string }> = ({ text }) => {
     <p ref={paragraph} className={`text-xs text-slate-600 dark:text-slate-400 break-words leading-6 ${expanded ? 'whitespace-pre-wrap' : 'line-clamp-2'}`}>{text}</p>
     {(overflows || expanded) && <button type="button" aria-expanded={expanded} onClick={() => setExpanded(value => !value)} className="py-1 text-xs font-bold text-blue-600 dark:text-blue-400">{expanded ? '收起' : '展開'}</button>}
   </div>;
+};
+
+const ActivityCandidateCard: React.FC<{ option: VoteOption; index: number; selected: boolean; disabled: boolean; label: string; onSelect: () => void }> = ({ option, index, selected, disabled, label, onSelect }) => {
+  const descriptionRef = React.useRef<HTMLSpanElement>(null);
+  const dialogRef = React.useRef<HTMLDialogElement>(null);
+  const [overflows, setOverflows] = useState(false);
+  useEffect(() => {
+    const element = descriptionRef.current;
+    if (!element) return;
+    const measure = () => setOverflows(element.scrollHeight > parseFloat(getComputedStyle(element).lineHeight) * 2 + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [option.description]);
+  return <article className={`activity-candidate ${selected ? 'is-selected' : ''}`}>
+    <button type="button" className="candidate-select" aria-label={`選擇 ${option.name}`} aria-pressed={selected} disabled={disabled} onClick={onSelect}>
+      {option.avatar ? <img src={option.avatar} alt="" className="activity-candidate-image"/> : <div className="activity-candidate-image flex items-center justify-center text-3xl opacity-50">{index + 1}</div>}
+      <span className="block px-1 pt-2 text-sm font-bold whitespace-pre-wrap break-words">{option.name}</span>
+    </button>
+    {option.description && <button type="button" className="candidate-description" disabled={!overflows} aria-label={overflows ? `查看 ${option.name} 完整資料` : undefined} onClick={() => dialogRef.current?.showModal()}>
+      <span ref={descriptionRef} className="line-clamp-2">{option.description}</span>
+      {overflows && <span className="candidate-more">查看詳情</span>}
+    </button>}
+    <button type="button" aria-pressed={selected} disabled={disabled} onClick={onSelect} className="activity-candidate-action">{selected && <Check size={14}/>} {label}</button>
+    <dialog ref={dialogRef} className="candidate-dialog" aria-label={`${option.name} 完整資料`} onClick={event => { if (event.target === event.currentTarget) dialogRef.current?.close(); }}>
+      <div className="candidate-dialog-body">
+        <button autoFocus type="button" className="candidate-dialog-close" onClick={() => dialogRef.current?.close()}>關閉</button>
+        {option.avatar && <img src={option.avatar} alt={option.name} className="w-full max-h-64 object-contain rounded-lg"/>}
+        <h2 className="text-lg font-bold mt-3">{option.name}</h2>
+        <p className="mt-3 text-sm leading-6 whitespace-pre-wrap break-words">{option.description}</p>
+      </div>
+    </dialog>
+  </article>;
 };

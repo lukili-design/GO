@@ -1,5 +1,5 @@
 import { GoBanner, GoButton } from '../ui/GoUI';
-import React from 'react';
+import React, { useState } from 'react';
 import { Activity, VoteItem, VotingCampaign } from '../../types';
 import { getCampaignVoteItems } from '../../utils/votingHelpers';
 import { AppVotingWidget } from '../voting/AppVotingWidget';
@@ -82,7 +82,12 @@ export const AppActivityDetail: React.FC<{
   activity: Activity; campaigns: VotingCampaign[]; userVotes: Record<string, string[]>;
   onVoteSubmit?: (campaignId: string, phaseId: string, optionIds: string[]) => void; onBack: () => void;
 }> = ({ activity, campaigns, userVotes, onVoteSubmit, onBack }) => {
+  const [detailTab, setDetailTab] = useState('list');
+  const [trendItemId, setTrendItemId] = useState('');
   const bundle = activityVotingBundle(activity, campaigns);
+  const trendItem = bundle.campaign.voteItems?.find(item => item.id === trendItemId) || bundle.campaign.voteItems?.[0];
+  const trendPhase = trendItem?.phases.find(phase => phase.id === trendItem.currentPhaseId) || trendItem?.phases[0];
+  const trendTotal = trendPhase?.options.reduce((sum, option) => sum + option.votes, 0) || 0;
   const state = activityState(activity);
   const canVote = state === '進行中' && (activity.voterMethods || ['TVB_GO_MEMBER']).includes('TVB_GO_MEMBER');
   const background = /^#[0-9a-f]{6}$/i.test(activity.headerBannerColor || '') ? activity.headerBannerColor! : '#dbeafe';
@@ -102,20 +107,36 @@ export const AppActivityDetail: React.FC<{
         <text x="320" y="120" textAnchor="middle" fill="currentColor" fontFamily="sans-serif" fontSize="32" fontWeight="800">TVB GO</text>
         <text x="320" y="153" textAnchor="middle" fill="currentColor" fontFamily="sans-serif" fontSize="16">精彩活動 · 一起參與</text>
       </svg>;
-  return <div className="h-full overflow-y-auto activity-detail-flat" style={{ backgroundColor: background, color: foreground }}>
+  return <div className="h-full overflow-y-auto activity-detail-flat" style={{ backgroundColor: background, color: foreground, '--activity-bg': background, '--activity-ink': foreground, '--activity-panel': `color-mix(in srgb, ${background} 50%, ${foreground === '#ffffff' ? '#000000' : '#ffffff'})` } as React.CSSProperties}>
     <div className="go-app-header" style={{ backgroundColor: background }}><GoButton variant="quiet" onClick={onBack}><ArrowLeft size={16}/>返回 TVB 快訊</GoButton></div>
     {(activity.headerBannerImage || activity.coverImage) && <GoBanner src={activity.headerBannerImage || activity.coverImage} alt={activity.title}/>}
     <div className="go-app-body">
       <section className="space-y-3"><span className="text-xs font-bold opacity-75">{state === '未開始' ? '待開始' : state}</span><h1 className="text-2xl font-black leading-snug">{activity.title}</h1><p className="text-xs opacity-75">{activity.startTime} — {activity.endTime}</p><p className="text-sm whitespace-pre-wrap leading-relaxed">{activity.description}</p></section>
       {state !== '進行中' && <p className="py-3 text-sm">{state === '未開始' ? '活動尚未開始，請於開始時間後參與。' : '活動已結束，感謝支持。'}</p>}
-      <section className="space-y-4 pt-5 border-t border-current/20">
+      <nav aria-label="投票詳情" className="activity-detail-tabs">
+        {([['list', '投票列表'], ['rules', '投票細則'], ['trends', '投票走勢']] as const).map(([id, label]) => <GoButton key={id} variant="quiet" aria-pressed={detailTab === id} aria-controls={`vote-panel-${id}`} onClick={() => setDetailTab(id)}>{label}</GoButton>)}
+      </nav>
+      <section id="vote-panel-list" aria-label="投票列表" hidden={detailTab !== 'list'} className="space-y-4">
         {bundle.campaign.voteItems?.length ? canVote ? <AppVotingWidget key={`${activity.id}:${activity.submissionMode}`} campaign={bundle.campaign} hideHeader userVotedOptionIds={[...bundle.optionSources].filter(([,source]) => userVotes[source.campaignId]?.includes(source.optionId)).map(([id]) => id)} onVoteSubmit={(_,phaseId,ids) => {
           if (activityState(activity) !== '進行中') return;
           const source = bundle.sources.get(phaseId);
           if (source) onVoteSubmit?.(source.campaignId, source.phaseId, ids.map(id => source.options.get(id)).filter((id): id is string => Boolean(id)));
         }}/> : bundle.campaign.voteItems.map(item => <div key={item.id} className="py-4 border-b border-current/20 text-sm">{item.title}<p className="mt-1 text-xs opacity-75">目前不可提交投票</p></div>) : <p className="py-4 text-sm">活動內容即將公布。</p>}
       </section>
-      <section className="pt-5 border-t border-current/20"><h2 className="text-base font-bold py-2">活動規則</h2><p className="pt-3 text-sm whitespace-pre-wrap break-words leading-7">{rules}</p></section>
+      <section id="vote-panel-rules" aria-label="投票細則" hidden={detailTab !== 'rules'} className="activity-detail-panel"><h2 className="text-base font-bold">投票細則</h2><p className="pt-3 text-sm whitespace-pre-wrap break-words leading-7">{rules}</p></section>
+      <section id="vote-panel-trends" aria-label="投票走勢" hidden={detailTab !== 'trends'} className="activity-detail-panel space-y-4">
+        <div className="activity-trend-navigation" aria-label="選擇查看的投票">{bundle.campaign.voteItems?.map(item => <GoButton key={item.id} variant="quiet" aria-pressed={trendItem?.id === item.id}  onClick={() => setTrendItemId(item.id)}>{item.title.replace(/^[^\p{L}\p{N}]+/u, '')}</GoButton>)}</div>
+        <h2 className="font-bold text-base">{trendItem?.title || '投票走勢'}</h2>
+        <p className="text-xs opacity-70">累計 {trendTotal.toLocaleString()} 票 · 演示數據，佔比按本投票總票數計算</p>
+        {trendPhase?.options.length ? [...trendPhase.options].sort((a, b) => b.votes - a.votes).map(option => {
+          const percent = trendTotal ? option.votes / trendTotal * 100 : 0;
+          return <div key={option.id} className="space-y-2 rounded-xl border border-current/20 p-3">
+            <p className="text-sm font-bold break-words">{option.name}</p>
+            <div className="flex justify-between text-xs"><span>{option.votes.toLocaleString()} 票</span><span>{percent.toFixed(1)}%</span></div>
+            <div role="progressbar" aria-label={option.name} aria-valuenow={Number(percent.toFixed(1))} aria-valuemin={0} aria-valuemax={100} className="h-2 rounded-full bg-current/10 overflow-hidden"><div className="h-full rounded-full bg-current opacity-70" style={{width: `${percent}%`}}/></div>
+          </div>;
+        }) : <p className="text-sm opacity-70">暫無投票數據</p>}
+      </section>
     </div>
     {footerLink ? <a href={footerLink} target="_blank" rel="noopener noreferrer" className="block">{footer}</a> : footer}
   </div>;

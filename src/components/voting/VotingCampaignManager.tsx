@@ -2346,22 +2346,8 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
                     {/* Item Basic Info */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-slate-200/60 dark:border-slate-700/60 pb-5">
-                      {/* 投票ID */}
-                      <div className="space-y-1">
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                          投票ID <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={currentItem.id || ''}
-                          onChange={(e) => updateCurrentItem(item => ({ ...item, id: e.target.value }))}
-                          placeholder="例如：ITEM-01 或 BEST-ACTOR"
-                          className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-mono font-bold focus:outline-none focus:border-rose-500"
-                        />
-                      </div>
-
                       {/* 投票標題 */}
-                      <div className="md:col-span-2 space-y-1">
+                      <div className="md:col-span-3 space-y-1">
                         <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                           投票標題 <span className="text-rose-500">*</span>
                         </label>
@@ -2372,72 +2358,6 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                           placeholder="例如：最佳劇集 / 最受歡迎女藝員 / 最佳綜藝節目"
                           className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-bold focus:outline-none focus:border-rose-500"
                         />
-                      </div>
-
-                      {/* 投票封面圖展示 */}
-                      <div className="md:col-span-3 space-y-1.5">
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                          投票封面圖展示
-                        </label>
-                        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-                          <input
-                            ref={voteItemCoverInputRef}
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleVoteItemCoverUpload(currentItemIndex, e)}
-                            className="hidden"
-                          />
-
-                          <div className="flex items-center gap-3">
-                            <div
-                              onClick={() => voteItemCoverInputRef.current?.click()}
-                              className="w-32 h-20 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden shrink-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center cursor-pointer relative group hover:border-rose-500 transition-all shadow-xs"
-                              title="點擊上傳或更換投票封面"
-                            >
-                              {currentItem.coverImage ? (
-                                <>
-                                  <img src={currentItem.coverImage} alt="投票封面預覽" className="w-full h-full object-cover" />
-                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-bold transition-opacity">
-                                    <Upload size={14} />
-                                    <span className="mt-0.5 text-[10px]">更換封面</span>
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="flex flex-col items-center justify-center text-slate-400 group-hover:text-rose-500 transition-colors p-2 text-center">
-                                  <ImageIcon size={20} />
-                                  <span className="text-[10px] font-bold mt-1">上傳封面</span>
-                                </div>
-                              )}
-                            </div>
-
-                            <div className="space-y-1.5">
-                              <div className="flex items-center gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => voteItemCoverInputRef.current?.click()}
-                                  className="px-3 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-600 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-2xs"
-                                >
-                                  <Upload size={14} />
-                                  <span>{currentItem.coverImage ? '更換圖片' : '上傳投票封面圖片'}</span>
-                                </button>
-
-                                {currentItem.coverImage && (
-                                  <button
-                                    type="button"
-                                    onClick={() => updateCurrentItem(item => ({ ...item, coverImage: '' }))}
-                                    className="px-2.5 py-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
-                                  >
-                                    <X size={14} />
-                                    <span>清除</span>
-                                  </button>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-slate-400">
-                                支援 JPG, PNG, WebP 格式 (選填，未上傳則默認使用投票封面)
-                              </p>
-                            </div>
-                          </div>
-                        </div>
                       </div>
 
                       {/* 展示時間 */}
@@ -2462,19 +2382,6 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                         </label>
                       </div>
 
-                      {/* 投票說明 */}
-                      <div className="md:col-span-3 space-y-1">
-                        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                          投票說明
-                        </label>
-                        <input
-                          type="text"
-                          value={currentItem.description || ''}
-                          onChange={(e) => updateCurrentItem(item => ({ ...item, description: e.target.value }))}
-                          placeholder="請為你支持的候選人或作品投票，本組件共設初賽與決賽多階段..."
-                          className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-rose-500"
-                        />
-                      </div>
                     </div>
 
                     {/* Level 3: Phases for Current Vote Item */}
@@ -2482,7 +2389,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <h4 className="text-xs font-black text-slate-800 dark:text-slate-200">
-                            賽制階段配置
+                            投票階段配置
                           </h4>
                         </div>
 
@@ -2492,7 +2399,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                           className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-2xs"
                         >
                           <Plus size={14} />
-                          <span>+新增賽制階段</span>
+                          <span>+新增投票階段</span>
                         </button>
                       </div>
 
@@ -2530,9 +2437,6 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-2 py-0.5 rounded-md font-mono">
                                 {curPhase.id}
-                              </span>
-                              <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
-                                階段規則與投票參數
                               </span>
                             </div>
 
@@ -2573,13 +2477,25 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                             {/* 1. 階段名稱 */}
                             <div className="space-y-1">
                               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                階段名稱 <span className="text-rose-500">*</span>
+                                投票名稱 <span className="text-rose-500">*</span>
                               </label>
                               <input
                                 type="text"
                                 value={curPhase.name}
                                 onChange={(e) => updateCurrentPhase(p => ({ ...p, name: e.target.value }))}
-                                placeholder="例如：第一階段 初選40進20淘汰賽"
+                                placeholder="請輸入投票名稱"
+                                className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <label htmlFor="phase-description" className="block text-xs font-bold text-slate-700 dark:text-slate-300">投票說明</label>
+                              <textarea
+                                id="phase-description"
+                                rows={3}
+                                value={curPhase.description ?? currentItem.description ?? ''}
+                                onChange={(e) => updateCurrentPhase(p => ({ ...p, description: e.target.value }))}
+                                placeholder="請輸入此投票的介紹或參與說明"
                                 className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500"
                               />
                             </div>

@@ -24,7 +24,7 @@ export function createActivityDemos(templates: VotingCampaign[]) {
   });
   const activities: Activity[] = campaigns.map(c => ({
     id: `ACT-${c.id}`, title: c.title, description: c.description, rules: `一、參與方式\n${c.description}\n\n二、投票安排\n${c.submissionMode === 'ALL_REQUIRED' ? '請完成所有評選項目後統一提交。提交前可以返回各項目檢查和修改選擇。' : '各評選項目可獨立提交，毋須完成全部項目。'}\n\n三、選票規則\n每個項目的可選數量及投票次數以該項目顯示為準。提交前請確認所選候選項目。\n\n四、示例說明\n此活動為介面演示，選票只用於本機體驗，不代表真實評選結果。`,
-    coverImage: c.coverImage, headerBannerImage: banner(c.submissionMode === 'ALL_REQUIRED', false), footerBannerImage: banner(c.submissionMode === 'ALL_REQUIRED', true), headerBannerColor: c.submissionMode === 'ALL_REQUIRED' ? '#fff8eb' : '#eef2ff', startTime: c.startTime, endTime: c.endTime, status: 'PUBLISHED',
+    coverImage: c.coverImage, headerBannerImage: banner(c.submissionMode === 'ALL_REQUIRED', false), footerBannerImage: banner(c.submissionMode === 'ALL_REQUIRED', true), headerBannerColor: '#990000', startTime: c.startTime, endTime: c.endTime, status: 'PUBLISHED',
     submissionMode: c.submissionMode, voterMethods: ['TVB_GO_MEMBER'], creator: '示例',
     createdAt: c.startTime, updatedAt: c.startTime,
     modules: c.voteItems!.map((item, i) => ({ id: `MOD-${item.id}`, type: 'VOTING',
@@ -41,6 +41,7 @@ export function includeMissingActivityDemos(existing: Activity[], demos: Activit
     if (a.title.startsWith('投票示例｜')) return { ...a, ...demo };
     const oldBanner = (value?: string) => value?.startsWith('data:image/svg+xml;charset=utf-8,') && decodeURIComponent(value).includes('width="960"');
     return { ...a,
+      headerBannerColor: ['#fff8eb', '#eef2ff'].includes((a.headerBannerColor || '').toLowerCase()) ? demo.headerBannerColor : a.headerBannerColor,
       headerBannerImage: oldBanner(a.headerBannerImage) ? demo.headerBannerImage : a.headerBannerImage,
       footerBannerImage: oldBanner(a.footerBannerImage) ? demo.footerBannerImage : a.footerBannerImage };
   });

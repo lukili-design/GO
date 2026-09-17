@@ -37,3 +37,65 @@
   font-size: 0.6875rem;
   font-weight: 700;
 }
+
+/* Activity voting detail: themed tabs and two-column candidate cards. */
+.activity-detail-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; padding:4px; border:1px solid color-mix(in srgb,currentColor 22%,transparent); border-radius:12px; }
+.activity-detail-tabs .go-button { padding:8px 4px; color:inherit; }
+.activity-detail-tabs [aria-pressed="true"] { background:color-mix(in srgb,currentColor 16%,transparent); box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 24%,transparent); }
+.activity-detail-panel { padding:16px; border-radius:14px; background:color-mix(in srgb,currentColor 5%,transparent); }
+.activity-candidate { min-width:0; display:flex; flex-direction:column; padding:5px; border:1px solid color-mix(in srgb,currentColor 25%,transparent); border-radius:12px; background:color-mix(in srgb,currentColor 7%,transparent); text-align:center; color:inherit; cursor:pointer; }
+.activity-candidate.is-selected { border-color:currentColor; box-shadow:0 0 0 2px currentColor; }
+.activity-candidate:focus-visible { outline:3px solid #60a5fa; outline-offset:3px; }
+.activity-candidate:disabled { cursor:default; }
+.activity-candidate-image { width:100%; aspect-ratio:3/4; object-fit:contain; border-radius:8px; background:color-mix(in srgb,currentColor 8%,transparent); }
+.activity-candidate-action { display:flex; justify-content:center; align-items:center; gap:4px; margin-top:auto; padding:10px 4px; border-radius:7px; font-size:12px; font-weight:700; background:color-mix(in srgb,currentColor 12%,transparent); }
+.activity-candidate.is-selected .activity-candidate-action { background:#fff; color:#172554; }
+
+/* Activity palette follows the CMS background rather than a fixed purple theme. */
+.activity-detail-flat .activity-detail-tabs,
+.activity-detail-flat .activity-detail-panel { background:var(--activity-panel); }
+.activity-detail-flat .activity-detail-tabs { padding:5px; }
+.activity-detail-flat .activity-detail-tabs .go-button { color:var(--activity-ink); opacity:.65; border-radius:6px; }
+.activity-detail-flat .activity-detail-tabs [aria-pressed="true"] { opacity:1; background:color-mix(in srgb,var(--activity-ink) 16%,var(--activity-panel)); box-shadow:none; }
+.activity-detail-flat .activity-vote-navigation { border:0; }
+.activity-detail-flat .activity-vote-navigation > div:first-child { gap:24px; border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent); }
+.activity-detail-flat .activity-vote-navigation button { position:relative; padding:10px 0 16px; border:0; border-radius:0; background:none; box-shadow:none; color:var(--activity-ink); opacity:.6; }
+.activity-detail-flat .activity-vote-navigation button span { font-size:14px; }
+.activity-detail-flat .activity-vote-navigation button[aria-pressed="true"] { opacity:1; }
+.activity-detail-flat .activity-vote-navigation button[aria-pressed="true"]::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; border-radius:3px; background:currentColor; }
+.activity-detail-flat .activity-vote-navigation > div:last-child { display:none; }
+.activity-detail-flat .activity-candidate { background:var(--activity-panel); }
+.activity-detail-flat .activity-candidate.is-selected .activity-candidate-action { color:var(--activity-bg); background:var(--activity-ink); }
+.activity-detail-flat .activity-vote-actions button { background:var(--activity-ink); color:var(--activity-bg); box-shadow:none; border-color:transparent; }
+.activity-detail-flat .activity-vote-actions button:disabled { opacity:.45; }
+.activity-detail-flat .activity-vote-actions span,
+.activity-detail-flat .activity-vote-actions strong { color:inherit; }
+.activity-detail-flat .activity-vote-actions > div { color:inherit; }
+.activity-detail-flat .activity-vote-actions button:hover:not(:disabled) { filter:brightness(.93); }
+.activity-detail-flat .activity-voting-flat button[aria-expanded] { color:inherit; text-decoration:underline; text-underline-offset:3px; }
+
+/* Compact reference layout and shared underline navigation. */
+.activity-detail-flat .go-app-body { padding:16px 16px; gap:14px; }
+.activity-detail-flat .go-app-body > section:first-child { gap:8px; }
+.activity-detail-flat .go-app-body > section:first-child p { line-height:1.5; }
+.activity-detail-flat .activity-vote-navigation button { padding:7px 0 9px; }
+.activity-detail-flat .activity-voting-flat > div { padding-top:10px; padding-bottom:10px; }
+.activity-detail-flat .activity-voting-flat .leading-6 { line-height:1.5; }
+.activity-detail-flat .activity-vote-actions div,
+.activity-detail-flat .activity-vote-actions span,
+.activity-detail-flat .activity-vote-actions strong { color:var(--activity-ink); }
+.activity-detail-flat .activity-vote-actions button span { color:inherit; }
+.activity-trend-navigation { display:flex; gap:20px; overflow-x:auto; border-bottom:1px solid color-mix(in srgb,currentColor 15%,transparent); }
+.activity-detail-flat .activity-trend-navigation .go-button { flex-shrink:0; position:relative; min-height:36px; padding:7px 0 9px; border:0; border-radius:0; background:none; box-shadow:none; color:inherit; opacity:.6; }
+.activity-detail-flat .activity-trend-navigation [aria-pressed="true"] { opacity:1; }
+.activity-trend-navigation [aria-pressed="true"]::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; border-radius:3px; background:currentColor; }
+.candidate-select { width:100%; cursor:pointer; color:inherit; }
+.candidate-select:disabled { cursor:default; }
+.candidate-description { padding:6px 3px; text-align:center; font-size:12px; line-height:1.45; color:inherit; cursor:pointer; }
+.candidate-description:disabled { cursor:default; }
+.candidate-more { display:block; font-size:11px; text-decoration:underline; margin-top:2px; opacity:.8; }
+.activity-candidate-action { width:100%; padding:7px 4px; cursor:pointer; }
+.candidate-dialog { margin:auto; width:min(360px,calc(100vw - 32px)); max-height:80vh; padding:0; border:1px solid #ffffff55; border-radius:16px; background:var(--activity-panel,#fff); color:var(--activity-ink,#172554); box-shadow:0 20px 80px #0006; }
+.candidate-dialog::backdrop { background:#0009; }
+.candidate-dialog-body { padding:16px; }
+.candidate-dialog-close { display:block; margin:0 0 12px auto; padding:6px 12px; border:1px solid currentColor; border-radius:8px; cursor:pointer; }
