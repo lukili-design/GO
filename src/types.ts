@@ -264,6 +264,7 @@ export interface Activity {
   voteNotificationTime?: string; // HH:mm:ss, Asia/Hong_Kong
   voterCsvFileName?: string;
   emailInviteConfig?: ActivityEmailInviteConfig;
+  emailInviteSendAt?: string; // YYYY-MM-DD HH:mm，香港時間
   invitationCodeCount?: number;
   inviteCodeConfig?: ActivityInviteCodeConfig;
   modules: ActivityModuleLink[];
@@ -304,6 +305,7 @@ export type VoteOptionImageRatio = 'NONE' | '1:1' | '3:4' | '9:16' | '16:9';
 
 export interface VoteItem {
   id: string; // 投票項目 ID (如 ITEM-01, BEST-ACTOR, BEST-DRAMA)
+  resultVisibility?: VoteResultVisibility; // 此投票的結果公開規則
   optionImageRatio?: VoteOptionImageRatio; // 全部階段候選項統一圖片比例
   title: string; // 投票項目名稱 (如：最佳女演員、最佳男演員、最佳劇集)
   name?: string; // 投票項目名稱 (兼容別名)

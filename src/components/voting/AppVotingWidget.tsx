@@ -167,6 +167,9 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
   // Should show results percentage bars for current item (when voted or phase ended)
   const shouldShowResults = isPhaseEnded || hasUserVotedThisItem || isAllSubmitted;
 
+  const resultVisibility = currentVoteItem.resultVisibility || campaign.resultVisibility || 'AFTER_VOTE';
+  const showResultBars = resultVisibility === 'ALWAYS_PUBLIC' || (resultVisibility === 'AFTER_VOTE' && (hasUserVotedThisItem || isAllSubmitted)) || (resultVisibility === 'AFTER_CAMPAIGN_END' && campaign.status === 'ENDED');
+
   // Active selections for current view
   const currentSelectedOptionIds = isAllRequiredMode
     ? (allRequiredDrafts[currentVoteItem.id] || [])
@@ -661,7 +664,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
                   </div>
 
                   {/* Real-time Percentage Bar (When Showing Results) */}
-                  {shouldShowResults && (
+                  {showResultBars && (
                     <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 space-y-1">
                       <div className="flex items-center justify-between text-[11px] font-medium font-mono">
                         <span className="text-slate-500 dark:text-slate-400">

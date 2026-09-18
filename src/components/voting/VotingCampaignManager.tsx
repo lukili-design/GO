@@ -2577,12 +2577,22 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                               </select>
                             </div>
 
-                            <div className="md:col-span-3 space-y-2">
+                            <div className="space-y-1">
                               <label htmlFor="option-image-ratio" className="block text-xs font-bold text-slate-700 dark:text-slate-300">候選項圖片比例</label>
-                              <select id="option-image-ratio" value={currentItem.optionImageRatio || '3:4'} onChange={e => updateCurrentItem(item => ({...item, optionImageRatio:e.target.value as VoteOptionImageRatio}))} className="w-full px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs">
+                              <select id="option-image-ratio" value={currentItem.optionImageRatio || '3:4'} onChange={e => updateCurrentItem(item => ({...item, optionImageRatio:e.target.value as VoteOptionImageRatio}))} className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500">
                                 <option value="NONE">不需要圖片</option><option value="1:1">1:1（正方形）</option><option value="3:4">3:4（直向）</option><option value="9:16">9:16（長直向）</option><option value="16:9">16:9（橫向）</option>
                               </select>
                               <p className="text-[11px] text-slate-500">統一套用至此投票所有階段的候選項。選擇「不需要圖片」會隱藏圖片，已上傳的圖片仍會保留。</p>
+                            </div>
+                            <div className="space-y-1">
+                              <label htmlFor="vote-result-visibility" className="block text-xs font-bold text-slate-700 dark:text-slate-300">投票結果顯示方式</label>
+                              <select id="vote-result-visibility" value={currentItem.resultVisibility || editingCampaign.resultVisibility || 'AFTER_VOTE'} onChange={e => updateCurrentItem(item => ({...item, resultVisibility:e.target.value as VoteResultVisibility}))} className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-blue-500">
+                                <option value="AFTER_VOTE">提交投票後可見</option>
+                                <option value="ALWAYS_PUBLIC">始終可見</option>
+                                <option value="ADMIN_ONLY">不向參與者公開</option>
+                                {(currentItem.resultVisibility || editingCampaign.resultVisibility) === 'AFTER_CAMPAIGN_END' && <option value="AFTER_CAMPAIGN_END">活動結束後可見（原有設定）</option>}
+                              </select>
+                              <p className="text-[11px] text-slate-500">統一控制此投票的票數、佔比及投票走勢；管理端仍可查看統計。</p>
                             </div>
                           </div>
 
