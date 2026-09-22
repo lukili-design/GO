@@ -1,3 +1,4 @@
+import { getVoteProcessingUntil } from '../../utils/voteProcessing';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -21,6 +22,7 @@ interface AppVotingWidgetProps {
   triggerSound?: (freq: number, type: OscillatorType, duration: number) => void;
   initialVoteItemId?: string;
   hideHeader?: boolean;
+  demoProcessingItemId?: string;
 }
 
 export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
@@ -31,8 +33,11 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
   onRequireLogin,
   triggerSound,
   initialVoteItemId,
-  hideHeader = false
+  hideHeader = false,
+  demoProcessingItemId
 }) => {
+  const [processingNow, setProcessingNow] = useState(Date.now());
+  useEffect(() => { const timer = window.setInterval(() => setProcessingNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
   // Extract all VoteItems
   const voteItems = getCampaignVoteItems(campaign);
   const isAllRequiredMode = campaign.submissionMode === 'ALL_REQUIRED';
@@ -160,7 +165,12 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
   // Check if current item or all items are voted
   const currentItemVotedIds = votedItemsMap[currentVoteItem.id] || [];
-  const isPhaseEnded = currentPhase.status === 'ENDED';
+  const isProcessing = currentVoteItem.id === demoProcessingItemId || !!getVoteProcessingUntil(currentItemPhases, processingNow);
+  const isPhaseEnded = currentPhase.status === 'ENDED' || isProcessing;
+  const processingPhaseIndex = currentItemPhases.findIndex((phase, index) => index > 0 && phase.advanceRuleEnabled && getVoteProcessingUntil(currentItemPhases.slice(index - 1, index + 1), processingNow));
+  const nextPhase = processingPhaseIndex > 0 ? currentItemPhases[processingPhaseIndex] : currentItemPhases[currentItemPhases.findIndex(phase => phase.id === currentPhase.id) + 1];
+  const nextVoteStart = currentVoteItem.id === demoProcessingItemId ? '2026-03-03 18:00' : nextPhase?.startTime?.replace('T', ' ').slice(0, 16);
+
   const hasUserVotedThisItem = currentItemVotedIds.length > 0;
   const isCompletedAll = voteItems.every(v => votedItemsMap[v.id] && votedItemsMap[v.id].length > 0);
 
@@ -293,6 +303,10 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
   // Submit All Votes Together (ALL_REQUIRED mode)
   const handleSubmitAllVotes = () => {
+    if (voteItems.some(item => item.id === demoProcessingItemId || getVoteProcessingUntil(item.phases))) {
+      setErrorMessage('部分投票已截止，暫時無法統一提交。');
+      return;
+    }
     setErrorMessage(null);
 
     // Auth check
@@ -348,6 +362,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
   // Submit Individual Item (INDIVIDUAL mode) - 提交投票並自動跳轉至下一個投票 tab（第五個不跳轉直接 toast "投票成功"）
   const handleSubmitIndividualVote = () => {
+    if (isPhaseEnded) return;
     setErrorMessage(null);
 
     // Auth check
@@ -591,7 +606,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
               if (hideHeader) return <ActivityCandidateCard key={option.id} option={option} index={idx} imageRatio={currentVoteItem.optionImageRatio || '3:4'}
                 selected={isSelected || isVotedByMe} disabled={hasUserVotedThisItem || isPhaseEnded}
-                label={isVotedByMe ? '已投票' : isSelected ? '已選' : hasUserVotedThisItem ? '已完成投票' : isPhaseEnded ? '已結束' : '選擇'}
+                label={isPhaseEnded ? (isVotedByMe || isSelected ? '已選' : '') : isVotedByMe ? '已投票' : isSelected ? '已選' : hasUserVotedThisItem ? '已完成投票' : '選擇'}
                 onSelect={() => handleToggleOption(option.id)} />;
 
               return (
@@ -697,7 +712,12 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
       <div className="activity-vote-actions p-4 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
         
         {/* 🌟 1. ALL_REQUIRED 統一提交模式下的底部控制列 (上個投票 / 下個投票 / 提交所有投票) */}
-        {isAllRequiredMode && (
+        {isPhaseEnded && <div role="status" className="py-3 text-center space-y-2">
+          <p className="text-sm font-semibold">已截止</p>
+          {isProcessing && <p className="text-sm">投票結果統計中</p>}
+          {nextVoteStart && <p className="text-xs opacity-80">下一階段投票將於 {nextVoteStart} 開始</p>}
+        </div>}
+        {!isPhaseEnded && isAllRequiredMode && (
           <div>
             {!shouldShowResults ? (
               <div className="space-y-2.5">
@@ -792,7 +812,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
         )}
 
         {/* 🌟 2. INDIVIDUAL 模式下的底部控制列 (投選當前項目 / 已投票狀態) */}
-        {!isAllRequiredMode && (
+        {!isPhaseEnded && !isAllRequiredMode && (
           <div>
             {!hasUserVotedThisItem ? (
               /* 未投票樣式：下方顯示「提交投票」 */
@@ -984,7 +1004,7 @@ const ActivityCandidateCard: React.FC<{ option: VoteOption; index: number; image
       <span ref={descriptionRef} className="line-clamp-2">{option.description}</span>
       {overflows && <span className="candidate-more">查看詳情</span>}
     </button>}
-    <button type="button" aria-pressed={selected} disabled={disabled} onClick={onSelect} className="activity-candidate-action">{selected && <Check size={14}/>} {label}</button>
+    {label && <button type="button" aria-pressed={selected} disabled={disabled} onClick={onSelect} className="activity-candidate-action">{selected && <Check size={14}/>} {label}</button>}
     <dialog ref={dialogRef} className="candidate-dialog" aria-label={`${option.name} 完整資料`} onClick={event => { if (event.target === event.currentTarget) dialogRef.current?.close(); }}>
       <div className="candidate-dialog-body">
         <button autoFocus type="button" className="candidate-dialog-close" onClick={() => dialogRef.current?.close()}>關閉</button>

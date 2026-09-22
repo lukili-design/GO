@@ -1,5 +1,7 @@
+import { getVoteProcessingUntil } from '../../utils/voteProcessing';
+import { VoteProcessingState } from '../voting/VoteProcessingState';
 import { GoBanner, GoButton } from '../ui/GoUI';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Activity, VoteItem, VotingCampaign } from '../../types';
 import { getCampaignVoteItems } from '../../utils/votingHelpers';
 import { AppVotingWidget } from '../voting/AppVotingWidget';
@@ -82,18 +84,28 @@ export const AppActivityDetail: React.FC<{
   activity: Activity; campaigns: VotingCampaign[]; userVotes: Record<string, string[]>;
   onVoteSubmit?: (campaignId: string, phaseId: string, optionIds: string[]) => void; onBack: () => void;
 }> = ({ activity, campaigns, userVotes, onVoteSubmit, onBack }) => {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
+  const processingDemo = new URLSearchParams(window.location.search).get('votePreview') === 'processing';
   const [detailTab, setDetailTab] = useState('list');
   const [trendItemId, setTrendItemId] = useState('');
   const bundle = activityVotingBundle(activity, campaigns);
+  const demoProcessingItemId = processingDemo ? bundle.campaign.voteItems?.at(-1)?.id : undefined;
   const trendItem = bundle.campaign.voteItems?.find(item => item.id === trendItemId) || bundle.campaign.voteItems?.[0];
   const trendPhase = trendItem?.phases.find(phase => phase.id === trendItem.currentPhaseId) || trendItem?.phases[0];
+  const nextProcessingPhase = trendItem?.phases.find((phase, index) => index > 0 && phase.advanceRuleEnabled && getVoteProcessingUntil(trendItem.phases.slice(index - 1, index + 1), now));
+  const nextStartTime = trendItem?.id === demoProcessingItemId ? '2026-03-03 18:00' : nextProcessingPhase?.startTime?.replace('T', ' ').slice(0, 16);
+  const processingUntil = trendItem ? getVoteProcessingUntil(trendItem.phases, now) : null;
+  const processing = !!trendItem && (trendItem.id === demoProcessingItemId || !!processingUntil);
   const trendTotal = trendPhase?.options.reduce((sum, option) => sum + option.votes, 0) || 0;
   const visibility = trendItem?.resultVisibility || 'AFTER_VOTE';
   const hasSubmittedTrend = trendPhase?.options.some(option => {
     const source = bundle.optionSources.get(option.id);
     return source && userVotes[source.campaignId]?.includes(source.optionId);
   });
-  const showTrendResults = visibility === 'ALWAYS_PUBLIC' || (visibility === 'AFTER_VOTE' && hasSubmittedTrend) || (visibility === 'AFTER_CAMPAIGN_END' && activityState(activity) === '已結束');
+  // Only the preview's first item demonstrates public results; CMS settings are preserved.
+  const demoResultsVisible = processingDemo && !!trendItem && trendItem.id === bundle.campaign.voteItems?.[0]?.id && trendItem.id !== demoProcessingItemId;
+  const showTrendResults = demoResultsVisible || visibility === 'ALWAYS_PUBLIC' || (visibility === 'AFTER_VOTE' && hasSubmittedTrend) || (visibility === 'AFTER_CAMPAIGN_END' && activityState(activity) === '已結束');
   const state = activityState(activity);
   const canVote = state === '進行中' && (activity.voterMethods || ['TVB_GO_MEMBER']).includes('TVB_GO_MEMBER');
   const validColor = (color: string | undefined, fallback: string) => /^#[0-9a-f]{6}$/i.test(color || '') ? color! : fallback;
@@ -126,8 +138,10 @@ export const AppActivityDetail: React.FC<{
         {([['list', '投票列表'], ['rules', '投票細則'], ['trends', '投票走勢']] as const).map(([id, label]) => <GoButton key={id} variant="quiet" aria-pressed={detailTab === id} aria-controls={`vote-panel-${id}`} onClick={() => setDetailTab(id)}>{label}</GoButton>)}
       </nav>
       <section id="vote-panel-list" aria-label="投票列表" hidden={detailTab !== 'list'} className="space-y-4">
-        {bundle.campaign.voteItems?.length ? canVote ? <AppVotingWidget key={`${activity.id}:${activity.submissionMode}`} campaign={bundle.campaign} hideHeader userVotedOptionIds={[...bundle.optionSources].filter(([,source]) => userVotes[source.campaignId]?.includes(source.optionId)).map(([id]) => id)} onVoteSubmit={(_,phaseId,ids) => {
+        {bundle.campaign.voteItems?.length ? canVote ? <AppVotingWidget key={`${activity.id}:${activity.submissionMode}`} campaign={bundle.campaign} demoProcessingItemId={demoProcessingItemId} hideHeader userVotedOptionIds={[...bundle.optionSources].filter(([,source]) => userVotes[source.campaignId]?.includes(source.optionId)).map(([id]) => id)} onVoteSubmit={(_,phaseId,ids) => {
           if (activityState(activity) !== '進行中') return;
+          const item = bundle.campaign.voteItems?.find(item => item.phases.some(phase => phase.id === phaseId));
+          if (item && (item.id === demoProcessingItemId || getVoteProcessingUntil(item.phases))) return;
           const source = bundle.sources.get(phaseId);
           if (source) onVoteSubmit?.(source.campaignId, source.phaseId, ids.map(id => source.options.get(id)).filter((id): id is string => Boolean(id)));
         }}/> : bundle.campaign.voteItems.map(item => <div key={item.id} className="py-4 border-b border-current/20 text-sm">{item.title}<p className="mt-1 text-xs opacity-75">目前不可提交投票</p></div>) : <p className="py-4 text-sm">活動內容即將公布。</p>}
@@ -136,8 +150,8 @@ export const AppActivityDetail: React.FC<{
       <section id="vote-panel-trends" aria-label="投票走勢" hidden={detailTab !== 'trends'} className="activity-detail-panel space-y-4">
         <div className="activity-trend-navigation" aria-label="選擇查看的投票">{bundle.campaign.voteItems?.map(item => <GoButton key={item.id} variant="quiet" aria-pressed={trendItem?.id === item.id}  onClick={() => setTrendItemId(item.id)}>{item.title.replace(/^[^\p{L}\p{N}]+/u, '')}</GoButton>)}</div>
         <h2 className="font-bold text-base">{trendItem?.title || '投票走勢'}</h2>
-        {showTrendResults && <p className="text-xs opacity-70">累計 {trendTotal.toLocaleString()} 票 · 演示數據，佔比按本投票總票數計算</p>}
-        {!showTrendResults ? <p className="text-sm opacity-80">{visibility === 'ADMIN_ONLY' ? '此投票的結果不公開。' : visibility === 'AFTER_CAMPAIGN_END' ? '活動結束後可查看投票結果。' : '提交此項投票後，即可查看結果。'}</p> : trendPhase?.options.length ? [...trendPhase.options].sort((a, b) => b.votes - a.votes).map(option => {
+        {!processing && showTrendResults && <p className="text-xs opacity-70">累計 {trendTotal.toLocaleString()} 票 · 演示數據，佔比按本投票總票數計算</p>}
+        {processing ? <VoteProcessingState nextStartTime={nextStartTime}/> : !showTrendResults ? <p className="text-sm opacity-80">{visibility === 'ADMIN_ONLY' ? '此投票的結果不公開。' : visibility === 'AFTER_CAMPAIGN_END' ? '活動結束後可查看投票結果。' : '提交此項投票後，即可查看結果。'}</p> : trendPhase?.options.length ? [...trendPhase.options].sort((a, b) => b.votes - a.votes).map(option => {
           const percent = trendTotal ? option.votes / trendTotal * 100 : 0;
           return <div key={option.id} className="space-y-2 rounded-xl border border-current/20 p-3">
             <p className="text-sm font-bold break-words">{option.name}</p>
