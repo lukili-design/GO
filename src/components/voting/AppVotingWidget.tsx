@@ -86,6 +86,8 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
 
   const currentVoteItemTitle = currentVoteItem.title || currentVoteItem.name || campaign.title;
 
+  const isSubmitDemo = !!demoProcessingItemId && currentVoteItemTitle.includes('最上鏡小姐與年度風采大獎');
+
   // Phases of current item
   const currentItemPhases = currentVoteItem.phases && currentVoteItem.phases.length > 0
     ? currentVoteItem.phases
@@ -372,7 +374,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
       return;
     }
 
-    const currentDrafts = individualDraftsMap[currentVoteItem.id] || [];
+    const currentDrafts = (isSubmitDemo && isAllRequiredMode ? allRequiredDrafts : individualDraftsMap)[currentVoteItem.id] || [];
 
     // Selection empty check
     if (currentDrafts.length === 0) {
@@ -717,7 +719,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
           {isProcessing && <p className="text-sm">投票結果統計中</p>}
           {nextVoteStart && <p className="text-xs opacity-80">下一階段投票將於 {nextVoteStart} 開始</p>}
         </div>}
-        {!isPhaseEnded && isAllRequiredMode && (
+        {!isPhaseEnded && isAllRequiredMode && !isSubmitDemo && (
           <div>
             {!shouldShowResults ? (
               <div className="space-y-2.5">
@@ -812,7 +814,7 @@ export const AppVotingWidget: React.FC<AppVotingWidgetProps> = ({
         )}
 
         {/* 🌟 2. INDIVIDUAL 模式下的底部控制列 (投選當前項目 / 已投票狀態) */}
-        {!isPhaseEnded && !isAllRequiredMode && (
+        {!isPhaseEnded && (!isAllRequiredMode || isSubmitDemo) && (
           <div>
             {!hasUserVotedThisItem ? (
               /* 未投票樣式：下方顯示「提交投票」 */
