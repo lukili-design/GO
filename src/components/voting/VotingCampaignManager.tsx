@@ -9,6 +9,7 @@ import {
   VoteCampaignStatus, VoteSelectionMode, VoteFrequencyLimit, VoteLogRecord,
   VoteSubmissionMode, VoteOptionImageRatio
 } from '../../types';
+import { getPhaseTimingError, getEarliestPhaseStart } from '../../utils/votePhaseTiming';
 import { INITIAL_VOTE_LOGS } from '../../data/voteMockData';
 import { getCampaignVoteItems, syncCampaignFromVoteItems, calculatePhaseAutoStatus } from '../../utils/votingHelpers';
 import { 
@@ -1008,6 +1009,8 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
         errors.push(`投票項目【${item.title || `#${itemIdx + 1}`}】必須包含至少一個賽制階段！`);
       }
       item.phases.forEach((p, idx) => {
+        const timingError = getPhaseTimingError(item.phases, idx);
+        if (timingError) errors.push(`項目【${item.title}】第 ${idx + 1} 階段：${timingError}`);
         if (!p.name.trim()) errors.push(`項目【${item.title}】第 ${idx + 1} 階段名稱不能為空！`);
         if (p.options.length === 0) errors.push(`項目【${item.title}】第 ${idx + 1} 階段必須包含至少一個投票選項！`);
         p.options.forEach((opt, optIdx) => {
@@ -1602,6 +1605,11 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
             {/* 右側：返回列表與保存按鈕 */}
             <div className="flex items-center gap-2 shrink-0">
               <button type="button" onClick={() => {
+                const timingErrors = getCampaignVoteItems(editingCampaign).flatMap(item => item.phases.flatMap((_, idx) => {
+                  const error = getPhaseTimingError(item.phases, idx);
+                  return error ? [`項目【${item.title}】第 ${idx + 1} 階段：${error}`] : [];
+                }));
+                if (timingErrors.length) { setFormErrors(timingErrors); return; }
                 localStorage.setItem('tvb-voting-editor-draft', JSON.stringify(editingCampaign));
                 setFormErrors([]);
                 setAdvanceSuccessMessage('草稿已保存，可從「新建投票」繼續編輯。');
@@ -1901,6 +1909,8 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
           const phases = currentItem ? currentItem.phases : [];
           const safePhaseIndex = Math.min(activePhaseIndex, Math.max(0, phases.length - 1));
           const curPhase = phases[safePhaseIndex];
+          const earliestPhaseStart = getEarliestPhaseStart(phases, safePhaseIndex);
+          const phaseTimingError = getPhaseTimingError(phases, safePhaseIndex);
 
           const updateCurrentItem = (updater: (item: VoteItem) => VoteItem) => {
             const newItems = [...voteItems];
@@ -2500,35 +2510,6 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                               />
                             </div>
 
-                            {/* 2. 階段開始時間 階段結束時間 (同一行) */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                  投票開始時間 <span className="text-rose-500">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  value={curPhase.startTime}
-                                  onChange={(e) => updateCurrentPhase(p => ({ ...p, startTime: e.target.value }))}
-                                  placeholder="2026-08-01 00:00:00"
-                                  className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
-                                />
-                              </div>
-
-                              <div className="space-y-1">
-                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                                  投票結束時間 <span className="text-rose-500">*</span>
-                                </label>
-                                <input
-                                  type="text"
-                                  value={curPhase.endTime}
-                                  onChange={(e) => updateCurrentPhase(p => ({ ...p, endTime: e.target.value }))}
-                                  placeholder="2026-08-15 23:59:59"
-                                  className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
-                                />
-                              </div>
-                            </div>
-
                             {/* 3. 單選 / 多選模式 */}
                             <div className="space-y-1">
                               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
@@ -2597,6 +2578,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                           </div>
 
                           {/* 晉級規則配置 */}
+                          {safePhaseIndex > 0 && (
                           <div className="p-4 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/70 dark:border-amber-900/50 rounded-xl space-y-3">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
@@ -2606,7 +2588,8 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                                   checked={!!curPhase.advanceRuleEnabled}
                                   onChange={(e) => updateCurrentPhase(p => ({
                                     ...p,
-                                    advanceRuleEnabled: e.target.checked
+                                    advanceRuleEnabled: e.target.checked,
+                                    advanceSourcePhaseId: p.advanceSourcePhaseId || phases[safePhaseIndex - 1]?.id
                                   }))}
                                   className="w-4 h-4 text-amber-600 rounded cursor-pointer accent-amber-600"
                                 />
@@ -2619,19 +2602,9 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                                 </label>
                               </div>
 
-                              {/* 依前一階段排行手動導入按鈕 */}
-                              {curPhase.advanceRuleEnabled && safePhaseIndex > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleExecuteAdvanceImport(safePhaseIndex)}
-                                  className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
-                                >
-                                  <Sparkles size={13} />
-                                  <span>從上一階段導入前 {curPhase.advanceSourceTopCount || 7} 名</span>
-                                </button>
-                              )}
                             </div>
 
+                            {curPhase.advanceRuleEnabled && <p className="text-xs text-amber-900 dark:text-amber-200">晉級結果需預留 5 分鐘處理時間，本階段的投票開始時間不得早於上一階段結束後 5 分鐘。</p>}
                             {/* 勾選後才顯示具體名額與來源階段配置 */}
                             {curPhase.advanceRuleEnabled && (
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs pt-2 border-t border-amber-200/60 dark:border-amber-900/40 animate-fadeIn">
@@ -2675,6 +2648,45 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                               </div>
                             )}
                           </div>
+
+                          )}
+
+                            {/* 2. 階段開始時間 階段結束時間 (同一行) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                                  投票開始時間 <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  step={1}
+                                  aria-label="投票開始時間"
+                                  min={earliestPhaseStart || undefined}
+                                  aria-invalid={!!phaseTimingError}
+                                  value={curPhase.startTime.replace(' ', 'T')}
+                                  onChange={(e) => updateCurrentPhase(p => ({ ...p, startTime: e.target.value.replace('T', ' ') }))}
+                                  placeholder="2026-08-01 00:00:00"
+                                  className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                                  投票結束時間 <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                  type="datetime-local"
+                                  step={1}
+                                  aria-label="投票結束時間"
+                                  value={curPhase.endTime.replace(' ', 'T')}
+                                  onChange={(e) => updateCurrentPhase(p => ({ ...p, endTime: e.target.value.replace('T', ' ') }))}
+                                  placeholder="2026-08-15 23:59:59"
+                                  className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-mono focus:outline-none focus:border-blue-500"
+                                />
+                              </div>
+                            </div>
+
+                          {phaseTimingError && <p role="alert" className="text-xs text-rose-600">{phaseTimingError}</p>}
 
                           {/* Options List */}
                           <div className="space-y-3 pt-2">
