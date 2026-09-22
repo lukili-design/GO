@@ -86,7 +86,7 @@ export const AppActivityDetail: React.FC<{
 }> = ({ activity, campaigns, userVotes, onVoteSubmit, onBack }) => {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer); }, []);
-  const processingDemo = new URLSearchParams(window.location.search).get('votePreview') === 'processing';
+  const processingDemo = ['ACT-DEMO-VOTE-ALL_REQUIRED', 'ACT-DEMO-VOTE-INDIVIDUAL'].includes(activity.id);
   const [detailTab, setDetailTab] = useState('list');
   const [trendItemId, setTrendItemId] = useState('');
   const bundle = activityVotingBundle(activity, campaigns);
