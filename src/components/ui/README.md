@@ -66,3 +66,13 @@ import { GoButton, GoSurface, GoBanner, GoNotice, formControlClass } from '../ui
 
 新元件優先使用 `--go-text-title`、`--go-text-section`、`--go-text-body`、`--go-text-caption` 變數；可用 `go-text-section`／`go-text-caption` 標記語意。避免另設 10px、11px 文字或 900 字重。
 目前啟用於 CMS 投票新增／編輯和 APP 活動投票詳情。其他舊頁面不批次改動。
+
+## CMS 菜單與列表（活動／簽到／抽獎共用）
+
+- `GoCmsNavItem`：傳入 `icon`、`active`、`onClick` 和菜單名稱，統一圖示尺寸、間距、選中及深色模式。
+- `GoCmsListHeader`：傳入 `icon`、`title`、`description`、`action`，統一標題卡片及右側新增按鈕。
+- `GoCmsListFilters`：包住搜尋／篩選欄位，與表格分開呈現。
+- `GoCmsTable`：children 放 `thead`、`tbody`，不要再嵌套 `table`；統一表頭底色、欄位間距、分隔線和橫向捲動。空結果放在 `tbody` 的跨欄儲存格。
+- `GoCmsRowAction`：用於列表行內操作；`tone` 支援 `blue`、`green`、`purple`、`slate`。操作保持單行，表格窄時橫向捲動。
+
+已接入活動列表、簽到列表、抽獎列表。這組緊湊列表元件不套用整頁 `go-type`；新增／編輯表單仍使用原有表單元件及字體規範。樣式只作用於元件，不改動其他舊頁面。

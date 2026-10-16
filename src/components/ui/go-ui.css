@@ -48,3 +48,47 @@ textarea.go-control { resize:vertical; min-height:88px; }
 .go-type.go-type :where(.candidate-description, .candidate-more, .go-text-caption) { font-size:var(--go-text-caption); line-height:1.5; }
 .go-type.go-type .activity-vote-actions :where(div, span, strong) { font-size:var(--go-text-caption); line-height:1.5; }
 .go-type.go-type .activity-vote-actions button :where(span) { font-size:var(--go-text-body); }
+
+/* Shared CMS navigation and compact list format, matching Activity List. */
+.go-cms-nav { width:100%; display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:12px; font-size:12px; font-weight:700; text-align:left; color:#475569; cursor:pointer; transition:background .15s; }
+.go-cms-nav svg { width:15px; height:15px; flex-shrink:0; }
+.go-cms-nav:hover { background:#f1f5f9; }
+.go-cms-nav.is-active { background:#2563eb; color:white; box-shadow:0 1px 2px #0000000d; }
+.go-cms-list-header { padding:20px; display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.go-cms-list-eyebrow { display:flex; align-items:center; gap:8px; color:#2563eb; font-size:12px; font-weight:700; }
+.go-cms-list-header h2 { margin-top:4px; font-size:18px; font-weight:800; }
+.go-cms-list-header p { margin-top:4px; color:#64748b; font-size:12px; }
+.go-cms-list-primary { flex-shrink:0; }
+.go-cms-list-primary .go-button { font-size:12px; }
+.go-cms-list-filters { padding:16px; }
+.go-cms-list-filters input { max-width:384px; }
+.go-cms-table table { width:100%; text-align:left; font-size:12px; border-collapse:collapse; }
+.go-cms-table thead { background:#f8fafc; color:#64748b; }
+.go-cms-table th,.go-cms-table td { padding:14px; }
+.go-cms-table th { font-weight:700; white-space:nowrap; }
+.go-cms-table tbody tr { border-top:1px solid #f1f5f9; }
+.go-cms-table tbody tr:hover { background:#f8fafc80; }
+.go-cms-table th:last-child,.go-cms-table td:last-child { text-align:right; white-space:nowrap; }
+.go-cms-row-action { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border:1px solid #bfdbfe; border-radius:8px; background:#eff6ff; color:#1d4ed8; font-size:11px; font-weight:700; line-height:16px; white-space:nowrap; cursor:pointer; margin-left:6px; }
+.go-cms-row-action--green { background:#ecfdf5; border-color:#a7f3d0; color:#047857; }
+.go-cms-row-action--purple { background:#f5f3ff; border-color:#ddd6fe; color:#6d28d9; }
+.go-cms-row-action--slate { background:#f8fafc; border-color:#e2e8f0; color:#475569; }
+.go-cms-row-action:hover { filter:brightness(.97); }
+.go-cms-row-action:focus-visible,.go-cms-nav:focus-visible { outline:3px solid var(--go-focus); outline-offset:2px; }
+.go-cms-row-action:disabled { opacity:.45; cursor:not-allowed; }
+.dark .go-cms-nav { color:#94a3b8; }
+.dark .go-cms-nav:hover { background:#0f172a; }
+.dark .go-cms-nav.is-active { background:#2563eb; color:white; }
+.dark .go-cms-table thead { background:#1e293b; color:#94a3b8; }
+.dark .go-cms-table tbody tr { border-color:#1e293b; }
+.dark .go-cms-table tbody tr:hover { background:#1e293b80; }
+.dark .go-cms-row-action { background:#172554; border-color:#1e40af; color:#93c5fd; }
+.dark .go-cms-row-action--green { background:#022c22; border-color:#065f46; color:#6ee7b7; }
+.dark .go-cms-row-action--purple { background:#2e1065; border-color:#5b21b6; color:#c4b5fd; }
+.dark .go-cms-row-action--slate { background:#1e293b; border-color:#334155; color:#cbd5e1; }
+.go-cms-table tbody td[colspan] { padding:48px 16px; text-align:center; color:#94a3b8; }
+
+/* Participation table keeps actions visible while scrolling wide data. */
+.checkin-people-table .go-cms-table th:last-child,
+.checkin-people-table .go-cms-table td:last-child { position: sticky; right: 0; background: var(--go-surface, #fff); box-shadow: -4px 0 8px rgb(15 23 42 / 4%); }
+.checkin-people-table .go-cms-table td { white-space: nowrap; }

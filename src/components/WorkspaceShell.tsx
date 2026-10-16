@@ -25,6 +25,7 @@ import {
   ExternalLink, Laptop, Monitor, Sliders, Database, Calendar, LogOut
 } from 'lucide-react';
 
+import { completeBanquetDemo, prepareBanquetDemo } from '../utils/checkIn';
 import { createActivityDemos, includeMissingActivityDemos } from '../data/activityDemos';
 const activityDemos = createActivityDemos(ORIGINAL_VOTING_CAMPAIGNS);
 const INITIAL_VOTING_CAMPAIGNS = [...ORIGINAL_VOTING_CAMPAIGNS, ...activityDemos.campaigns];
@@ -114,18 +115,18 @@ export const WorkspaceShell: React.FC = () => {
   }, [votingCampaigns]);
 
   // Activities are independent containers. Existing voting data is linked as modules for backward-compatible migration.
-  const [activities, setActivities] = useState<Activity[]>(() => {
+  const [storedActivities, setActivities] = useState<Activity[]>(() => {
     const saved = localStorage.getItem('tvb_go_activities_v1');
     if (saved) {
       try {
         const parsed: Activity[] = JSON.parse(saved);
-        return includeMissingActivityDemos(parsed.map(activity => ({ ...activity, rules: activity.rules || '', submissionMode: activity.submissionMode || 'ALL_REQUIRED', voterMethods: activity.voterMethods || ['TVB_GO_MEMBER'], invitationCodeCount: activity.invitationCodeCount || 20, modules: activity.modules.flatMap(module => {
-          if (module.type !== 'VOTING' || !module.resourceId || module.resourceId.includes('::')) return module.type === 'VOTING' ? [module] : [];
+        return includeMissingActivityDemos(prepareBanquetDemo(parsed).map(activity => ({ ...activity, rules: activity.rules || '', submissionMode: activity.submissionMode || 'ALL_REQUIRED', voterMethods: activity.voterMethods || ['TVB_GO_MEMBER'], invitationCodeCount: activity.invitationCodeCount || 20, modules: activity.modules.flatMap(module => {
+          if (module.type !== 'VOTING' || !module.resourceId || module.resourceId.includes('::')) return [module];
           const campaign = votingCampaigns.find(vote => vote.id === module.resourceId);
           return campaign?.voteItems?.length
             ? campaign.voteItems.map(item => ({ ...module, id: `${module.id}-${item.id}`, title: item.title, resourceId: `${campaign.id}::${item.id}` }))
             : [module];
-        }).map((module, index) => ({ ...module, order: index + 1 })) })), activityDemos.activities);
+        }).map((module, index) => ({ ...module, order: index + 1 })) })), [...activityDemos.activities, completeBanquetDemo()]);
       } catch {}
     }
     return includeMissingActivityDemos(ORIGINAL_VOTING_CAMPAIGNS.map((vote, index) => ({
@@ -146,15 +147,24 @@ export const WorkspaceShell: React.FC = () => {
       creator: vote.creator || '系統管理員 (TVB GO)',
       createdAt: vote.createdAt,
       updatedAt: vote.updatedAt,
-    })), activityDemos.activities);
+    })), [...activityDemos.activities, completeBanquetDemo()]);
   });
 
-  useEffect(() => localStorage.setItem('tvb_go_activities_v1', JSON.stringify(activities)), [activities]);
+  const activities = storedActivities.map(activity => {
+    const sourceId=activity.modules.find(m=>m.type==='CHECK_IN')?.resourceId;
+    const source=sourceId&&sourceId!==activity.id?storedActivities.find(item=>item.id===sourceId):undefined;
+    return source?{...activity,checkIn:source.checkIn}:activity;
+  });
+  useEffect(() => localStorage.setItem('tvb_go_activities_v1', JSON.stringify(storedActivities)), [storedActivities]);
 
   const handleSaveActivity = (activity: Activity) => {
-    setActivities(prev => prev.some(item => item.id === activity.id)
-      ? prev.map(item => item.id === activity.id ? activity : item)
-      : [activity, ...prev]);
+    setActivities(prev => {
+      const old=prev.find(item=>item.id===activity.id);
+      const sourceId=activity.modules.find(m=>m.type==='CHECK_IN')?.resourceId;
+      const sameLink=old?.modules.find(m=>m.type==='CHECK_IN')?.resourceId===sourceId;
+      const next=prev.some(item=>item.id===activity.id)?prev.map(item=>item.id===activity.id?activity:item):[activity,...prev];
+      return sameLink&&sourceId&&sourceId!==activity.id?next.map(item=>item.id===sourceId?{...item,checkIn:activity.checkIn}:item):next;
+    });
   };
 
   const handleDeleteActivity = (id: string) => setActivities(prev => prev.filter(item => item.id !== id));

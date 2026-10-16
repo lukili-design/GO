@@ -107,7 +107,7 @@ export const VOTE_ITEM_BATCH_PRESETS: { [key: string]: { name: string; icon: str
 };
 
 interface VotingCampaignManagerProps {
-  report?: { campaign: VotingCampaign; logs: VoteLogRecord[]; mode: 'STATS' | 'DETAILS'; onClose: () => void };
+  report?: { campaign: VotingCampaign; logs: VoteLogRecord[]; mode: 'STATS' | 'DETAILS'; navigation?: React.ReactNode; onClose: () => void };
   campaigns: VotingCampaign[];
   activities?: Activity[];
   onSaveCampaign: (campaign: VotingCampaign) => void;
@@ -2831,6 +2831,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
       {statsCampaign && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-4xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            {report?.navigation}
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-3">
@@ -3152,6 +3153,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
       {detailLogsCampaign && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-5xl w-full shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            {report?.navigation}
             {/* Top Bar */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 shrink-0">
               <div className="flex items-center gap-3">

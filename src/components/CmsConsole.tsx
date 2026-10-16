@@ -1,3 +1,7 @@
+import {GoCmsNavItem} from './ui/GoUI';
+import {QrCode, Gift} from 'lucide-react';
+import {CheckInDirectory} from './activity/CheckInDirectory';
+import {LotteryManager} from './activity/LotteryManager';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -59,7 +63,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
   triggerSound
 }) => {
   // Navigation: 'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT' | 'VOTING_CAMPAIGNS' | 'VOTING_ARTICLES'
-  const [activeCmsTab, setActiveCmsTab] = useState<'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT' | 'ACTIVITIES' | 'VOTING_CAMPAIGNS' | 'VOTING_ARTICLES'>('ACTIVITIES');
+  const [activeCmsTab, setActiveCmsTab] = useState<'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT' | 'CHECK_IN_MANAGEMENT' | 'LOTTERY' | 'ACTIVITIES' | 'VOTING_CAMPAIGNS' | 'VOTING_ARTICLES'>('ACTIVITIES');
 
   // 1. Employee Whitelist Management & Approval Config States (審核配置與員工白名單配置)
   const [isBookingApprovalRequired, setIsBookingApprovalRequired] = useState<boolean>(() => {
@@ -1181,6 +1185,8 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                       </span>
                     </span>
                   </button>
+                  <GoCmsNavItem icon={<QrCode/>} active={activeCmsTab==='CHECK_IN_MANAGEMENT'} onClick={()=>setActiveCmsTab('CHECK_IN_MANAGEMENT')}>簽到管理</GoCmsNavItem>
+                  <GoCmsNavItem icon={<Gift/>} active={activeCmsTab==='LOTTERY'} onClick={()=>setActiveCmsTab('LOTTERY')}>抽獎管理</GoCmsNavItem>
                 </div>
               </div>
 
@@ -1302,6 +1308,8 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
             />
           )}
 
+          {activeCmsTab==='CHECK_IN_MANAGEMENT'&&<CheckInDirectory activities={activities} onSave={onSaveActivity||(()=>{})}/>}
+          {activeCmsTab==='LOTTERY'&&<LotteryManager activities={activities}/>}
           {/* PAGE: 獨立投票管理 (legacy VotingCampaign data remains compatible with frontend widgets) */}
           {activeCmsTab === 'VOTING_CAMPAIGNS' && (
             <VotingCampaignManager

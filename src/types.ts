@@ -200,7 +200,7 @@ export type VoteSubmissionMode = 'ALL_REQUIRED' | 'INDIVIDUAL'; // 🌟 投票�
 
 // 活動是獨立容器；投票、簽到、接龍等功能以模組方式關聯到活動。
 export type ActivityStatus = 'DRAFT' | 'PUBLISHED' | 'ENDED';
-export type ActivityModuleType = 'VOTING' | 'CHECK_IN' | 'RELAY' | 'FORM';
+export type ActivityModuleType = 'VOTING' | 'CHECK_IN' | 'LOTTERY' | 'RELAY' | 'FORM';
 export type ActivityVoterMethod = 'TVB_GO_MEMBER' | 'CSV_IMPORT' | 'INVITATION_CODE';
 
 export interface ActivityEmailParticipant {
@@ -242,7 +242,25 @@ export interface ActivityModuleLink {
   order: number;
 }
 
+export interface CheckInPerson {
+  sessionId?: string;
+  id: string; employeeId: string; name: string; department: string; email: string;
+  group: string; seat: string; token: string; invitationReady?: boolean;
+  mailStatus: 'NOT_SENT' | 'SENT' | 'FAILED'; sentAt?: string; needsResend?: boolean; checkedAt?: string;
+}
+export interface CheckInSession extends Omit<CheckInConfig, 'sessions' | 'people'> { id: string; name: string; }
+export interface CheckInConfig {
+  sessions?: CheckInSession[];
+  activeSessionId?: string;
+  groups?: string[]; // 保留空桌／組及自訂名稱
+  checkInLocation?: string; closesAt?: string; invitationBackground?: string; invitationMessage?: string;
+  emailSubject?: string; emailBody?: string; emailSendAt?: string;
+  location: string; opensAt: string; grouping: 'NONE' | 'GROUP'; groupLabel: '組' | '桌';
+  capacity: number; seats: boolean; people: CheckInPerson[];
+}
 export interface Activity {
+  checkIn?: CheckInConfig;
+
   id: string;
   title: string;
   description: string;
