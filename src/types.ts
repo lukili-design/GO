@@ -250,15 +250,17 @@ export interface CheckInPerson {
 }
 export interface CheckInSession extends Omit<CheckInConfig, 'sessions' | 'people'> { id: string; name: string; }
 export interface CheckInConfig {
+  registrationMode?: 'INVITED'|'OPEN'; registrationStart?:string; registrationEnd?:string; registrationCapacity?:number;
   sessions?: CheckInSession[];
   activeSessionId?: string;
   groups?: string[]; // 保留空桌／組及自訂名稱
-  checkInLocation?: string; closesAt?: string; invitationBackground?: string; invitationMessage?: string;
+  checkInLocation?: string; closesAt?: string; invitationBackground?: string; invitationContentColor?: string; invitationMessage?: string;
   emailSubject?: string; emailBody?: string; emailSendAt?: string;
   location: string; opensAt: string; grouping: 'NONE' | 'GROUP'; groupLabel: '組' | '桌';
   capacity: number; seats: boolean; people: CheckInPerson[];
 }
 export interface Activity {
+  isCheckInResource?: boolean;
   checkIn?: CheckInConfig;
 
   id: string;

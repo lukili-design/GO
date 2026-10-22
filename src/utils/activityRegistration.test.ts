@@ -1,0 +1,10 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {registerActivity} from './activityRegistration';
+import {defaultCheckIn} from './checkIn';
+import type {Activity} from '../types';
+const config=defaultCheckIn();
+const activity={id:'a',title:'test',description:'',startTime:'2026-01-01',creator:'test',createdAt:'',updatedAt:'',status:'PUBLISHED',endTime:'2030-12-31',modules:[{id:'m',type:'CHECK_IN',enabled:true,title:'簽到',order:1}],checkIn:{...config,sessions:['one','two'].map(id=>({...config,id,name:id,registrationMode:'OPEN',registrationStart:'2026-01-01',registrationEnd:'2029-01-01',registrationCapacity:1}))}} as Activity;
+const now=Date.parse('2026-10-21');
+test('registration writes to chosen session and prevents cross-session duplicate',()=>{const a=registerActivity(activity,'two',undefined,now);assert.equal(a.checkIn!.people[0].sessionId,'two');assert.equal(a.checkIn!.people[0].invitationReady,false);assert.throws(()=>registerActivity(a,'one',undefined,now),/重複/);});
+test('publication, time, capacity and invitation-only are enforced',()=>{assert.throws(()=>registerActivity({...activity,status:'DRAFT'},'one',undefined,now));assert.throws(()=>registerActivity(activity,'one',undefined,Date.parse('2025-01-01')));const a=registerActivity(activity,'one',undefined,now);assert.throws(()=>registerActivity(a,'one',{employeeId:'other',name:'test',email:'test@example.com',department:'test'},now),/名額/);assert.throws(()=>registerActivity({...activity,checkIn:{...activity.checkIn!,sessions:activity.checkIn!.sessions!.map(s=>({...s,registrationMode:'INVITED'}))}},'one',undefined,now));});

@@ -1,0 +1,11 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {lotteryPool,lotteryProgress} from './lotteryRound';
+import type {Draw} from '../components/activity/LotteryManager';
+const people=[1,2,3].map(n=>({id:String(n),employeeId:`E${n}`,name:'示例',department:'部門',group:String(n),seat:'A'}));
+const base:Draw={id:'table',title:'test',source:'ACTIVITY',activityId:'activity',sessionId:'one',mode:'TABLE',groups:['1','2','3'],repeat:false,people,prizes:[{id:'p',name:'獎',gift:'禮物',count:2}],winners:[]};
+const winner={...people[0],prizeId:'other',prize:'獎',gift:'禮物',time:'now'};
+test('same seat selects eligible people across tables, not one independent seat per table',()=>{const pool=lotteryPool(base,[],'p');assert.equal(pool.filter(p=>p.seat==='A').length,3);assert.equal(lotteryPool({...base,people:people.slice(1)},[],'p').length,2);});
+test('scope exclusion includes pending results but isolates other sessions',()=>{const other={...base,id:'all',mode:'ALL' as const,pending:[winner]};assert.equal(lotteryPool(base,[other],'p').length,2);assert.equal(lotteryPool(base,[{...other,sessionId:'two'}],'p').length,3);assert.equal(lotteryPool({...base,repeat:true},[other],'p').length,3);});
+test('table quota counts seat numbers, same prize cannot select same seat again',()=>{const d={...base,winners:people.map(p=>({...winner,...p,prizeId:'p'}))};assert.equal(lotteryProgress(d,'p'),1);assert.equal(lotteryPool({...d,repeat:true},[],'p').length,0);assert.equal(lotteryPool({...d,repeat:true},[],'next').length,3);});
+test('global count uses people and deduplicates employee identities',()=>{const d={...base,mode:'ALL' as const,people:[...people,{...people[0],id:'duplicate'}],winners:[winner]};assert.equal(lotteryPool(d,[],'p').length,2);assert.equal(lotteryProgress(d,'other'),1);});

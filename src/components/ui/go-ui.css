@@ -88,7 +88,28 @@ textarea.go-control { resize:vertical; min-height:88px; }
 .dark .go-cms-row-action--slate { background:#1e293b; border-color:#334155; color:#cbd5e1; }
 .go-cms-table tbody td[colspan] { padding:48px 16px; text-align:center; color:#94a3b8; }
 
-/* Participation table keeps actions visible while scrolling wide data. */
+/* Fixed actions retain the shared table header and row colours. */
 .checkin-people-table .go-cms-table th:last-child,
-.checkin-people-table .go-cms-table td:last-child { position: sticky; right: 0; background: var(--go-surface, #fff); box-shadow: -4px 0 8px rgb(15 23 42 / 4%); }
-.checkin-people-table .go-cms-table td { white-space: nowrap; }
+.checkin-people-table .go-cms-table td:last-child { position:sticky; right:0; }
+.checkin-people-table .go-cms-table th:last-child { background:#f8fafc; }
+.checkin-people-table .go-cms-table td:last-child { background:#fff; }
+.checkin-people-table .go-cms-table tbody tr:hover td:last-child { background:#fbfcfd; }
+.dark .checkin-people-table .go-cms-table th:last-child { background:#1e293b; }
+.dark .checkin-people-table .go-cms-table td:last-child { background:#0f172a; }
+.dark .checkin-people-table .go-cms-table tbody tr:hover td:last-child { background:#172033; }
+.checkin-people-table .go-cms-table td { white-space:nowrap; }
+
+/* Scrollable preview panels override the surface clipping default. */
+.go-surface.go-preview-scroll { max-height:calc(100dvh - 40px); overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+
+/* Shared APP event detail layout; scoped to activity pages. */
+.go-event-body{margin:16px;padding:20px;border:1px solid #e8ded4;border-radius:16px;display:flex;flex-direction:column;gap:20px}
+.go-event-intro{display:grid;gap:12px}.go-event-intro p{line-height:1.8;opacity:.75}
+.go-event-badge{align-self:start;width:fit-content;padding:4px 10px;border-radius:6px;background:#fff1d8;color:#916327;font-size:12px;font-weight:600}
+.go-event-tabs{display:flex;gap:0;border-bottom:1px solid #94a3b830}
+.go-event-tabs .go-button{flex:1;min-width:0;white-space:nowrap;padding:12px 0;font-size:12px;border:0;border-radius:0;box-shadow:none;background:transparent;color:inherit;border-bottom:3px solid transparent}
+.go-event-tabs .go-button--primary{color:#2563eb;border-bottom-color:#2563eb}
+.go-event-section{display:grid;gap:12px;padding:16px 0;border-bottom:1px solid #94a3b830}
+.go-event-section p{font-size:12px;line-height:1.8;opacity:.85}.go-event-section .go-button{justify-content:center}
+.go-event-session{padding:12px;background:#94a3b80c;border:1px solid #94a3b820;border-radius:12px}
+.go-event-session strong{font-size:14px}.go-event-detail h3{font-size:16px}

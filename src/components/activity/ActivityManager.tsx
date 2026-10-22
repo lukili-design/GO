@@ -31,7 +31,7 @@ export const ActivityManager: React.FC<Props> = ({ activities, votingCampaigns, 
   const footerRef = useRef<HTMLInputElement>(null);
   const voterCsvRef = useRef<HTMLInputElement>(null);
 
-  const filtered = useMemo(() => activities.filter(a => `${a.id} ${a.title} ${a.description}`.toLowerCase().includes(search.toLowerCase())), [activities, search]);
+  const filtered = useMemo(() => activities.filter(a => !a.isCheckInResource && `${a.id} ${a.title} ${a.description}`.toLowerCase().includes(search.toLowerCase())), [activities, search]);
   const votes = useMemo(() => votingCampaigns.flatMap(campaign => campaign.voteItems?.length ? campaign.voteItems.map(item => {
     const phase = item.phases.find(value => value.id === item.currentPhaseId) || item.phases[0];
     const id = `${campaign.id}::${item.id}`;

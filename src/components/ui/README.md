@@ -76,3 +76,40 @@ import { GoButton, GoSurface, GoBanner, GoNotice, formControlClass } from '../ui
 - `GoCmsRowAction`：用於列表行內操作；`tone` 支援 `blue`、`green`、`purple`、`slate`。操作保持單行，表格窄時橫向捲動。
 
 已接入活動列表、簽到列表、抽獎列表。這組緊湊列表元件不套用整頁 `go-type`；新增／編輯表單仍使用原有表單元件及字體規範。樣式只作用於元件，不改動其他舊頁面。
+
+- `GoModalClose`：彈窗標題列右側的共用 × 關閉按鈕，提供可存取名稱、滑過及鍵盤焦點樣式；傳入 `onClick`。邀請函及電郵預覽已接入。
+
+## CMS 頁面返回按鈕（必須遵循）
+
+- 所有新增或修改的 CMS 頁面返回操作，必須使用 `GoBackButton`，不得自行拼接文字或另寫樣式。
+- 固定顯示左箭頭圖示（16px）＋「返回」，使用 quiet 樣式；不使用「返回抽獎列表」「返回簽到列表」等不同文案。
+- 放在頁面頂部操作列左側；保存、發佈等主要操作放右側。
+- 使用方式：`<GoBackButton onClick={handleBack}/>`；未保存提醒等業務邏輯放在回調中保留。
+- 彈窗關閉使用右上角 `GoModalClose`（×），不可用頁面返回按鈕代替。
+- 驗收時檢查圖示、文案、位置及實際返回行為，不能只改文案。
+
+## CMS 列表與記錄表格（必須遵循）
+
+- 管理列表、參與名單、中獎記錄、簽到記錄及總體數據／詳情內的表格，統一使用 `GoCmsTable`，不可自行用普通 table 配獨立樣式。
+- 表頭底色、字體、行距、內距、分隔線、圓角與橫向捲動由共用元件控制，不在頁面另加覆蓋樣式。
+- 標題和工具列放在表格外；表格內容使用 thead、tbody、tr、th、td。操作按鈕使用 `GoCmsRowAction`。
+- 空資料必須在 tbody 內顯示跨全部欄位的提示列，不另放表格外提示。
+- 驗收要包含子頁籤及詳情頁中的列表，不能只檢查管理首頁。
+
+- 長內容預覽的 `GoSurface` 使用 `go-preview-scroll`，限制在視窗內並允許垂直捲動；避免被面板預設 `overflow:hidden` 裁切。
+
+## APP 活動詳情
+
+- 活動詳情使用 `go-event-detail`、`go-event-body` 及 `go-event-section` 分區樣式；Banner 使用 CMS 配置與 `GoBanner` 16:9 比例。
+- `go-event-tabs` 配合 `GoButton`，三個頁籤等寬同行、以底線標示當前頁，不可橫向截斷。
+- 已結束活動隱藏報名表單，提供結果入口；邀請函沿用 CMS 個人卡片；先顯示本人中獎記錄，再列出獎項。
+
+## CMS 配置表單分區
+
+- `GoCmsFormSection`：配置表單的獨立內容卡片，使用共用 GoSurface，統一標題、描述、20px 內距及16px 欄位間距；與基本設定卡片並列，不另嵌自訂邊框。
+- `GoCmsFormField`：統一標籤和輸入框間距，以 htmlFor 對應輸入框 id；輸入框沿用 formControlClass，預覽放同一欄位下方。
+- 配置表單使用上述表單元件；資料列表與記錄表格仍使用 GoCmsTable。
+
+- `GoMediaUpload`：共用圖片／音訊上傳欄位，提供上傳、更換、移除及預覽／試聽，與 GoCmsFormField 配合。檔案保存於本機瀏覽器，表單只儲存引用；未保存表單前不修改原設定。
+
+- `GoExpandableText`：活動介紹預設最多三行，實際溢出才顯示「展開／收起」。依容器寬度及字體載入重新量測，不以字數判斷；不套用到其他未要求摺疊的內容。

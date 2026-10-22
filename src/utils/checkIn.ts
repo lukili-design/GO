@@ -91,10 +91,11 @@ export function prepareBanquetDemo(activities:Activity[]):Activity[] {
 const invitationFields = '\n\n場次：{場次名稱}\n簽到時間：{簽到開始時間} 至 {簽到截止時間}\n活動地點：{活動地點}\n簽到位置：{簽到位置}\n枱號：{枱號}\n座位號：{座位號}';
 export const invitationCopy = '{姓名}，您好！誠邀您參加 {活動名稱}。'+invitationFields+'\n\n請於入場時出示個人二維碼。';
 export const invitationEmailSubject = '活動邀請｜{活動名稱}';
-export const invitationEmailBody = '{姓名}，您好！誠邀您參加 {活動名稱}。'+invitationFields+'\n\n請點擊下方按鈕查看您的電子邀請函，並於入場時出示二維碼。';
+const previousInvitationEmailBody = '{姓名}，您好！誠邀您參加 {活動名稱}。'+invitationFields+'\n\n請點擊下方按鈕查看您的電子邀請函，並於入場時出示二維碼。';
+export const invitationEmailBody = '誠邀您出席！活動詳情請見下方電子邀請函，入場時請出示函內的個人二維碼。';
 export function invitationTemplate(value:string|undefined,email=false){
  const old=email?'您好！誠邀您參加本次活動。請點擊下方按鈕查看您的電子邀請函，並於入場時出示二維碼。':'誠邀您出席，請攜帶此電子邀請函，並於入場時出示個人二維碼。';
- return value===undefined||value===old?(email?invitationEmailBody:invitationCopy):value;
+ return value===undefined||value===old||(email&&value===previousInvitationEmailBody)?(email?invitationEmailBody:invitationCopy):value;
 }
 export function renderInvitationText(text:string,a:Activity,p?:CheckInPerson){
  const c=a.checkIn;
@@ -104,6 +105,7 @@ export function renderInvitationText(text:string,a:Activity,p?:CheckInPerson){
 
 export function checkInSettingsProblem(a:Activity):string {
  const c=a.checkIn;if(c?.sessions?.length){for(const session of c.sessions){if(!session.name.trim())return '請填寫場次名稱。';const problem=checkInSettingsProblem({...a,checkIn:{...session,people:c.people.filter(p=>p.sessionId===session.id),sessions:undefined}});if(problem)return `${session.name}：${problem}`;}return '';}if(!c)return '請先配置簽到資料。';
+ if(c.registrationMode==='OPEN'){const start=Date.parse((c.registrationStart||'').replace(' ','T')),end=Date.parse((c.registrationEnd||'').replace(' ','T'));if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)return '請設定有效的報名起止時間。';if(!Number.isInteger(c.registrationCapacity)||c.registrationCapacity!<1)return '請設定正整數報名名額。';if(end>Date.parse((c.closesAt||a.endTime).replace(' ','T')))return '報名截止時間不可晚於簽到截止時間。';}
  if(!c.location.trim())return '請填寫活動地點。';
  const open=Date.parse(c.opensAt.replace(' ','T')),close=Date.parse((c.closesAt||a.endTime).replace(' ','T')),end=Date.parse(a.endTime.replace(' ','T'));
  if(!Number.isFinite(open)||!Number.isFinite(close)||close<=open)return '簽到截止時間須晚於開放時間。';

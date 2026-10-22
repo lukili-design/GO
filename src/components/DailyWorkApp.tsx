@@ -1,3 +1,4 @@
+import {AppEventHub} from './activity/AppEventHub';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -30,6 +31,7 @@ interface DailyWorkAppProps {
   onOpenVisitorBooking: () => void;
   onOpenVisitorRecords?: () => void;
   activities?: Activity[];
+  onSaveActivity?: (a:Activity)=>void;
   votingCampaigns?: VotingCampaign[];
   voteArticles?: VoteArticle[];
   userVotes?: Record<string, string[]>;
@@ -46,6 +48,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   onOpenVisitorBooking,
   onOpenVisitorRecords,
   activities = [],
+  onSaveActivity,
   votingCampaigns = [],
   voteArticles = [],
   userVotes = {},
@@ -174,6 +177,8 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
     if (tab === 'DAILY_WORK') {
       setActiveBottomTab('DAILY_WORK');
       setSubModule('WORKBENCH');
+    } else if (tab === 'EVENTS') {
+      setActiveBottomTab('EVENTS');
     } else if (tab === 'NEWS') {
       setActiveBottomTab('NEWS');
     } else {
@@ -252,6 +257,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   const [canteenCategory, setCanteenCategory] = useState<'A' | 'B' | 'DRINK'>('A');
 
   // If viewing an article detail, render the specialized article reader (Page with single back button)
+  if(activeBottomTab==='EVENTS'||selectedActivity?.modules.some(m=>m.enabled&&(m.type==='CHECK_IN'||m.type==='LOTTERY')))return <AppEventHub activities={activities} campaigns={votingCampaigns} userVotes={userVotes} onVoteSubmit={onVoteSubmit} onSave={onSaveActivity} initialId={selectedActivityId||undefined} onBack={()=>{setSelectedActivityId(null);setActiveBottomTab('DAILY_WORK');}}/>;
   if (selectedActivity) {
     return <AppActivityDetail key={selectedActivity.id} activity={selectedActivity} campaigns={votingCampaigns} userVotes={userVotes} onVoteSubmit={onVoteSubmit} onBack={() => setSelectedActivityId(null)} />;
   }
@@ -617,7 +623,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
         {activeBottomTab === 'DAILY_WORK' && subModule === 'WORKBENCH' && (
           <div className="p-4 space-y-4">
             
-            {/* 工作日常 大卡片網格 (5個彩色的金剛區入口) */}
+            {/* 工作日常功能入口 */}
             <div className="grid grid-cols-3 gap-3.5">
               
               {/* 1. 日曆 (藍色系) */}
@@ -688,6 +694,18 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 <span className="text-xs font-black text-sky-950 dark:text-sky-100 tracking-tight">
                   預約記錄
                 </span>
+              </button>
+
+              {/* 活動入口與工作日常功能卡片保持一致 */}
+              <button
+                type="button"
+                onClick={() => handleTabClick('EVENTS', '活動')}
+                className="bg-rose-50/90 dark:bg-rose-950/40 hover:bg-rose-100/90 dark:hover:bg-rose-900/60 border border-rose-200/60 dark:border-rose-900/50 rounded-2xl py-4.5 px-3 flex flex-col items-center justify-center gap-2.5 active:scale-[0.98] transition-all cursor-pointer shadow-2xs group"
+              >
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-rose-600 to-orange-500 text-white flex items-center justify-center shadow-md shadow-rose-500/25 group-hover:scale-105 transition-transform">
+                  <Sparkles size={26} className="stroke-[2.2]" />
+                </div>
+                <span className="text-xs font-black text-rose-950 dark:text-rose-100 tracking-tight">活動</span>
               </button>
 
               {/* 6. 考勤 (玫瑰/靛藍色系) */}
@@ -1092,7 +1110,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
 
       </div>
 
-      {/* BOTTOM NAVIGATION BAR (要求: TVB快訊、人事福利、工作日常、活動優化、資源中心) */}
+      {/* BOTTOM NAVIGATION BAR: TVB快訊、人事福利、工作日常、資源中心 */}
       <div className="bg-white dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 p-1.5 flex items-center justify-around shrink-0 select-none z-20">
         
         {/* 1. TVB快訊 */}
@@ -1136,20 +1154,6 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
           <div className="w-2 h-2 rounded-full bg-blue-600 absolute -top-0.5 left-1/2 -translate-x-1/2"></div>
           <Briefcase size={19} />
           <span className="text-[9.5px] mt-0.5 font-black">工作日常</span>
-        </button>
-
-        {/* 4. 活動優化 */}
-        <button
-          type="button"
-          onClick={() => handleTabClick('EVENTS', '活動優化')}
-          className={`flex flex-col items-center justify-center p-1 rounded-xl transition-all cursor-pointer ${
-            activeBottomTab === 'EVENTS'
-              ? 'text-blue-600 font-bold'
-              : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
-          }`}
-        >
-          <Sparkles size={18} />
-          <span className="text-[9px] mt-0.5 font-bold">活動優化</span>
         </button>
 
         {/* 5. 資源中心 */}

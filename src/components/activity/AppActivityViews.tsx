@@ -26,15 +26,15 @@ export const ActivityCard: React.FC<{ activity: Activity; campaigns?: VotingCamp
   const participants = campaigns.filter(c => campaignIds.has(c.id)).reduce((sum, c) => sum + (c.totalParticipants || 0), 0);
   const voteCount = bundle.campaign.voteItems?.length || 0;
   return <button type="button" onClick={onOpen} className="w-full text-left overflow-hidden rounded-2xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-sm">
-    {activity.coverImage ? <img src={activity.coverImage} alt="" className="w-full aspect-[2/1] object-cover" /> : <div className="h-24 flex items-center justify-center text-white" style={{ backgroundColor: activity.headerBannerColor || '#2563eb' }}><Calendar size={32}/></div>}
+    {(activity.headerBannerImage||activity.coverImage) ? <img src={activity.headerBannerImage||activity.coverImage} alt="" className="w-full aspect-[2/1] object-cover" /> : <div className="h-24 flex items-center justify-center text-white" style={{ background: `linear-gradient(${activity.backgroundGradientStart||activity.headerBannerColor||'#2563eb'}, ${activity.backgroundGradientEnd||activity.backgroundGradientStart||activity.headerBannerColor||'#2563eb'})` }}><Calendar size={32}/></div>}
     <div className="p-4 space-y-2">
       <div className="flex justify-between text-[10px] font-bold"><span className="text-blue-600">活動</span><span className={state === '進行中' ? 'text-emerald-600' : 'text-slate-500'}>{state === '未開始' ? '待開始' : state}</span></div>
       <h3 className="text-sm font-bold text-slate-900 dark:text-white">{activity.title}</h3>
       <p className="text-xs text-slate-500 line-clamp-2">{activity.description}</p>
       <p className="text-[10px] text-slate-500">{activity.startTime} — {activity.endTime}</p>
-      <div className="pt-1"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-xs font-bold border border-rose-100 dark:border-rose-900/50"><Award size={13} className="text-rose-500 shrink-0"/>共 {voteCount} 個投票</span></div>
+      {voteCount>0&&<div className="pt-1"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300 text-xs font-bold border border-rose-100 dark:border-rose-900/50"><Award size={13} className="text-rose-500 shrink-0"/>共 {voteCount} 個投票</span></div>}
       <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between gap-2">
-        <span className="inline-flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400"><Users size={13} className="text-blue-500 shrink-0"/><strong className="text-slate-800 dark:text-slate-200">{participants.toLocaleString()}</strong><span>人參與投票{campaignIds.size > 1 ? '（累計）' : ''}</span></span>
+        <span className="inline-flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400"><Users size={13} className="text-blue-500 shrink-0"/><strong className="text-slate-800 dark:text-slate-200">{(voteCount?participants:(activity.checkIn?.people.length||0)).toLocaleString()}</strong><span>{voteCount?'人參與投票':'人參與活動'}{campaignIds.size > 1 ? '（累計）' : ''}</span></span>
         <span className="px-3.5 py-1.5 bg-rose-600 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1 shadow-xs whitespace-nowrap shrink-0">查看活動<ChevronRight size={13}/></span>
       </div>
     </div>

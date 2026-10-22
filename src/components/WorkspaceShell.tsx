@@ -1,3 +1,7 @@
+import {LotteryScreenLauncher} from './activity/LotteryScreenLauncher';
+const banquetBanner = new URL('../assets/banquet-banner.svg', import.meta.url).href;
+const banquetFooter = new URL('../assets/banquet-footer.svg', import.meta.url).href;
+import {banquetDraws,banquetDrawIds} from '../utils/banquetLotteryDemo';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -17,7 +21,6 @@ import { CmsConsole } from './CmsConsole';
 import { SecurityConsole } from './SecurityConsole';
 import { DailyWorkApp } from './DailyWorkApp';
 import { PcVisitorPortal } from './PcVisitorPortal';
-import { SystemRequirementsDoc } from './SystemRequirementsDoc';
 import { LoginPage } from './LoginPage';
 import { 
   Smartphone, Mail, Shield, RefreshCw, CheckCircle, Clock, Trash2, 
@@ -150,14 +153,39 @@ export const WorkspaceShell: React.FC = () => {
     })), [...activityDemos.activities, completeBanquetDemo()]);
   });
 
+  const [checkInResources,setCheckInResources]=useState<Activity[]>(()=>{try{const saved=JSON.parse(localStorage.getItem('go-checkin-resources-v1')||'[]');return Array.isArray(saved)?saved:[];}catch{return [];}});
+  useEffect(()=>localStorage.setItem('go-checkin-resources-v1',JSON.stringify(checkInResources)),[checkInResources]);
+  useEffect(()=>{
+    const key='go-banquet-lottery-demo-v1';if(localStorage.getItem(key))return;
+    const banquet=storedActivities.find(a=>a.id==='ACT-DEMO-BANQUET');if(!banquet)return;
+    try{const saved=JSON.parse(localStorage.getItem('go-lottery-draws-v1')||'[]');if(!Array.isArray(saved))return;
+      const demos=banquetDraws(banquet);localStorage.setItem('go-lottery-draws-v1',JSON.stringify([...saved,...demos.filter(d=>!saved.some(x=>x.id===d.id))]));
+      setActivities(prev=>prev.map(a=>a.id!==banquet.id?a:{...a,modules:[...a.modules,...banquetDrawIds.filter(id=>!a.modules.some(m=>m.type==='LOTTERY'&&m.resourceId===id)).map((id,i)=>({id:`MOD-${id}`,type:'LOTTERY' as const,title:demos.find(d=>d.id===id)!.title,resourceId:id,enabled:true,order:a.modules.length+i+1}))]}));
+      localStorage.setItem(key,'1');
+    }catch{/* Preserve existing records if storage is unavailable. */}
+  },[storedActivities]);
+  useEffect(()=>{
+    const key='go-banquet-appearance-v1';
+    if(localStorage.getItem(key)||!storedActivities.some(a=>a.id==='ACT-DEMO-BANQUET'))return;
+    setActivities(prev=>prev.map(a=>a.id!=='ACT-DEMO-BANQUET'?a:{...a,
+      headerBannerImage:a.headerBannerImage||banquetBanner,footerBannerImage:a.footerBannerImage||banquetFooter,
+      backgroundGradientStart:'#fff8ef',backgroundGradientEnd:'#f9ece3',contentOverlay:'LIGHT',
+      description:a.description.includes('完整演示')?'同聚一堂，共迎新春。誠邀各位同事共享豐盛盆菜，在歡聲笑語中相聚，迎接新一年的美好時光。':a.description}));
+    localStorage.setItem(key,'1');
+  },[storedActivities]);
   const activities = storedActivities.map(activity => {
     const sourceId=activity.modules.find(m=>m.type==='CHECK_IN')?.resourceId;
-    const source=sourceId&&sourceId!==activity.id?storedActivities.find(item=>item.id===sourceId):undefined;
+    const source=sourceId&&sourceId!==activity.id?[...checkInResources,...storedActivities].find(item=>item.id===sourceId):undefined;
     return source?{...activity,checkIn:source.checkIn}:activity;
   });
   useEffect(() => localStorage.setItem('tvb_go_activities_v1', JSON.stringify(storedActivities)), [storedActivities]);
 
   const handleSaveActivity = (activity: Activity) => {
+    if(activity.isCheckInResource){setCheckInResources(prev=>prev.some(r=>r.id===activity.id)?prev.map(r=>r.id===activity.id?activity:r):[...prev,activity]);return;}
+    const linkedResource=activity.modules.find(m=>m.type==='CHECK_IN')?.resourceId;
+    const oldActivity=storedActivities.find(item=>item.id===activity.id);
+    if(linkedResource&&oldActivity?.modules.find(m=>m.type==='CHECK_IN')?.resourceId===linkedResource){setCheckInResources(prev=>prev.map(r=>r.id===linkedResource?{...r,checkIn:activity.checkIn}:r));}
+
     setActivities(prev => {
       const old=prev.find(item=>item.id===activity.id);
       const sourceId=activity.modules.find(m=>m.type==='CHECK_IN')?.resourceId;
@@ -332,7 +360,7 @@ export const WorkspaceShell: React.FC = () => {
   };
 
   // Workspace view toggle: 'DUAL' (split screen phone + sandbox) | 'PC_PORTAL' (desktop employee visitor portal) | 'CMS' (full administration portal) | 'SECURITY' (gate security portal)
-  const [workspaceMode, setWorkspaceMode] = useState<'DUAL' | 'PC_PORTAL' | 'CMS' | 'SECURITY'>('DUAL');
+  const [workspaceMode, setWorkspaceMode] = useState<'DUAL' | 'PC_PORTAL' | 'CMS' | 'SECURITY' | 'LOTTERY_SCREEN'>('DUAL');
 
   const handleUpdateBookingIdCard = (id: string, idCard: string) => {
     setBookings((prev) =>
@@ -591,7 +619,7 @@ export const WorkspaceShell: React.FC = () => {
 
       {/* Workspace Module Selector / System Mode Tabs */}
       <div className="bg-slate-50/90 dark:bg-slate-900/45 border-b border-slate-200 dark:border-slate-800 p-2 flex justify-center">
-        <div className="bg-white dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex shadow-xs gap-1 max-w-3xl w-full overflow-x-auto">
+        <div className="bg-white dark:bg-slate-950 p-1 rounded-2xl border border-slate-200 dark:border-slate-800/80 flex shadow-xs gap-1 max-w-5xl w-full overflow-x-auto">
           <button
             onClick={() => {
               setWorkspaceMode('DUAL');
@@ -655,12 +683,13 @@ export const WorkspaceShell: React.FC = () => {
             <Shield size={14} className="shrink-0" />
             <span className="whitespace-nowrap">🛡️ 保安門禁系統</span>
           </button>
+          <button type="button" onClick={()=>setWorkspaceMode('LOTTERY_SCREEN')} className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shrink-0 ${workspaceMode==='LOTTERY_SCREEN'?'bg-blue-600 text-white shadow-xs':'text-slate-500 hover:bg-slate-50'}`}><Monitor size={14}/><span>抽獎大屏</span></button>
         </div>
       </div>
 
       {/* Main Container */}
       <main className="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full flex flex-col">
-        {workspaceMode === 'PC_PORTAL' ? (
+        {workspaceMode === 'LOTTERY_SCREEN' ? (<LotteryScreenLauncher activities={activities}/>) : workspaceMode === 'PC_PORTAL' ? (
           <PcVisitorPortal
             bookings={bookings}
             onAddBooking={handleAddBooking}
@@ -681,7 +710,7 @@ export const WorkspaceShell: React.FC = () => {
             onUpdateBookingStatus={handleUpdateBookingStatus}
             onCancelBooking={handleCancelBooking}
             onDeleteBooking={handleDeleteBooking}
-            activities={activities}
+            activities={[...activities,...checkInResources]}
             onSaveActivity={handleSaveActivity}
             onDeleteActivity={handleDeleteActivity}
             votingCampaigns={votingCampaigns}
@@ -744,6 +773,7 @@ export const WorkspaceShell: React.FC = () => {
             {/* Layout Wrapper: Smartphone in center, Requirement Doc directly below */}
             <div className="flex flex-col items-center justify-center gap-8 w-full max-w-5xl mx-auto">
               
+              <div id="app-event-demo-controls" className="w-full max-w-2xl empty:hidden" />
               {/* Smartphone Frame Wrapper */}
               <div className="w-full max-w-[375px] h-[720px] bg-slate-950 rounded-[48px] p-3.5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] border-4 border-slate-800/90 relative flex flex-col shrink-0">
                 
@@ -782,6 +812,7 @@ export const WorkspaceShell: React.FC = () => {
                         onOpenVisitorRecords={() => setMobileView('RECORDS')}
                         votingCampaigns={votingCampaigns}
                         activities={activities}
+                        onSaveActivity={handleSaveActivity}
                         voteArticles={voteArticles}
                         userVotes={userVotes}
                         onVoteSubmit={handleVoteSubmit}
@@ -845,10 +876,6 @@ export const WorkspaceShell: React.FC = () => {
                 </div>
               </div>
 
-              {/* 系統需求與架構規格說明文檔 (放在 APP 下方) */}
-              <div className="w-full">
-                <SystemRequirementsDoc />
-              </div>
 
             </div>
           </div>

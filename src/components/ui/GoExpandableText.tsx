@@ -1,0 +1,7 @@
+import React,{useId,useLayoutEffect,useRef,useState} from 'react';
+export function GoExpandableText({text}:{text:string}) {
+ const [expanded,setExpanded]=useState(false),[overflow,setOverflow]=useState(false);
+ const measureRef=useRef<HTMLParagraphElement>(null),id=useId();
+ useLayoutEffect(()=>{setExpanded(false);const node=measureRef.current;if(!node)return;let active=true;const measure=()=>{if(active)setOverflow(node.getBoundingClientRect().height>parseFloat(getComputedStyle(node).lineHeight)*3+1);};measure();const observer=new ResizeObserver(measure);observer.observe(node);void document.fonts.ready.then(measure);return()=>{active=false;observer.disconnect();};},[text]);
+ return <div className="relative min-w-0"><p aria-hidden="true" ref={measureRef} className="whitespace-pre-wrap pointer-events-none" style={{position:'absolute',visibility:'hidden',width:'100%',margin:0,overflowWrap:'anywhere'}}>{text}</p><p id={id} className="whitespace-pre-wrap" style={{margin:0,overflowWrap:'anywhere',...(!expanded?{display:'-webkit-box',WebkitBoxOrient:'vertical',WebkitLineClamp:3,overflow:'hidden'}:{})}}>{text}</p>{overflow&&<button type="button" aria-expanded={expanded} aria-controls={id} className="mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded" onClick={()=>setExpanded(value=>!value)}>{expanded?'收起':'展開'}</button>}</div>;
+}

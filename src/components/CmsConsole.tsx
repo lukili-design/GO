@@ -1162,7 +1162,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                     <CalendarDays size={15} />
                     <span className="flex-1 text-left flex items-center justify-between">
                       <span>活動列表管理</span>
-                      <span className="px-1.5 py-0.2 text-[9.5px] font-mono font-bold bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full">{activities.length}</span>
+                      <span className="px-1.5 py-0.2 text-[9.5px] font-mono font-bold bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-full">{activities.filter(a=>!a.isCheckInResource).length}</span>
                     </span>
                   </button>
                   <button
