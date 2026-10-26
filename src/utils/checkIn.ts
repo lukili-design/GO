@@ -47,13 +47,14 @@ export function parsePeopleCSV(text:string, existing:CheckInPerson[]) {
   for(let i=0;i<input.length;i++){const c=input[i];if(c==='"'){if(quoted&&input[i+1]==='"'){field+='"';i++;}else quoted=!quoted;}else if(c===','&&!quoted){row.push(field.trim());field='';}else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&input[i+1]==='\n')i++;row.push(field.trim());if(row.some(Boolean))rows.push(row);row=[];field='';}else field+=c;}
   row.push(field.trim());if(row.some(Boolean))rows.push(row);
   if(quoted) throw new Error('CSV 引號未閉合。');
-  if(rows.shift()?.join(',')!=='員工編號,姓名,部門,電郵') throw new Error('請使用模板：員工編號、姓名、部門、電郵。');
+  const header=rows.shift()?.join(',');const withCompany=header==='員工編號,姓名,部門,公司,電郵';
+  if(!withCompany&&header!=='員工編號,姓名,部門,電郵') throw new Error('請使用模板：員工編號、姓名、部門、公司、電郵。');
   const ids=new Set(existing.map(p=>p.employeeId)),emails=new Set(existing.map(p=>p.email.toLowerCase()));
   const people:CheckInPerson[]=[],errors:string[]=[];
-  rows.forEach((r,i)=>{const [employeeId,name,department,email]=r;
-    if(r.length!==4||!employeeId||!name||!department||!email||!/^\S+@\S+\.\S+$/.test(email)){errors.push(`第 ${i+2} 行資料缺漏或電郵格式錯誤`);return;}
+  rows.forEach((r,i)=>{const [employeeId,name,department]=r;const company=withCompany?r[3]:'';const email=r[withCompany?4:3];
+    if(r.length!==(withCompany?5:4)||!employeeId||!name||!department||!email||!/^\S+@\S+\.\S+$/.test(email)){errors.push(`第 ${i+2} 行資料缺漏或電郵格式錯誤`);return;}
     if(ids.has(employeeId)||emails.has(email.toLowerCase())){errors.push(`第 ${i+2} 行員工或電郵重複`);return;}
-    ids.add(employeeId);emails.add(email.toLowerCase());people.push({id:crypto.randomUUID(),employeeId,name,department,email,group:'',seat:'',token:crypto.randomUUID(),mailStatus:'NOT_SENT'});
+    ids.add(employeeId);emails.add(email.toLowerCase());people.push({id:crypto.randomUUID(),employeeId,name,department,company,email,group:'',seat:'',token:crypto.randomUUID(),mailStatus:'NOT_SENT'});
   });return {people,errors};
 }
 export function downloadCSV(name:string,rows:string[][]){const data='\uFEFF'+rows.map(r=>r.map(v=>'"'+v.replaceAll('"','""')+'"').join(',')).join('\n');const url=URL.createObjectURL(new Blob([data],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);}
@@ -120,5 +121,11 @@ export function checkInSendProblem(a:Activity,now=Date.now()):string {
  if(!a.modules.some(m=>m.type==='CHECK_IN'&&m.enabled)||a.status!=='PUBLISHED')return '請先關聯並發布活動，再發送電郵。';
  const problem=checkInSettingsProblem(a);if(problem)return problem;
  if(a.checkIn?.emailSendAt&&now<Date.parse(a.checkIn.emailSendAt.replace(' ','T')))return '尚未到設定的電郵發送時間。本演示不會自動寄信，到時可手動模擬發送。';
+ return '';
+}
+
+export function expectedCheckInMailTime(person:CheckInPerson,config:CheckInConfig,now=Date.now()):string {
+ if(person.scheduledSendAt)return person.scheduledSendAt;
+ if(person.mailStatus==='NOT_SENT'&&config.emailSendAt&&Date.parse(config.emailSendAt.replace(' ','T'))>now)return config.emailSendAt;
  return '';
 }

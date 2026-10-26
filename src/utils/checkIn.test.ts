@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {checkInSettingsProblem,checkInSendProblem,activityDisplayStatus,assignGroups,banquetDemo,checkInProblem,parsePeopleCSV,publishProblem} from './checkIn';
+import {expectedCheckInMailTime,checkInSettingsProblem,checkInSendProblem,activityDisplayStatus,assignGroups,banquetDemo,checkInProblem,parsePeopleCSV,publishProblem} from './checkIn';
 function fixture(){const a=banquetDemo();a.startTime='2027-02-01 18:00:00';a.endTime='2027-02-01 22:00:00';a.checkIn!.opensAt='2027-02-01 17:30:00';return a;}
 const ms=(s:string)=>new Date(s).getTime();
 test('draft never auto-publishes; published status follows times',()=>{const a=fixture();assert.equal(activityDisplayStatus(a,ms('2027-02-02T00:00:00')),'草稿');a.status='PUBLISHED';assert.equal(activityDisplayStatus(a,ms('2027-02-01T17:59:59')),'待開始');assert.equal(activityDisplayStatus(a,ms('2027-02-01T18:00:00')),'進行中');assert.equal(activityDisplayStatus(a,ms('2027-02-01T22:00:00')),'已結束');});
@@ -25,4 +25,18 @@ test('email delivery requires publication, valid content, and scheduled time',()
  assert.equal(checkInSendProblem(a,ms('2027-02-01T12:00:00')),'');
  a.checkIn!.emailSubject=' ';assert.match(checkInSendProblem(a),/主旨/);
  delete a.checkIn!.emailSubject;a.checkIn!.emailSendAt='2027-02-01 22:00:00';assert.match(checkInSettingsProblem(a),/發送時間/);
+});
+
+test('CSV company column preserves quoted names and supports legacy templates',()=>{
+ const parsed=parsePeopleCSV('員工編號,姓名,部門,公司,電郵\n1,小明,行政部,"TVB, Limited",a@example.com',[]);
+ assert.equal(parsed.errors.length,0);assert.equal(parsed.people[0].company,'TVB, Limited');assert.equal(parsed.people[0].email,'a@example.com');
+ assert.equal(parsePeopleCSV('員工編號,姓名,部門,電郵\n2,小李,行政部,b@example.com',[]).people[0].company,'');
+ assert.equal(parsePeopleCSV('員工編號,姓名,部門,公司,電郵\n1,小明,行政部,TVB,bad',[]).errors.length,1);
+});
+test('expected email time prefers individual schedule and only falls back to future initial batch',()=>{
+ const c=fixture().checkIn!;c.emailSendAt='2027-02-01 12:00:00';const p=parsePeopleCSV('員工編號,姓名,部門,電郵\n1,小明,行政部,a@example.com',[]).people[0];
+ assert.equal(expectedCheckInMailTime(p,c,ms('2027-02-01T11:00:00')),c.emailSendAt);
+ assert.equal(expectedCheckInMailTime(p,c,ms('2027-02-01T13:00:00')),'');
+ p.mailStatus='SENT';assert.equal(expectedCheckInMailTime(p,c,ms('2027-02-01T11:00:00')),'');
+ p.scheduledSendAt='2027-02-02 12:00:00';assert.equal(expectedCheckInMailTime(p,c),p.scheduledSendAt);
 });

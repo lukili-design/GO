@@ -244,9 +244,9 @@ export interface ActivityModuleLink {
 
 export interface CheckInPerson {
   sessionId?: string;
-  id: string; employeeId: string; name: string; department: string; email: string;
+  id: string; employeeId: string; name: string; department: string; company?: string; email: string;
   group: string; seat: string; token: string; invitationReady?: boolean;
-  mailStatus: 'NOT_SENT' | 'SENT' | 'FAILED'; sentAt?: string; needsResend?: boolean; checkedAt?: string;
+  mailStatus: 'NOT_SENT' | 'SENT' | 'FAILED'; scheduledSendAt?: string; sentAt?: string; needsResend?: boolean; checkedAt?: string;
 }
 export interface CheckInSession extends Omit<CheckInConfig, 'sessions' | 'people'> { id: string; name: string; }
 export interface CheckInConfig {
@@ -260,6 +260,7 @@ export interface CheckInConfig {
   capacity: number; seats: boolean; people: CheckInPerson[];
 }
 export interface Activity {
+  sourceActivityId?: string;
   isCheckInResource?: boolean;
   checkIn?: CheckInConfig;
 
