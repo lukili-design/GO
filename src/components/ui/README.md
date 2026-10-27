@@ -113,3 +113,7 @@ import { GoButton, GoSurface, GoBanner, GoNotice, formControlClass } from '../ui
 - `GoMediaUpload`：共用圖片／音訊上傳欄位，提供上傳、更換、移除及預覽／試聽，與 GoCmsFormField 配合。檔案保存於本機瀏覽器，表單只儲存引用；未保存表單前不修改原設定。
 
 - `GoExpandableText`：活動介紹預設最多三行，實際溢出才顯示「展開／收起」。依容器寬度及字體載入重新量測，不以字數判斷；不套用到其他未要求摺疊的內容。
+
+## GoCmsMoreMenu
+
+列表「更多」共用選單，傳入 items（label、onClick）。浮層掛於 body 避免被表格裁切，支援點擊外部及 Escape 關閉。核銷人員配置使用 VerificationStaffModal，沿用共用表格、按鈕及關閉元件。

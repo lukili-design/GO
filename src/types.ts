@@ -259,7 +259,10 @@ export interface CheckInConfig {
   location: string; opensAt: string; grouping: 'NONE' | 'GROUP'; groupLabel: '組' | '桌';
   capacity: number; seats: boolean; people: CheckInPerson[];
 }
+export interface VerificationEmployee { employeeId:string; name:string; department:string; }
+
 export interface Activity {
+  verificationStaff?: VerificationEmployee[];
   sourceActivityId?: string;
   isCheckInResource?: boolean;
   checkIn?: CheckInConfig;

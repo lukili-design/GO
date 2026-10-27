@@ -1,0 +1,10 @@
+import React,{useEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
+import {GoCmsRowAction} from './GoUI';
+
+export function GoCmsMoreMenu({items}:{items:{label:string;onClick:()=>void}[]}){
+ const [position,setPosition]=useState<{top:number;left:number}|null>(null);
+ const trigger=useRef<HTMLButtonElement>(null),menu=useRef<HTMLDivElement>(null);
+ useEffect(()=>{if(!position)return;menu.current?.querySelector<HTMLButtonElement>('button')?.focus();const close=(e:Event)=>{if(e.type==='pointerdown'&&(menu.current?.contains(e.target as Node)||trigger.current?.contains(e.target as Node)))return;setPosition(null);};const key=(e:KeyboardEvent)=>{if(e.key==='Escape'){setPosition(null);trigger.current?.focus();}};document.addEventListener('pointerdown',close);document.addEventListener('keydown',key);window.addEventListener('resize',close);window.addEventListener('scroll',close,true);return()=>{document.removeEventListener('pointerdown',close);document.removeEventListener('keydown',key);window.removeEventListener('resize',close);window.removeEventListener('scroll',close,true);};},[position]);
+ return <><span ref={node=>{trigger.current=node?.querySelector('button')||null;}}><GoCmsRowAction tone="slate" aria-haspopup="menu" aria-expanded={!!position} onClick={()=>{const r=trigger.current!.getBoundingClientRect();setPosition(position?null:{left:Math.max(8,Math.min(r.right-208,window.innerWidth-216)),top:Math.max(8,Math.min(r.bottom+4,window.innerHeight-items.length*44-16))});}}>更多</GoCmsRowAction></span>{position&&createPortal(<div ref={menu} role="menu" aria-label="更多操作" className="go-type fixed z-50 w-52 rounded-xl border border-slate-200 bg-white p-1 shadow-lg" style={position}>{items.map(item=><button key={item.label} role="menuitem" type="button" className="w-full rounded-lg px-3 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 focus:bg-blue-50" onClick={()=>{setPosition(null);item.onClick();}}>{item.label}</button>)}</div>,document.body)}</>;
+}
