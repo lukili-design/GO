@@ -1,3 +1,4 @@
+import {VoteReportDownload} from '../activity/VoteReportDownload';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -138,6 +139,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   // Selected campaign for viewing Overall Statistics Modal
   const [statsCampaign, setStatsCampaign] = useState<VotingCampaign | null>(report?.mode === 'STATS' ? report.campaign : null);
   const [statsActiveVoteItemTab, setStatsActiveVoteItemTab] = useState<string>('ALL');
+  const [showReportDownload,setShowReportDownload]=useState(false);
   const [statsChannel,setStatsChannel]=useState('ALL');
   const channelStats=report?.mode==='STATS'?channelVoteStats(report.campaign,report.logs,report.phaseLogIds||{},statsChannel):null;
   const channelOptions=report?[...new Set(['員工投票','電郵－智囊團','電郵－VIP 評審',...report.logs.map(voteChannel).filter(c=>c!=='電郵-未分類'),'邀請碼'])]:[];
@@ -2869,7 +2871,8 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               </button>
             </div>
 
-            {report&&<label className="flex flex-wrap items-center gap-3"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">投票渠道</span><select aria-label="投票渠道" className="h-9 w-56 max-w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-colors cursor-pointer" value={statsChannel} onChange={e=>setStatsChannel(e.target.value)}><option value="ALL">全部渠道</option>{channelOptions.map(c=><option key={c} value={c}>{c}</option>)}</select></label>}
+            {report&&<div className="flex items-center justify-between gap-4"><label className="flex min-w-0 items-center gap-3"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">投票渠道</span><select aria-label="投票渠道" className="h-9 w-56 max-w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-colors cursor-pointer" value={statsChannel} onChange={e=>setStatsChannel(e.target.value)}><option value="ALL">全部渠道</option>{channelOptions.map(c=><option key={c} value={c}>{c}</option>)}</select></label><button type="button" onClick={()=>setShowReportDownload(true)} className="shrink-0 px-3 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-2"><Download size={14}/>下載報表</button></div>}
+            {report&&showReportDownload&&<VoteReportDownload campaign={report.campaign} logs={report.logs} phaseLogIds={report.phaseLogIds||{}} phase={statsActivePhaseTab} channel={statsChannel} onClose={()=>setShowReportDownload(false)}/>}
             {/* 核心 KPI 統計指標卡 (僅保留總參與人數與累計投票總數) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-4.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl">

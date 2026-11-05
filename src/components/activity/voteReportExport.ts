@@ -1,0 +1,17 @@
+import ExcelJS from 'exceljs';
+import type {VotePhase} from '../../types';
+export function reportSheetNames(layout:'PHASE'|'CHANNEL',phases:VotePhase[],channels:string[]){
+ const used=new Set<string>();return ['當前投票總結',...(layout==='PHASE'?phases.map(p=>p.name):channels)].map(raw=>{const base=raw.replace(/[\\/*?:\[\]]/g,' ').replace(/^'+|'+$/g,'').trim().slice(0,31)||'工作表';let name=base,n=2;while(used.has(name.toLowerCase())){const suffix=` (${n++})`;name=base.slice(0,31-suffix.length)+suffix;}used.add(name.toLowerCase());return name;});
+}
+export async function buildVoteWorkbook(title:string,phases:VotePhase[],channels:string[],data:{channel:string;phases:VotePhase[]}[],layout:'PHASE'|'CHANNEL',allChannels:boolean){
+ const book=new ExcelJS.Workbook();book.creator='TVB GO';book.created=new Date();const names=reportSheetNames(layout,phases,channels);const totalLabel=allChannels?'合計':'所選渠道合計';
+ const count=(p:VotePhase,id:string,c:string)=>data.find(d=>d.channel===c)?.phases.find(x=>x.id===p.id)?.options.find(o=>o.id===id)?.votes||0;
+ const sheet=(name:string,headers:string[])=>{const s=book.addWorksheet(name);s.addRow([title]);s.addRow(['匯出時間（香港）',new Date().toLocaleString('zh-HK',{timeZone:'Asia/Hong_Kong',hour12:false})]);s.addRow(['階段範圍',phases.map(p=>p.name).join('；')]);s.addRow(['渠道範圍',channels.join('；')]);s.addRow(['統計口徑','原始票數；歷史未分類票數獨立列示；排名只比較同一階段及本表所選渠道']);s.addRow(headers);s.getRow(1).font={size:16,bold:true};s.getRow(6).font={bold:true,color:{argb:'FFFFFFFF'}};s.getRow(6).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2456A6'}};s.views=[{state:'frozen',ySplit:6,xSplit:1}];s.columns=headers.map((h,i)=>({width:i===0?48:Math.max(18,Math.min(30,h.length*2))}));s.getRows(1,5)?.forEach(r=>{r.alignment={vertical:'top',wrapText:true};r.height=32;});s.mergeCells(1,1,1,headers.length);for(let row=2;row<=5;row++){s.mergeCells(row,2,row,headers.length);const text=String(s.getCell(row,2).value||'');s.getRow(row).height=Math.max(32,Math.ceil(text.length/Math.max(24,(headers.length-1)*12))*18);}return s;};
+ const summary=sheet(names[0],['投票項目／階段',...channels,totalLabel]);
+ for(const p of phases){const values=channels.map(c=>p.options.reduce((n,o)=>n+count(p,o.id,c),0));summary.addRow([p.name,...values,values.reduce((a,b)=>a+b,0)]);}
+ summary.addRow([totalLabel,...channels.map(c=>phases.reduce((n,p)=>n+p.options.reduce((v,o)=>v+count(p,o.id,c),0),0)),phases.reduce((n,p)=>n+p.options.reduce((v,o)=>v+channels.reduce((a,c)=>a+count(p,o.id,c),0),0),0)]);
+ const addPhase=(s:ExcelJS.Worksheet,p:VotePhase,cs:string[],withPhase:boolean)=>{const rows=p.options.map(o=>({name:o.name,values:cs.map(c=>count(p,o.id,c))})).map(r=>({...r,total:r.values.reduce((a,b)=>a+b,0)})).sort((a,b)=>b.total-a.total);for(const r of rows)s.addRow([...(withPhase?[p.name]:[]),r.name,...r.values,...(withPhase?[]:[r.total]),r.total?rows.filter(x=>x.total>r.total).length+1:'—']);};
+ if(layout==='PHASE')phases.forEach((p,i)=>addPhase(sheet(names[i+1],['候選項目',...channels,totalLabel,'階段內排名']),p,channels,false));
+ else channels.forEach((c,i)=>{const s=sheet(names[i+1],['投票項目／階段','候選項目','票數','階段內排名']);phases.forEach(p=>addPhase(s,p,[c],true));});
+ book.eachSheet(s=>{s.autoFilter={from:{row:6,column:1},to:{row:s.rowCount,column:s.getRow(6).cellCount}};s.eachRow((r,i)=>{if(i>6){r.alignment={vertical:'middle',wrapText:true};r.eachCell(cell=>{if(typeof cell.value==='number')cell.numFmt='#,##0';});}});});return book;
+}
