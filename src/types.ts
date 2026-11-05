@@ -204,6 +204,7 @@ export type ActivityModuleType = 'VOTING' | 'CHECK_IN' | 'LOTTERY' | 'RELAY' | '
 export type ActivityVoterMethod = 'TVB_GO_MEMBER' | 'CSV_IMPORT' | 'INVITATION_CODE';
 
 export interface ActivityEmailParticipant {
+  channelName?: string; // CSV 渠道，名單以組別顯示
   id: string;
   name: string;
   email: string;

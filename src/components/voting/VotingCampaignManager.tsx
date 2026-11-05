@@ -2836,7 +2836,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-4xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             {report?.navigation}
-            {report&&<label className="flex flex-wrap items-center gap-3"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">投票渠道</span><select aria-label="投票渠道" className="h-9 w-56 max-w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-colors cursor-pointer" value={statsChannel} onChange={e=>setStatsChannel(e.target.value)}><option value="ALL">全部渠道</option>{channelOptions.map(c=><option key={c} value={c}>{c}</option>)}</select></label>}
+
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-3">
@@ -2869,6 +2869,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
               </button>
             </div>
 
+            {report&&<label className="flex flex-wrap items-center gap-3"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">投票渠道</span><select aria-label="投票渠道" className="h-9 w-56 max-w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-colors cursor-pointer" value={statsChannel} onChange={e=>setStatsChannel(e.target.value)}><option value="ALL">全部渠道</option>{channelOptions.map(c=><option key={c} value={c}>{c}</option>)}</select></label>}
             {/* 核心 KPI 統計指標卡 (僅保留總參與人數與累計投票總數) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-4.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-2xl">
@@ -2901,11 +2902,10 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 { title: '投票者認證方式佔比', field: 'authType', icon: <ShieldCheck size={14}/> },
               ] as const).map(({title, field, icon}) => {
                 const validLogs = channelStats?.logs || report.logs.filter(log => log.status === 'VALID');
-                const labels = field === 'authType' ? ['TVB GO 會員', '電郵邀請投票', '邀請碼投票'] : ['iOS App', 'Android App', 'Web Browser'];
+                const labels = field === 'authType' ? ['員工投票', '電郵－智囊團', '電郵－VIP 評審', '邀請碼'] : ['iOS App', 'Android App', 'Web Browser'];
                 const groups = new Map<string, number>(labels.map(label => [label, 0]));
-                const authLabels: Record<string, string> = { TVB_GO_MEMBER: 'TVB GO 會員', EMAIL_INVITATION: '電郵邀請投票', INVITATION_CODE: '邀請碼投票' };
                 validLogs.forEach(log => {
-                  const label = field === 'authType' ? authLabels[log.authType] || '其他認證方式' : log.voterDevice?.startsWith('iOS App') ? 'iOS App' : log.voterDevice?.startsWith('Android App') ? 'Android App' : 'Web Browser';
+                  const label = field === 'authType' ? voteChannel(log) : log.voterDevice?.startsWith('iOS App') ? 'iOS App' : log.voterDevice?.startsWith('Android App') ? 'Android App' : 'Web Browser';
                   groups.set(label, (groups.get(label) || 0) + 1);
                 });
                 return <div key={field} className="p-4 bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
