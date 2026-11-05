@@ -16,7 +16,7 @@ export function ActivityDataReport({activity:a,mode,campaigns,onSave,onClose,tri
  const navigation=<div className="go-type flex gap-2 flex-wrap">{types.map(type=><GoButton key={type} variant={tab===type?'primary':'secondary'} onClick={()=>{setTab(type);setNotice('');}}>{{VOTING:'投票',CHECK_IN:'簽到',LOTTERY:'抽獎'}[type]}</GoButton>)}</div>;
  if(tab==='VOTING'){
   let logs=INITIAL_VOTE_LOGS;try{const saved=JSON.parse(localStorage.getItem('tvb_voting_audit_logs')||'null');if(Array.isArray(saved))logs=saved;}catch{}
-  return <VotingCampaignManager campaigns={campaigns} report={{...buildActivityReport(a,campaigns,logs),mode,onClose,navigation}} onSaveCampaign={()=>{}} onDeleteCampaign={()=>{}} triggerSound={triggerSound}/>;
+  return <VotingCampaignManager campaigns={campaigns} report={{...buildActivityReport(a,campaigns,logs),mode,onClose,navigation:mode==='STATS'&&types.length===1?undefined:navigation}} onSaveCampaign={()=>{}} onDeleteCampaign={()=>{}} triggerSound={triggerSound}/>;
  }
  const people=config.people.filter(p=>!sessionId||p.sessionId===sessionId),arrived=people.filter(p=>p.checkedAt).length;
  let draws:Draw[]=[];try{const saved=JSON.parse(localStorage.getItem('go-lottery-draws-v1')||'[]');if(Array.isArray(saved))draws=saved;}catch{}

@@ -113,3 +113,9 @@ textarea.go-control { resize:vertical; min-height:88px; }
 .go-event-section p{font-size:12px;line-height:1.8;opacity:.85}.go-event-section .go-button{justify-content:center}
 .go-event-session{padding:12px;background:#94a3b80c;border:1px solid #94a3b820;border-radius:12px}
 .go-event-session strong{font-size:14px}.go-event-detail h3{font-size:16px}
+
+/* Relation columns contain names, not row actions. Keep the final column left aligned. */
+.activity-relations .go-cms-table th:last-child,
+.activity-relations .go-cms-table td:last-child { text-align:left; white-space:normal; }
+.activity-relations .go-cms-table td { padding-top:20px; padding-bottom:20px; vertical-align:middle; }
+.activity-relations .go-cms-table table { min-width:540px; }

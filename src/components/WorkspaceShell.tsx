@@ -184,14 +184,14 @@ export const WorkspaceShell: React.FC = () => {
     if(activity.isCheckInResource){setCheckInResources(prev=>prev.some(r=>r.id===activity.id)?prev.map(r=>r.id===activity.id?activity:r):[...prev,activity]);return;}
     const linkedResource=activity.modules.find(m=>m.type==='CHECK_IN')?.resourceId;
     const oldActivity=storedActivities.find(item=>item.id===activity.id);
-    if(linkedResource&&oldActivity?.modules.find(m=>m.type==='CHECK_IN')?.resourceId===linkedResource){setCheckInResources(prev=>prev.map(r=>r.id===linkedResource?{...r,checkIn:activity.checkIn}:r));}
+    if(!activity.projects&&linkedResource&&oldActivity?.modules.find(m=>m.type==='CHECK_IN')?.resourceId===linkedResource){setCheckInResources(prev=>prev.map(r=>r.id===linkedResource?{...r,checkIn:activity.checkIn}:r));}
 
     setActivities(prev => {
       const old=prev.find(item=>item.id===activity.id);
       const sourceId=activity.modules.find(m=>m.type==='CHECK_IN')?.resourceId;
       const sameLink=old?.modules.find(m=>m.type==='CHECK_IN')?.resourceId===sourceId;
       const next=prev.some(item=>item.id===activity.id)?prev.map(item=>item.id===activity.id?activity:item):[activity,...prev];
-      return sameLink&&sourceId&&sourceId!==activity.id?next.map(item=>item.id===sourceId?{...item,checkIn:activity.checkIn}:item):next;
+      return !activity.projects&&sameLink&&sourceId&&sourceId!==activity.id?next.map(item=>item.id===sourceId?{...item,checkIn:activity.checkIn}:item):next;
     });
   };
 

@@ -261,7 +261,10 @@ export interface CheckInConfig {
 }
 export interface VerificationEmployee { employeeId:string; name:string; department:string; }
 
+export interface ActivityProject { id:string; name:string; checkInId?:string; lotteryIds:string[]; order:number; }
+
 export interface Activity {
+  projects?: ActivityProject[];
   verificationStaff?: VerificationEmployee[];
   sourceActivityId?: string;
   isCheckInResource?: boolean;
@@ -366,6 +369,7 @@ export interface VotingCampaign {
 }
 
 export interface VoteLogRecord {
+  channelName?: string; // 電郵邀請組別名稱（舊記錄可留空）
   id: string; // 投票紀錄單號 (如 VLOG-8921471)
   campaignId: string; // 所屬活動 ID
   campaignTitle: string; // 所屬活動名稱

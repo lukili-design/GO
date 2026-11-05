@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import {voteChannel,channelVoteStats} from '../activity/voteChannelStats';
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { 
   Activity, VotingCampaign, VoteItem, VotePhase, VoteOption, VoteResultVisibility, 
@@ -107,7 +108,7 @@ export const VOTE_ITEM_BATCH_PRESETS: { [key: string]: { name: string; icon: str
 };
 
 interface VotingCampaignManagerProps {
-  report?: { campaign: VotingCampaign; logs: VoteLogRecord[]; mode: 'STATS' | 'DETAILS'; navigation?: React.ReactNode; onClose: () => void };
+  report?: { phaseLogIds?: Record<string,string[]>; campaign: VotingCampaign; logs: VoteLogRecord[]; mode: 'STATS' | 'DETAILS'; navigation?: React.ReactNode; onClose: () => void };
   campaigns: VotingCampaign[];
   activities?: Activity[];
   onSaveCampaign: (campaign: VotingCampaign) => void;
@@ -137,6 +138,9 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
   // Selected campaign for viewing Overall Statistics Modal
   const [statsCampaign, setStatsCampaign] = useState<VotingCampaign | null>(report?.mode === 'STATS' ? report.campaign : null);
   const [statsActiveVoteItemTab, setStatsActiveVoteItemTab] = useState<string>('ALL');
+  const [statsChannel,setStatsChannel]=useState('ALL');
+  const channelStats=report?.mode==='STATS'?channelVoteStats(report.campaign,report.logs,report.phaseLogIds||{},statsChannel):null;
+  const channelOptions=report?[...new Set(['員工投票','電郵－智囊團','電郵－VIP 評審',...report.logs.map(voteChannel).filter(c=>c!=='電郵-未分類'),'邀請碼'])]:[];
   const [statsActivePhaseTab, setStatsActivePhaseTab] = useState<string>('ALL');
 
   // Selected campaign for viewing Detail Logs Modal
@@ -2832,6 +2836,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
           <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 max-w-4xl w-full shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
             {report?.navigation}
+            {report&&<label className="flex flex-wrap items-center gap-3"><span className="text-xs font-bold text-slate-600 dark:text-slate-300">投票渠道</span><select aria-label="投票渠道" className="h-9 w-56 max-w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 transition-colors cursor-pointer" value={statsChannel} onChange={e=>setStatsChannel(e.target.value)}><option value="ALL">全部渠道</option>{channelOptions.map(c=><option key={c} value={c}>{c}</option>)}</select></label>}
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <div className="flex items-center gap-3">
@@ -2872,7 +2877,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   <Users size={16} className="text-blue-500" />
                 </div>
                 <div className="text-2xl font-black text-slate-900 dark:text-white">
-                  {statsCampaign.totalParticipants.toLocaleString()}
+                  {(channelStats?.totalParticipants??statsCampaign.totalParticipants).toLocaleString()}
                 </div>
                 <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-1 block">獨立用戶 (Unique Voters)</span>
               </div>
@@ -2883,19 +2888,19 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   <TrendingUp size={16} />
                 </div>
                 <div className="text-2xl font-black text-blue-600 dark:text-blue-400">
-                  {statsCampaign.totalVotes.toLocaleString()}
+                  {(channelStats?.totalVotes??statsCampaign.totalVotes).toLocaleString()}
                 </div>
                 <span className="text-[11px] text-blue-500 font-bold mt-1 block">有效選票計入數</span>
               </div>
             </div>
 
-            {report && <p className="text-xs text-slate-500">參與人數按現有有效明細去重；票數及排行榜按已關聯投票的各階段數據汇總。</p>}
+            {report && <p className="text-xs text-slate-500">全部渠道保留歷史彙總票數；個別渠道按已記錄來源的有效投票明細計票。未記錄電郵組別的明細列為「電郵-未分類」。</p>}
             {report && <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {([
                 { title: '投票終端設備分佈', field: 'voterDevice', icon: <Smartphone size={14}/> },
                 { title: '投票者認證方式佔比', field: 'authType', icon: <ShieldCheck size={14}/> },
               ] as const).map(({title, field, icon}) => {
-                const validLogs = report.logs.filter(log => log.status === 'VALID');
+                const validLogs = channelStats?.logs || report.logs.filter(log => log.status === 'VALID');
                 const labels = field === 'authType' ? ['TVB GO 會員', '電郵邀請投票', '邀請碼投票'] : ['iOS App', 'Android App', 'Web Browser'];
                 const groups = new Map<string, number>(labels.map(label => [label, 0]));
                 const authLabels: Record<string, string> = { TVB_GO_MEMBER: 'TVB GO 會員', EMAIL_INVITATION: '電郵邀請投票', INVITATION_CODE: '邀請碼投票' };
@@ -3014,7 +3019,7 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                   >
                     全部階段
                   </button>
-                  {statsCampaign.phases.map((p, idx) => (
+                  {(channelStats?.phases??statsCampaign.phases).map((p, idx) => (
                     <button
                       key={p.id}
                       type="button"
@@ -3031,10 +3036,10 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
                 </div>
               </div>
 
-              {statsCampaign.phases
+              {(channelStats?.phases??statsCampaign.phases)
                 .filter(p => statsActivePhaseTab === 'ALL' || p.id === statsActivePhaseTab)
                 .map((phase) => {
-                  const phaseTotalVotes = phase.options.reduce((sum, o) => sum + o.votes, 0) || 1;
+                  const phaseTotalVotes = phase.options.reduce((sum, o) => sum + o.votes, 0);
                   const sortedOptions = [...phase.options].sort((a, b) => b.votes - a.votes);
 
                   return (
@@ -3061,9 +3066,9 @@ export const VotingCampaignManager: React.FC<VotingCampaignManagerProps> = ({
 
                       <div className="space-y-2.5">
                         {sortedOptions.map((opt, rank) => {
-                          const percent = ((opt.votes / phaseTotalVotes) * 100).toFixed(1);
-                          const isAdvancing = !!(phase.advanceRuleEnabled && phase.advanceTopCount && rank < phase.advanceTopCount);
-                          const isCutoffLine = !!(phase.advanceRuleEnabled && phase.advanceTopCount && rank === phase.advanceTopCount - 1 && rank < sortedOptions.length - 1);
+                          const percent = ((opt.votes / (phaseTotalVotes || 1)) * 100).toFixed(1);
+                          const isAdvancing = (!report || statsChannel==='ALL') && !!(phase.advanceRuleEnabled && phase.advanceTopCount && rank < phase.advanceTopCount);
+                          const isCutoffLine = (!report || statsChannel==='ALL') && !!(phase.advanceRuleEnabled && phase.advanceTopCount && rank === phase.advanceTopCount - 1 && rank < sortedOptions.length - 1);
 
                           return (
                             <React.Fragment key={opt.id}>

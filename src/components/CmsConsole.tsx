@@ -1,3 +1,4 @@
+import {TicketWalletManager} from './tickets/TicketWallet';
 import {COMPANY_STAFF_DATABASE} from '../utils/employeeDirectory';
 import {GoCmsNavItem} from './ui/GoUI';
 import {QrCode, Gift} from 'lucide-react';
@@ -64,7 +65,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
   triggerSound
 }) => {
   // Navigation: 'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT' | 'VOTING_CAMPAIGNS' | 'VOTING_ARTICLES'
-  const [activeCmsTab, setActiveCmsTab] = useState<'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT' | 'CHECK_IN_MANAGEMENT' | 'LOTTERY' | 'ACTIVITIES' | 'VOTING_CAMPAIGNS' | 'VOTING_ARTICLES'>('ACTIVITIES');
+  const [activeCmsTab, setActiveCmsTab] = useState<'VISITORS' | 'EMPLOYEES' | 'EMAIL_TEMPLATES' | 'WHITELIST' | 'BLACKLIST' | 'PUSH_CONFIG' | 'STAFF' | 'ATTENDANCE_LOGS' | 'ATTENDANCE_CONFIG' | 'ATTENDANCE_REPORT' | 'CHECK_IN_MANAGEMENT' | 'TICKET_WALLET' | 'LOTTERY' | 'ACTIVITIES' | 'VOTING_CAMPAIGNS' | 'VOTING_ARTICLES'>('ACTIVITIES');
 
   // 1. Employee Whitelist Management & Approval Config States (審核配置與員工白名單配置)
   const [isBookingApprovalRequired, setIsBookingApprovalRequired] = useState<boolean>(() => {
@@ -1175,6 +1176,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                     </span>
                   </button>
                   <GoCmsNavItem icon={<QrCode/>} active={activeCmsTab==='CHECK_IN_MANAGEMENT'} onClick={()=>setActiveCmsTab('CHECK_IN_MANAGEMENT')}>簽到管理</GoCmsNavItem>
+                  <GoCmsNavItem icon={<Gift/>} active={activeCmsTab==='TICKET_WALLET'} onClick={()=>setActiveCmsTab('TICKET_WALLET')}>電子票夾管理</GoCmsNavItem>
                   <GoCmsNavItem icon={<Gift/>} active={activeCmsTab==='LOTTERY'} onClick={()=>setActiveCmsTab('LOTTERY')}>抽獎管理</GoCmsNavItem>
                 </div>
               </div>
@@ -1298,6 +1300,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
           )}
 
           {activeCmsTab==='CHECK_IN_MANAGEMENT'&&<CheckInDirectory activities={activities} onSave={onSaveActivity||(()=>{})}/>}
+          {activeCmsTab==='TICKET_WALLET'&&<TicketWalletManager/>}
           {activeCmsTab==='LOTTERY'&&<LotteryManager activities={activities}/>}
           {/* PAGE: 獨立投票管理 (legacy VotingCampaign data remains compatible with frontend widgets) */}
           {activeCmsTab === 'VOTING_CAMPAIGNS' && (

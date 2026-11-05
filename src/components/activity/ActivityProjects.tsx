@@ -1,0 +1,13 @@
+import React from 'react';
+import {Link2,QrCode,Gift} from 'lucide-react';
+import type {Activity} from '../../types';
+import type {Draw} from './LotteryManager';
+import {relatedActivityProjects} from '../../utils/activityProjects';
+import {GoCmsTable,GoSurface} from '../ui/GoUI';
+export function ActivityProjects({activity,activities}:{activity:Activity;activities:Activity[]}){
+ let draws:Draw[]=[];try{const saved=JSON.parse(localStorage.getItem('go-lottery-draws-v1')||'[]');if(Array.isArray(saved))draws=saved;}catch{}
+ const projects=relatedActivityProjects(activity,activities,draws);
+ const checkInCount=new Set(projects.flatMap(p=>p.checkInId?[p.checkInId]:[])).size;
+ const lotteryCount=new Set(projects.flatMap(p=>p.lotteryIds)).size;
+ return <GoSurface className="activity-relations p-5 space-y-5"><div className="flex flex-wrap items-start justify-between gap-3"><div className="flex items-start gap-3"><span className="rounded-xl bg-blue-50 p-2.5 text-blue-600"><Link2 size={18}/></span><div className="space-y-1"><h3>活動關聯</h3><p className="text-xs text-slate-500">在簽到管理及抽獎管理設定來源活動後，關聯會顯示於此。</p></div></div><div className="flex gap-2 text-xs text-slate-500"><span className="rounded-lg bg-slate-50 px-3 py-2">簽到 <strong className="ml-1 text-slate-800">{checkInCount}</strong></span><span className="rounded-lg bg-slate-50 px-3 py-2">抽獎 <strong className="ml-1 text-slate-800">{lotteryCount}</strong></span></div></div><GoCmsTable><thead><tr><th className="w-36">項目組合</th><th className="w-1/3">關聯簽到</th><th>關聯抽獎</th></tr></thead><tbody>{projects.map(p=><tr key={p.id}><td><span className={`inline-flex rounded-md px-2.5 py-1 text-xs font-medium whitespace-nowrap ${p.checkInId?(p.lotteryIds.length?'bg-blue-50 text-blue-700':'bg-emerald-50 text-emerald-700'):'bg-violet-50 text-violet-700'}`}>{p.checkInId?(p.lotteryIds.length?'簽到＋抽獎':'僅簽到'):'僅抽獎'}</span></td><td>{p.checkInId?<div className="flex items-start gap-2.5"><QrCode size={16} className="mt-0.5 shrink-0 text-blue-500"/><span className="font-medium text-slate-800">{activities.find(a=>a.id===p.checkInId)?.title||'簽到已移除'}</span></div>:<span className="text-slate-400">未關聯簽到</span>}</td><td>{p.lotteryIds.length?<div className="space-y-3">{p.lotteryIds.map(id=><div key={id} className="flex items-start gap-2.5"><Gift size={16} className="mt-0.5 shrink-0 text-violet-500"/><span className="font-medium text-slate-800">{draws.find(d=>d.id===id)?.title||'抽獎已移除'}</span></div>)}</div>:<span className="text-slate-400">未關聯抽獎</span>}</td></tr>)}{!projects.length&&<tr><td colSpan={3}>暫無關聯簽到或抽獎。</td></tr>}</tbody></GoCmsTable></GoSurface>;
+}

@@ -1,3 +1,4 @@
+import {AppTicketWallet} from './tickets/TicketWallet';
 import {AppEventHub} from './activity/AppEventHub';
 /**
  * @license
@@ -55,6 +56,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   onVoteSubmit,
   triggerSound
 }) => {
+  const [showTickets,setShowTickets]=useState(false);
   // Bottom Tab State (Default & ONLY clickable functional tab: 'DAILY_WORK')
   const [activeBottomTab, setActiveBottomTab] = useState<AppBottomTab>('DAILY_WORK');
   
@@ -257,6 +259,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   const [canteenCategory, setCanteenCategory] = useState<'A' | 'B' | 'DRINK'>('A');
 
   // If viewing an article detail, render the specialized article reader (Page with single back button)
+  if(showTickets)return <AppTicketWallet onBack={()=>setShowTickets(false)}/>;
   if(activeBottomTab==='EVENTS'||selectedActivity?.modules.some(m=>m.enabled&&(m.type==='CHECK_IN'||m.type==='LOTTERY')))return <AppEventHub activities={activities} campaigns={votingCampaigns} userVotes={userVotes} onVoteSubmit={onVoteSubmit} onSave={onSaveActivity} initialId={selectedActivityId||undefined} onBack={()=>{setSelectedActivityId(null);setActiveBottomTab('DAILY_WORK');}}/>;
   if (selectedActivity) {
     return <AppActivityDetail key={selectedActivity.id} activity={selectedActivity} campaigns={votingCampaigns} userVotes={userVotes} onVoteSubmit={onVoteSubmit} onBack={() => setSelectedActivityId(null)} />;
@@ -696,6 +699,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                 </span>
               </button>
 
+              <button type="button" onClick={()=>setShowTickets(true)} className="bg-violet-50 border border-violet-200 rounded-2xl py-4 px-3 flex flex-col items-center gap-2.5"><div className="w-12 h-12 rounded-2xl bg-violet-600 text-white flex items-center justify-center"><FileText size={26}/></div><span className="text-xs font-bold text-violet-950">電子票夾</span></button>
               {/* 活動入口與工作日常功能卡片保持一致 */}
               <button
                 type="button"

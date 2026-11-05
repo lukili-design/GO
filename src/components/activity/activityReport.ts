@@ -17,5 +17,9 @@ export function buildActivityReport(activity: Activity, campaigns: VotingCampaig
     startTime: activity.startTime, endTime: activity.endTime, creator: activity.creator,
     createdAt: activity.createdAt, updatedAt: activity.updatedAt,
   };
-  return { campaign, logs };
+  const phaseLogIds=Object.fromEntries(phases.map(phase=>{
+    const parts=phase.id.split('::');
+    return [phase.id,allLogs.filter(log=>log.campaignId===parts[0]&&log.phaseId===parts[parts.length-1]&&(parts.length===2?!log.voteItemId:log.voteItemId===parts[1])).map(log=>log.id)];
+  }));
+  return { campaign, logs, phaseLogIds };
 }
