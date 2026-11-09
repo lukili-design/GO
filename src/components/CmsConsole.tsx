@@ -985,8 +985,39 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
             </div>
             
             <nav className="space-y-4">
-              {/* 訪客管理 主菜單 */}
+              {/* 內容管理 主菜單 */}
               <div className="space-y-1.5">
+                <div className="px-2 py-1 flex items-center gap-2 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  <FileText size={14} className="text-purple-500" />
+                  <span>內容管理</span>
+                </div>
+
+                <div className="pl-1.5 space-y-1 border-l-2 border-slate-100 dark:border-slate-850 ml-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCmsTab('VOTING_ARTICLES');
+                      triggerSound(820, 'sine', 0.05);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      activeCmsTab === 'VOTING_ARTICLES'
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    <Layers size={15} />
+                    <span className="flex-1 text-left flex items-center justify-between">
+                      <span>文章列表</span>
+                      <span className="px-1.5 py-0.2 text-[9.5px] font-mono font-bold bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-full">
+                        {voteArticles.length}
+                      </span>
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 訪客管理 主菜單 */}
+              <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-850">
                 <div className="px-2 py-1 flex items-center gap-2 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   <UserCheck size={14} className="text-blue-500" />
                   <span>訪客管理</span>
@@ -1181,37 +1212,6 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
                 </div>
               </div>
 
-              {/* 內容管理 主菜單 */}
-              <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-850">
-                <div className="px-2 py-1 flex items-center gap-2 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                  <FileText size={14} className="text-purple-500" />
-                  <span>內容管理</span>
-                </div>
-
-                <div className="pl-1.5 space-y-1 border-l-2 border-slate-100 dark:border-slate-850 ml-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveCmsTab('VOTING_ARTICLES');
-                      triggerSound(820, 'sine', 0.05);
-                    }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      activeCmsTab === 'VOTING_ARTICLES'
-                        ? 'bg-blue-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900/80 hover:text-slate-900 dark:hover:text-slate-200'
-                    }`}
-                  >
-                    <Layers size={15} />
-                    <span className="flex-1 text-left flex items-center justify-between">
-                      <span>文章與活動關聯</span>
-                      <span className="px-1.5 py-0.2 text-[9.5px] font-mono font-bold bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-full">
-                        {voteArticles.length}
-                      </span>
-                    </span>
-                  </button>
-                </div>
-              </div>
-
               {/* 考勤管理 主菜單 */}
               <div className="space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-850">
                 <div className="px-2 py-1 flex items-center gap-2 text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -1286,6 +1286,7 @@ export const CmsConsole: React.FC<CmsConsoleProps> = ({
 
         {/* Right Content Area */}
         <main className="flex-1 p-6 overflow-y-auto min-w-0">
+
 
           {/* PAGE: 獨立活動管理與模組關聯 */}
           {activeCmsTab === 'ACTIVITIES' && (

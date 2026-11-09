@@ -1,3 +1,8 @@
+import {coiRows,coiStatusColors,statusLabels} from './coi/coiModel';
+import {AppCoi} from './coi/AppCoi';
+import {articleIsVisible} from '../utils/articleVisibility';
+import {policyUser,usePolicyRecords} from './policies/policyModel';
+import {PolicyReader} from './policies/PolicyReader';
 import {AppTicketWallet} from './tickets/TicketWallet';
 import {AppEventHub} from './activity/AppEventHub';
 /**
@@ -71,9 +76,43 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   const [selectedVoteItemId, setSelectedVoteItemId] = useState<string | undefined>(undefined);
 
   // TVB Express News Tab State: 全部 / 公司公告 / 部門消息
+  
+  const policyRecords=usePolicyRecords();
+  const policyComplete=(article:VoteArticle)=>{const p=article.policy,r=policyRecords.find(r=>r.articleId===article.id&&r.employeeId===policyUser.employeeId&&r.round===p?.versions.at(-1)?.round);return !!r?.agreedAt&&(!p?.versions.find(v=>v.version===r.version)?.signature||!!r.signature);};
   const [newsTab, setNewsTab] = useState<'ALL' | 'ANNOUNCEMENT' | 'DEPT' | 'ACTIVITY'>('ALL');
 
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const renderNewsArticle=(article:VoteArticle)=>(
+                    <div
+                      key={article.id}
+                      onClick={() => {
+                        setSelectedArticle(article);
+                        triggerSound(750, 'sine', 0.08);
+                      }}
+                      className="p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/40 dark:from-slate-900/90 dark:to-blue-950/30 rounded-2xl border border-blue-200/80 dark:border-blue-900/60 space-y-2 hover:border-blue-400 transition-all cursor-pointer shadow-2xs group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9.5px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white flex items-center gap-1 shadow-xs">
+                          <Sparkles size={10} className="text-amber-300" />
+                          <span>{article.important?'重要 · ':''}{article.category}</span>
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-mono">{article.publishDate.substring(0, 10)}</span>
+                      </div>
+                      {article.category==='年度 COI 申報'&&article.coi?(()=>{const status=coiRows(article.coi).find(r=>r.employeeId===policyUser.employeeId)?.status||'EXEMPT';return <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${coiStatusColors[status]}`}><span aria-hidden="true">●</span>{statusLabels[status]}</span>})():article.policy?.enabled&&<span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${policyComplete(article)?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}`}><span aria-hidden="true">●</span>{policyComplete(article)?'已確認':'未確認'}</span>}
+                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {article.title}
+                      </h4>
+                      {article.summary && (
+                        <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
+                          {article.summary}
+                        </p>
+                      )}
+                      <div className="flex items-center justify-between text-[10px] text-blue-600 dark:text-blue-400 font-bold pt-1 border-t border-blue-100 dark:border-slate-800">
+                        <span>{article.category==='年度 COI 申報'?'查看年度申報 ➔':article.policy?.enabled?(policyComplete(article)?'查看政策 ➔':'閱讀政策並確認 ➔'):'閱讀全文 ➔'}</span>
+                        <span>{article.viewCount.toLocaleString()} 閱讀</span>
+                      </div>
+                    </div>
+  );
   const visibleActivities = publishedActivities(activities);
   const selectedActivity = visibleActivities.find(a => a.id === selectedActivityId);
 
@@ -264,6 +303,8 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   if (selectedActivity) {
     return <AppActivityDetail key={selectedActivity.id} activity={selectedActivity} campaigns={votingCampaigns} userVotes={userVotes} onVoteSubmit={onVoteSubmit} onBack={() => setSelectedActivityId(null)} />;
   }
+  if(selectedArticle?.category==='年度 COI 申報'&&selectedArticle.coi)return <AppCoi article={selectedArticle} item={{...selectedArticle.coi,name:selectedArticle.title,description:selectedArticle.content}} onBack={()=>setSelectedArticle(null)}/>;
+  if(selectedArticle?.policy?.enabled)return <PolicyReader key={selectedArticle.id} article={voteArticles.find(a=>a.id===selectedArticle.id)||selectedArticle} onBack={()=>setSelectedArticle(null)}/>;
   if (selectedArticle) {
     return (
       <AppArticleDetailView
@@ -521,42 +562,15 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
 
               {/* 文章內容 (第一篇文章為包含投票組件的專題文章，點擊進入即可看到文章與關聯投票組件效果) */}
               <div className="space-y-2.5 pt-1">
+                {voteArticles
+                  .filter(art => articleIsVisible(art,policyUser))
+                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告') || art.category.includes('政策') || art.category==='年度 COI 申報')) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門')))).filter(a=>a.pinned).sort((a,b)=>Number(policyComplete(a))-Number(policyComplete(b))).map(renderNewsArticle)}
                 {(newsTab === 'ALL' || newsTab === 'ACTIVITY') && visibleActivities.map(activity => <ActivityCard key={activity.id} activity={activity} campaigns={votingCampaigns} onOpen={() => setSelectedActivityId(activity.id)}/>)}
                 {newsTab === 'ACTIVITY' && !visibleActivities.length && <div className="p-8 text-center text-sm text-slate-500">暫時沒有已發布的活動。</div>}
                 {/* 渲染專題與投票關聯文章 */}
                 {voteArticles
-                  .filter(art => art.status === 'PUBLISHED')
-                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告'))) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門'))))
-                  .map(article => (
-                    <div
-                      key={article.id}
-                      onClick={() => {
-                        setSelectedArticle(article);
-                        triggerSound(750, 'sine', 0.08);
-                      }}
-                      className="p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/40 dark:from-slate-900/90 dark:to-blue-950/30 rounded-2xl border border-blue-200/80 dark:border-blue-900/60 space-y-2 hover:border-blue-400 transition-all cursor-pointer shadow-2xs group"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[9.5px] font-black px-2.5 py-0.5 rounded-full bg-blue-600 text-white flex items-center gap-1 shadow-xs">
-                          <Sparkles size={10} className="text-amber-300" />
-                          <span>{article.category}</span>
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">{article.publishDate.substring(0, 10)}</span>
-                      </div>
-                      <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                        {article.title}
-                      </h4>
-                      {article.summary && (
-                        <p className="text-[11px] text-slate-600 dark:text-slate-400 line-clamp-2">
-                          {article.summary}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between text-[10px] text-blue-600 dark:text-blue-400 font-bold pt-1 border-t border-blue-100 dark:border-slate-800">
-                        <span>點擊閱讀全文並立即參與投票 ➔</span>
-                        <span>{article.viewCount.toLocaleString()} 閱讀</span>
-                      </div>
-                    </div>
-                  ))}
+                  .filter(art => articleIsVisible(art,policyUser))
+                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告') || art.category.includes('政策') || art.category==='年度 COI 申報')) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門')))).filter(a=>!a.pinned).map(renderNewsArticle)}
 
                 {/* 常規快訊公告 */}
                 {[
@@ -626,7 +640,8 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
         {activeBottomTab === 'DAILY_WORK' && subModule === 'WORKBENCH' && (
           <div className="p-4 space-y-4">
             
-            {/* 工作日常功能入口 */}
+            
+{/* 工作日常功能入口 */}
             <div className="grid grid-cols-3 gap-3.5">
               
               {/* 1. 日曆 (藍色系) */}

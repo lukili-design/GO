@@ -390,7 +390,24 @@ export interface VoteLogRecord {
   status: 'VALID' | 'ABNORMAL_INTERCEPTED' | 'REVOKED'; // 投票審計狀態
 }
 
+export type ArticleContentType = 'RICH' | 'PDF' | 'TEXT' | 'LINK' | 'VIDEO';
 export interface VoteArticle {
+  coi?: import('./components/coi/coiModel').Coi;
+  pinned?: boolean;
+  reviewRecords?: {at:string;reviewer:string;result:string;comment:string}[];
+  titleEn?: string;
+  important?: boolean;
+  contentType?: ArticleContentType;
+  richContent?: string;
+  pdfFile?: {name:string;ref:string};
+  videoFile?: {name:string;ref:string};
+  linkUrl?: string;
+  coverImageEn?: string;
+  visibility?: {mode:'ALL'|'DEPARTMENTS'|'EMPLOYEES'|'STAFF_TYPES';ids:string[]};
+  autoSchedule?: boolean;
+  onlineAt?: string;
+  offlineAt?: string;
+  policy?: import('./components/policies/policyModel').PolicyConfig;
   id: string; // 文章 ID (如 ART-2026-001)
   title: string; // 文章標題
   category: string; // 分類標籤

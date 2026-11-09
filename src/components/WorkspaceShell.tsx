@@ -1,3 +1,5 @@
+import {coiArticles} from './coi/coiModel';
+import {policyDemo,preparePolicyDemo,confirmedPolicyDemo,preparePolicyShowcase} from './policies/policyModel';
 import {LotteryScreenLauncher} from './activity/LotteryScreenLauncher';
 const banquetBanner = new URL('../assets/banquet-banner.svg', import.meta.url).href;
 const banquetFooter = new URL('../assets/banquet-footer.svg', import.meta.url).href;
@@ -209,16 +211,20 @@ export const WorkspaceShell: React.FC = () => {
         // Always refresh standard articles to guarantee latest multi-widget embeds and titles
         const updated = INITIAL_VOTE_ARTICLES.map(initArt => {
           const found = parsed.find(p => p.id === initArt.id);
-          return found ? { ...initArt, viewCount: Math.max(initArt.viewCount, found.viewCount) } : initArt;
+          return found&&(found.policy||found.contentType||found.titleEn) ? found : found ? { ...initArt, viewCount: Math.max(initArt.viewCount, found.viewCount) } : initArt;
         });
         const customArticles = parsed.filter(p => !INITIAL_VOTE_ARTICLES.some(a => a.id === p.id));
-        const merged = [...updated, ...customArticles];
-        localStorage.setItem('tvb_go_vote_articles_v4', JSON.stringify(merged));
-        return merged;
+        const merged = [...updated, ...customArticles].map(preparePolicyDemo).map(a=>a.policy?.enabled?{...a,category:'政策同意書',titleEn:a.id===policyDemo.id?(a.titleEn||policyDemo.titleEn):a.titleEn}:a);
+        if(!merged.some(a=>a.id===policyDemo.id))merged.unshift(preparePolicyDemo(policyDemo));
+        if(!merged.some(a=>a.id===confirmedPolicyDemo.id))merged.push(confirmedPolicyDemo);
+        const showcased=merged.map(preparePolicyShowcase);
+        for(const item of coiArticles())if(!showcased.some(a=>a.id===item.id))showcased.push(item);
+        localStorage.setItem('tvb_go_vote_articles_v4', JSON.stringify(showcased));
+        return showcased;
       } catch (e) {}
     }
-    localStorage.setItem('tvb_go_vote_articles_v4', JSON.stringify(INITIAL_VOTE_ARTICLES));
-    return INITIAL_VOTE_ARTICLES;
+    localStorage.setItem('tvb_go_vote_articles_v4', JSON.stringify([...coiArticles(),preparePolicyShowcase(preparePolicyDemo(policyDemo)),preparePolicyShowcase(confirmedPolicyDemo),...INITIAL_VOTE_ARTICLES]));
+    return [...coiArticles(),preparePolicyShowcase(preparePolicyDemo(policyDemo)),preparePolicyShowcase(confirmedPolicyDemo),...INITIAL_VOTE_ARTICLES];
   });
 
   useEffect(() => {

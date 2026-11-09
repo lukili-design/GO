@@ -1,3 +1,16 @@
+import {CoiManager} from '../coi/CoiManager';
+import {AppCoi} from '../coi/AppCoi';
+import {validLink} from '../coi/coiModel';
+import {ArticleBody,ArticleImage} from './ArticleBody';
+import {AppArticleDetailView} from './AppArticleDetailView';
+import {ArticleEditorFields,articleCategories} from './ArticleEditorFields';
+import DOMPurify from 'dompurify';
+import {PolicySettings} from '../policies/PolicySettings';
+import {PolicyNotifications} from '../policies/PolicyNotifications';
+import {PolicyManager} from '../policies/PolicyManager';
+import {PolicyReader} from '../policies/PolicyReader';
+import {publishPolicy} from '../policies/policyModel';
+import {GoBackButton,GoCmsTable,GoSurface,GoButton,GoModalClose} from '../ui/GoUI';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -37,6 +50,10 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
   triggerSound
 }) => {
   // Mode: 'LIST' | 'FORM' | 'PREVIEW'
+  const [uploadBusy,setUploadBusy]=useState(false);
+  const [policyId,setPolicyId]=useState<string>();
+  const [notificationId,setNotificationId]=useState<string>();
+  const [actionPanel,setActionPanel]=useState<{id:string;mode:'DETAILS'|'REVIEW'|'PUBLISH'}>();
   const [viewMode, setViewMode] = useState<'LIST' | 'FORM' | 'PREVIEW'>('LIST');
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
@@ -55,15 +72,15 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
     const matchSearch = art.title.toLowerCase().includes(searchTerm.toLowerCase()) || art.summary.toLowerCase().includes(searchTerm.toLowerCase());
     const matchCat = categoryFilter === 'ALL' || art.category === categoryFilter;
     return matchSearch && matchCat;
-  });
+  }).sort((a,b)=>Number(!!b.pinned)-Number(!!a.pinned)||Number(b.category==='政策同意書')-Number(a.category==='政策同意書'));
 
   // Open Create Article
   const handleOpenCreate = () => {
     const newId = `ART-2026-${String(articles.length + 1).padStart(3, '0')}`;
     setEditingArticle({
       id: newId,
-      title: '',
-      category: '投票資訊',
+      title: '', titleEn:'',contentType:'RICH',richContent:'',important:false,visibility:{mode:'STAFF_TYPES',ids:['S','E','A']},
+      category: '公司公告',
       author: 'TVB 互動新聞組',
       coverImage: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1200&q=80',
       summary: '',
@@ -79,7 +96,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
 
   // Open Edit Article
   const handleOpenEdit = (art: VoteArticle) => {
-    setEditingArticle(JSON.parse(JSON.stringify(art)));
+    setEditingArticle(JSON.parse(JSON.stringify({...art,visibility:art.visibility?.mode==='STAFF_TYPES'?art.visibility:{mode:'STAFF_TYPES',ids:!art.visibility||art.visibility.mode==='ALL'?['S','E','A']:[]},category:art.policy?.enabled?'政策同意書':art.category,contentType:art.contentType||(art.policy?.mode==='PDF'?'PDF':'TEXT'),pdfFile:art.pdfFile||art.policy?.pdf})));
     setViewMode('FORM');
     triggerSound(650, 'sine', 0.1);
   };
@@ -128,35 +145,57 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
   };
 
   // Save Article Submit
-  const handleSaveArticleSubmit = (e: React.FormEvent) => {
+  const handleSaveArticleSubmit = (e: {preventDefault:()=>void}, candidate:VoteArticle|null=editingArticle) => {
     e.preventDefault();
-    if (!editingArticle) return;
-    if (!editingArticle.title.trim()) {
+    if (!candidate) return;
+    if (!candidate.title.trim()) {
       alert('請填寫文章標題！');
       return;
     }
 
     // Auto extract linked campaign IDs from content
-    const matches = editingArticle.content.match(/\[VOTE_ID:\s*([^\]]+)\]/g) || [];
+    const matches = candidate.content.match(/\[VOTE_ID:\s*([^\]]+)\]/g) || [];
     const extractedIds: string[] = matches.map(m => m.replace(/\[VOTE_ID:\s*|\]/g, '').trim());
-    const finalLinked = Array.from(new Set([...editingArticle.linkedCampaignIds, ...extractedIds]));
+    const finalLinked = Array.from(new Set([...candidate.linkedCampaignIds, ...extractedIds]));
 
     const finalArt: VoteArticle = {
-      ...editingArticle,
+      ...candidate,
       linkedCampaignIds: finalLinked
     };
 
-    onSaveArticle(finalArt);
+    if(!finalArt.titleEn?.trim()){alert('請填寫文章標題 EN。');return;}
+    const type=finalArt.contentType||'TEXT';
+    if(finalArt.visibility?.mode!=='ALL'&&finalArt.visibility&&!finalArt.visibility.ids.length){alert('請至少選擇一類可見員工。');return;}
+    if(finalArt.autoSchedule&&(!finalArt.onlineAt||!finalArt.offlineAt||new Date(finalArt.offlineAt)<=new Date(finalArt.onlineAt))){alert('請設定有效的上線及下線時間，下線時間須晚於上線時間。');return;}
+    if(type==='TEXT'&&!finalArt.content.trim()||type==='RICH'&&!DOMPurify.sanitize(finalArt.richContent||'',{ALLOWED_TAGS:[]}).replace(/&nbsp;/g,' ').trim()){alert('請填寫文章內容。');return;}
+    if(type==='PDF'&&!finalArt.pdfFile&&!finalArt.policy?.pdf||type==='VIDEO'&&!finalArt.videoFile){alert('請上傳內容檔案。');return;}
+    if(type==='LINK'&&!/^https?:\/\//i.test(finalArt.linkUrl||'')){alert('請填寫有效的 HTTP 或 HTTPS 鏈接。');return;}
+    if(finalArt.policy)finalArt.policy={...finalArt.policy,enabled:finalArt.category==='政策同意書'&&finalArt.policy.enabled,mode:type==='PDF'?'PDF':'TEXT',pdf:finalArt.pdfFile||finalArt.policy.pdf};
+    if(finalArt.policy?.enabled&&finalArt.policy.buttonText!==undefined&&!finalArt.policy.buttonText.trim()){alert('請填寫確認按鈕文案。');return;}
+    if(finalArt.category==='年度 COI 申報'){const c=finalArt.coi;if(!c||!/^\d{4}$/.test(c.year)||!c.deadline||!validLink(c.url)||!c.people.length){alert('請填寫申報年度、截止時間、有效外部連結及須申報名單。');return;}finalArt.coi={...c,name:finalArt.title,description:finalArt.content};}
+    onSaveArticle(publishPolicy(finalArt));
     setViewMode('LIST');
+    setActionPanel(undefined);
     triggerSound(880, 'sine', 0.15);
   };
 
+  if(notificationId||policyId){const a=articles.find(a=>a.id===(notificationId||policyId));if(a?.category==='年度 COI 申報'&&a.coi)return <CoiManager initialItem={{...a.coi,name:a.title,description:a.content}} initialView={notificationId?'notify':'progress'} onSave={coi=>onSaveArticle({...a,coi})} onBack={()=>{setNotificationId(undefined);setPolicyId(undefined)}}/>;}
+  if(viewMode==='PREVIEW'&&previewArticle?.category==='年度 COI 申報'&&previewArticle.coi)return <div className="h-[700px] max-w-md mx-auto border rounded-2xl overflow-hidden"><AppCoi article={previewArticle} item={{...previewArticle.coi,name:previewArticle.title,description:previewArticle.content}} onBack={()=>setViewMode('LIST')}/></div>;
+  if(notificationId){const article=articles.find(a=>a.id===notificationId);if(article?.policy)return <PolicyNotifications article={article} onSaveArticle={onSaveArticle} onBack={()=>setNotificationId(undefined)}/>;}
+  if(policyId)return <PolicyManager articles={articles} onSaveArticle={onSaveArticle} initialId={policyId} onBack={()=>setPolicyId(undefined)}/>;
+  if(viewMode==='PREVIEW'&&previewArticle?.policy?.enabled)return <div className="space-y-4"><GoBackButton onClick={()=>setViewMode('LIST')}/><div className="h-[700px] max-w-md mx-auto border rounded-2xl overflow-hidden"><PolicyReader key={previewArticle.id} article={previewArticle} onBack={()=>setViewMode('LIST')} preview/></div></div>;
+  if(viewMode==='PREVIEW'&&previewArticle?.contentType)return <div className="space-y-4"><GoBackButton onClick={()=>setViewMode('LIST')}/><div className="h-[700px] max-w-md mx-auto border rounded-2xl overflow-hidden"><AppArticleDetailView article={previewArticle} campaigns={campaigns} activities={activities} onBack={()=>setViewMode('LIST')} triggerSound={triggerSound}/></div></div>;
   return (
     <div className="w-full space-y-6">
 
       {/* ========================================================================= */}
       {/* 視圖一：文章管理列表 (Article List) */}
       {/* ========================================================================= */}
+      {actionPanel&&(()=>{const art=articles.find(a=>a.id===actionPanel.id);if(!art)return null;return <div className="fixed inset-0 z-[100] bg-black/50 p-5 flex items-center justify-center"><GoSurface className="go-type go-preview-scroll p-5 w-full max-w-3xl space-y-5"><div className="flex justify-between items-center"><h3>{{DETAILS:'文章詳情',REVIEW:'審核記錄',PUBLISH:'發佈文章'}[actionPanel.mode]}</h3><GoModalClose onClick={()=>setActionPanel(undefined)}/></div><p className="font-semibold">{art.pinned&&<span className="mr-1 text-xs text-amber-600">置頂</span>}{art.title}</p>
+      {actionPanel.mode==='DETAILS'&&<><dl className="grid grid-cols-2 gap-4 text-sm">{[['文章 ID',art.id],['英文標題',art.titleEn||'—'],['文章分類',art.category],['狀態',art.status==='PUBLISHED'?'已發佈':'草稿'],['作者',art.author],['是否重要',art.important?'是':'否'],['內容類型',art.contentType||'TEXT'],['可見範圍',art.visibility?.mode==='ALL'?'所有人':art.visibility?.ids.join('、')||'所有人'],['發佈時間',art.publishDate],['是否置頂',art.pinned?'是':'否'],['自動上下線',art.autoSchedule?`${art.onlineAt} 至 ${art.offlineAt}`:'未啟用'],['關聯活動',(art.linkedActivityIds||[]).join('、')||'—']].map(([label,value])=><div key={label}><dt className="text-slate-500">{label}</dt><dd className="break-words">{value}</dd></div>)}</dl><h3>文章內容</h3><ArticleBody article={art}/></>}
+      {actionPanel.mode==='REVIEW'&&<GoCmsTable><thead><tr><th>審核時間</th><th>審核人員</th><th>結果</th><th>審核意見</th></tr></thead><tbody>{art.reviewRecords?.map((r,i)=><tr key={i}><td>{r.at}</td><td>{r.reviewer}</td><td>{r.result}</td><td>{r.comment}</td></tr>)}{!art.reviewRecords?.length&&<tr><td colSpan={4}>暫無審核記錄</td></tr>}</tbody></GoCmsTable>}
+      {actionPanel.mode==='PUBLISH'&&<><p>確認發佈此文章？發佈後按可見範圍及上下線設定展示。</p><GoButton onClick={()=>handleSaveArticleSubmit({preventDefault(){}},{...art,status:'PUBLISHED',publishDate:new Date().toLocaleString('sv-SE',{timeZone:'Asia/Hong_Kong'})})}>確認發佈</GoButton></>}
+      </GoSurface></div>})()}
       {viewMode === 'LIST' && (
         <div className="space-y-6">
           {/* Header */}
@@ -166,13 +205,13 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                 <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2.5 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/40">
                   內容發布管理
                 </span>
-                <span className="text-xs text-slate-400">文章與活動關聯</span>
+                <span className="text-xs text-slate-400">文章列表</span>
               </div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white mt-1">
-                文章與活動關聯
+                文章列表
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                選擇文章要關聯的活動，並查看活動 ID 與活動名稱。
+                選擇文章要關聯的活動，並查看關聯活動 ID。
               </p>
             </div>
 
@@ -200,8 +239,8 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
             </div>
 
             <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto">
-              <span className="text-xs font-bold text-slate-500 shrink-0 mr-1">專題分類：</span>
-              {(['ALL', '投票資訊', '焦點專題', '幕後花絮', '活動公告'] as const).map((cat) => (
+              <span className="text-xs font-bold text-slate-500 shrink-0 mr-1">文章分類：</span>
+              {(['ALL', ...articleCategories]).map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
@@ -221,11 +260,11 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
           {/* Articles Table */}
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
+              <GoCmsTable>
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold">
                     <th className="py-3 px-4">文章標題</th>
-                    <th className="py-3 px-4">專題分類</th>
+                    <th className="py-3 px-4">文章分類</th>
                     <th className="py-3 px-4">關聯活動</th>
                     <th className="py-3 px-4 text-center">瀏覽量</th>
                     <th className="py-3 px-4">發布時間</th>
@@ -250,7 +289,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                         <tr key={art.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
                           <td className="py-3.5 px-4">
                             <div className="flex items-center gap-3">
-                              <img
+                              <ArticleImage
                                 src={art.coverImage}
                                 alt={art.title}
                                 className="w-12 h-8 rounded-lg object-cover border border-slate-200 dark:border-slate-700 shrink-0"
@@ -277,8 +316,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                               <div className="space-y-1.5">
                                 {linkedCamps.map(activity => (
                                   <div key={activity.id} className="p-2 rounded-xl border border-amber-200 bg-amber-50">
-                                    <div className="text-[10px] font-mono text-blue-600">{activity.id}</div>
-                                    <div className="text-xs font-bold text-slate-900">{activity.title}</div>
+                                    <div className="text-xs font-mono text-blue-600 whitespace-nowrap">{activity.id}</div>
                                   </div>
                                 ))}
                               </div>
@@ -298,43 +336,13 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                             </span>
                           </td>
                           <td className="py-3.5 px-4 text-right">
-                            <div className="flex items-center justify-end gap-1">
-                              {/* Preview Button */}
-                              <button
-                                onClick={() => handleOpenPreview(art)}
-                                type="button"
-                                title="預覽文章與活動"
-                                className="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
-                              >
-                                <Eye size={12} />
-                                <span>預覽</span>
-                              </button>
-
-                              {/* Edit Button */}
-                              <button
-                                onClick={() => handleOpenEdit(art)}
-                                type="button"
-                                title="編輯文章與關聯活動"
-                                className="px-2 py-1 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 text-blue-600 dark:text-blue-400 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer"
-                              >
-                                <Edit3 size={12} />
-                                <span>編輯</span>
-                              </button>
-
-                              {/* Delete Button */}
-                              <button
-                                onClick={() => {
-                                  if (confirm(`確定要刪除「${art.title}」文章嗎？`)) {
-                                    onDeleteArticle(art.id);
-                                    triggerSound(350, 'triangle', 0.15);
-                                  }
-                                }}
-                                type="button"
-                                title="刪除文章"
-                                className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all cursor-pointer"
-                              >
-                                <Trash2 size={13} />
-                              </button>
+                            <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                              {['預覽','查看詳情','編輯','發佈'].map(label=><button key={label} type="button" disabled={label==='發佈'&&art.status==='PUBLISHED'} onClick={()=>{if(label==='預覽')handleOpenPreview(art);else if(label==='編輯')handleOpenEdit(art);else setActionPanel({id:art.id,mode:label==='查看詳情'?'DETAILS':'PUBLISH'});}} className="px-2 py-1 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-400 rounded-lg font-bold text-[11px] inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer">{label==='預覽'&&<Eye size={12}/>} {label==='編輯'&&<Edit3 size={12}/>} {label}</button>)}
+                              <details className="shrink-0 text-left"><summary className="cursor-pointer list-none px-2.5 py-1 border border-slate-300 rounded-lg text-[11px] font-bold">更多</summary><div className="flex flex-col gap-1 mt-2 p-2 border border-slate-200 bg-white dark:bg-slate-900 rounded-lg">
+                                <button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setActionPanel({id:art.id,mode:'REVIEW'});}}>查看審核記錄</button>
+                                <button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');onSaveArticle({...art,pinned:!art.pinned});}}>{art.pinned?'取消置頂':'置頂'}</button>
+                                {(art.category==='政策同意書'||art.category==='年度 COI 申報')&&<><button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setPolicyId(art.id);}}>完成進度</button><button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setNotificationId(art.id);}}>提醒與跟進</button></>}
+                              </div></details>
                             </div>
                           </td>
                         </tr>
@@ -342,7 +350,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                     })
                   )}
                 </tbody>
-              </table>
+              </GoCmsTable>
             </div>
           </div>
         </div>
@@ -356,17 +364,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
           {/* Top Actions */}
           <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setViewMode('LIST');
-                  triggerSound(500, 'sine', 0.08);
-                }}
-                className="p-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 rounded-xl transition-all cursor-pointer"
-                title="返回列表"
-              >
-                <ArrowLeft size={16} />
-              </button>
+              <GoBackButton onClick={()=>setViewMode('LIST')}/>
               <div>
                 <h2 className="text-base font-black text-slate-900 dark:text-white">
                   {editingArticle.title ? `編輯文章：${editingArticle.title}` : '新建文章'}
@@ -385,6 +383,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
               </button>
               <button
                 type="submit"
+                disabled={uploadBusy}
                 className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Check size={15} />
@@ -393,134 +392,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
             </div>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* 標題 */}
-              <div className="md:col-span-2 space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  文章標題 <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={editingArticle.title}
-                  onChange={(e) => setEditingArticle({ ...editingArticle, title: e.target.value })}
-                  placeholder="請輸入吸引人的文章標題..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              {/* 分類 */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  專題分類
-                </label>
-                <select
-                  value={editingArticle.category}
-                  onChange={(e) => setEditingArticle({ ...editingArticle, category: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="投票資訊">投票資訊</option>
-                  <option value="焦點專題">焦點專題</option>
-                  <option value="幕後花絮">幕後花絮</option>
-                  <option value="活動公告">活動公告</option>
-                  <option value="節目資訊">節目資訊</option>
-                </select>
-              </div>
-
-              {/* 封面圖 */}
-              <div className="md:col-span-2 space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  文章封面圖網址
-                </label>
-                <input
-                  type="text"
-                  value={editingArticle.coverImage}
-                  onChange={(e) => setEditingArticle({ ...editingArticle, coverImage: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              {/* 作者 */}
-              <div className="space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  發布作者
-                </label>
-                <input
-                  type="text"
-                  value={editingArticle.author}
-                  onChange={(e) => setEditingArticle({ ...editingArticle, author: e.target.value })}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-
-              {/* 摘要 */}
-              <div className="md:col-span-3 space-y-1">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  文章簡述/導言
-                </label>
-                <textarea
-                  rows={2}
-                  value={editingArticle.summary}
-                  onChange={(e) => setEditingArticle({ ...editingArticle, summary: e.target.value })}
-                  placeholder="請輸入文章導言摘要..."
-                  className="w-full p-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-medium focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
-
-            {/* Editor Toolbar & Content */}
-            <div className="space-y-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    文章正文內容 (支援關聯插入多個活動)
-                  </label>
-                  <span className="text-[11px] text-slate-400">
-                    每個活動可包含多個投票/評選項目，前台將完整渲染活動卡片與全部項目
-                  </span>
-                </div>
-
-                {/* 🌟 核心按鈕：[📊 關聯活動] */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedVoteCampaignIds([]);
-                    setShowInsertVoteModal(true);
-                    triggerSound(700, 'sine', 0.1);
-                  }}
-                  className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs font-black shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
-                >
-                  <BarChart2 size={15} className="text-amber-100" />
-                  <span>📊 關聯活動</span>
-                </button>
-              </div>
-
-              <textarea
-                rows={9}
-                value={editingArticle.content}
-                onChange={(e) => setEditingArticle({ ...editingArticle, content: e.target.value })}
-                placeholder="在正文中任意位置插入 [VOTE_ID: 活動ID]，前台系統將自動將其替換為即時互動投票活動卡片（含其下全部投票項目）..."
-                className="w-full p-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white font-mono leading-relaxed focus:outline-none focus:border-indigo-500"
-              />
-
-              {/* 🌟 已關聯活動與多個投票項目即時檢視面板 */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold">關聯活動</h4>
-                {activities.filter(activity => editingArticle.linkedActivityIds?.includes(activity.id) || (!editingArticle.linkedActivityIds && activity.modules.some(module => module.type === 'VOTING' && getLinkedCampaignsForArticle(editingArticle).some(campaign => campaign.id === module.resourceId.split('::')[0])))).map(activity => (
-                  <div key={activity.id} className="p-3 rounded-xl border border-slate-200">
-                    <div className="text-xs font-mono text-blue-600">{activity.id}</div>
-                    <div className="text-sm font-bold">{activity.title}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-3 bg-slate-100 dark:bg-slate-800/60 rounded-xl text-[11px] text-slate-500 flex items-center gap-2">
-                <HelpCircle size={14} className="text-indigo-500 shrink-0" />
-                <span>提示：在文章正文中插入投票活動短碼 <code>[VOTE_ID: 活動ID]</code>，前台讀者在瀏覽文章時即可直接瀏覽該活動下的全部投票評選項目並進行投票。</span>
-              </div>
-            </div>
-          </div>
+          <ArticleEditorFields article={editingArticle} onChange={setEditingArticle} activities={activities} busyChange={setUploadBusy} onLink={()=>{setSelectedVoteCampaignIds(editingArticle.linkedActivityIds||[]);setShowInsertVoteModal(true)}}/>
         </form>
       )}
 

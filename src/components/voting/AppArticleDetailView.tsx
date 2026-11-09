@@ -1,3 +1,4 @@
+import {ArticleBody,ArticleImage} from './ArticleBody';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -116,7 +117,7 @@ export const AppArticleDetailView: React.FC<AppArticleDetailViewProps> = ({
         
         {/* Article Cover Image */}
         <div className="relative w-full h-48 sm:h-56 rounded-2xl overflow-hidden bg-slate-950 shadow-xs">
-          <img
+          <ArticleImage
             src={article.coverImage}
             alt={article.title}
             className="w-full h-full object-cover"
@@ -161,7 +162,7 @@ export const AppArticleDetailView: React.FC<AppArticleDetailViewProps> = ({
         {/* Dynamic Body Rendering: 正文直接白底黑字連續閱讀，只有投票卡片保持卡片樣式 */}
         <div className="space-y-4 pt-1">
           {linkedActivities.map(activity => <ActivityCard key={activity.id} activity={activity} campaigns={campaigns} onOpen={() => onSelectActivity?.(activity)}/>)}
-          {contentParts.map((part, idx) => {
+          {article.contentType&&article.contentType!=='TEXT'?<ArticleBody article={article}/>:contentParts.map((part, idx) => {
             const match = part.match(/\[VOTE_ID:\s*([^\]]+)\]/);
             if (match) {
               if (onSelectActivity) return null;
