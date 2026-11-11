@@ -7,13 +7,13 @@ test('imports flag existing IDs, duplicate file rows and unknown employees',()=>
  const rows=importIds('\uFEFF員工編號\r\nEMP001\r\nEMP002\r\nEMP002\r\nUNKNOWN',['EMP001']);
  assert.deepEqual(rows.map(r=>r.result),['重複／已在名單','可匯入','重複／已在名單','找不到員工']);
 });
-test('overdue calculation preserves completion and exemption, demos remain fixed',()=>{
+test('external statuses remain authoritative regardless of date',()=>{
  const c={...demo,demo:false,deadline:'2020-01-01T18:00'};
- assert.equal(personStatus(c,{employeeId:'EMP001',status:'PENDING'}),'OVERDUE');
- for(const status of ['UPDATED','EXEMPT'] as const)assert.equal(personStatus(c,{employeeId:'EMP001',status}),status);
- assert.equal(personStatus({...c,demo:true},{employeeId:'EMP001',status:'PENDING'}),'PENDING');
+ for(const status of ['UPDATED','REVIEW','EXEMPT'] as const)assert.equal(personStatus(c,{employeeId:'EMP001',status}),status);
 });
-test('demo includes all five statuses and nine required employees',()=>{
- const rows=coiRows(demo);assert.equal(new Set(rows.map(r=>r.status)).size,5);assert.equal(rows.filter(r=>r.status!=='EXEMPT').length,9);
+test('demo has three statuses and per-person external due dates',()=>{
+ const rows=coiRows(demo);assert.equal(new Set(rows.map(r=>r.status)).size,3);assert.equal(rows.filter(r=>r.status!=='EXEMPT').length,9);
+ assert.ok(rows.find(r=>r.status==='UPDATED')?.nextDue?.startsWith('2027'));
+ assert.equal(rows.find(r=>r.status==='EXEMPT')?.nextDue,undefined);
 });
 test('only web links allowed',()=>{assert.equal(validLink('https://example.com/coi'),true);assert.equal(validLink('javascript:alert(1)'),false);assert.equal(validLink(''),false)});

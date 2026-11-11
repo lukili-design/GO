@@ -23,3 +23,20 @@ test('draft does not publish and attachments/signature changes create a version'
  const next=publishPolicy({...first,policy:{...first.policy!,signature:false,attachments:[{name:'policy.pdf',ref:'go-media:test'}]}});
  assert.equal(next.policy!.versions.length,2);assert.equal(next.policy!.versions[1].attachments.length,1);assert.equal(next.policy!.versions[0].attachments.length,0);
 });
+
+const {defaultNotifications}=await import('./PolicyNotifications');
+test('reconfirmation stops pending schedules and disables new reminders, retaining history',()=>{
+ const first=structuredClone(policyDemo);
+ first.policy!.notifications=defaultNotifications();first.policy!.notifications.push.enabled=true;
+ const jobs=[{articleId:first.id,status:'DEMO_ONLY',template:{timing:'SCHEDULED'}},{articleId:first.id,status:'DEMO_SENT',sentAt:'2026-11-01',template:{timing:'SCHEDULED'}},{articleId:'other',status:'DEMO_ONLY',template:{timing:'SCHEDULED'}}];
+ store.set('go-policy-notification-jobs',JSON.stringify(jobs));
+ const next=publishPolicy({...first,content:first.content+' revised'});
+ assert.equal(next.policy!.notifications!.push.enabled,false);
+ assert.equal(next.policy!.versions[0].notifications!.push.enabled,true);
+ const saved=JSON.parse(store.get('go-policy-notification-jobs')!);
+ assert.equal(saved[0].status,'STOPPED');assert.equal(saved[1].status,'DEMO_SENT');assert.equal(saved[2].status,'DEMO_ONLY');
+ first.policy!.reconfirm=false;store.set('go-policy-notification-jobs',JSON.stringify(jobs));
+ const sameRound=publishPolicy({...first,content:first.content+' revised'});
+ assert.equal(sameRound.policy!.notifications!.push.enabled,true);
+ assert.deepEqual(JSON.parse(store.get('go-policy-notification-jobs')!),jobs);
+});

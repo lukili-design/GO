@@ -1,4 +1,4 @@
-import {coiArticles} from './coi/coiModel';
+import {coiArticles,normalizeCoi} from './coi/coiModel';
 import {policyDemo,preparePolicyDemo,confirmedPolicyDemo,preparePolicyShowcase} from './policies/policyModel';
 import {LotteryScreenLauncher} from './activity/LotteryScreenLauncher';
 const banquetBanner = new URL('../assets/banquet-banner.svg', import.meta.url).href;
@@ -218,6 +218,7 @@ export const WorkspaceShell: React.FC = () => {
         if(!merged.some(a=>a.id===policyDemo.id))merged.unshift(preparePolicyDemo(policyDemo));
         if(!merged.some(a=>a.id===confirmedPolicyDemo.id))merged.push(confirmedPolicyDemo);
         const showcased=merged.map(preparePolicyShowcase);
+        for(const a of showcased){if(a.category==='年度 COI 申報')a.category='COI申報';if(a.coi){a.coi=normalizeCoi(a.coi);if(/^(2026 )?(年度 COI 申報|COI申報)（演示）$/.test(a.title))a.title='COI申報';}}
         for(const item of coiArticles())if(!showcased.some(a=>a.id===item.id))showcased.push(item);
         localStorage.setItem('tvb_go_vote_articles_v4', JSON.stringify(showcased));
         return showcased;

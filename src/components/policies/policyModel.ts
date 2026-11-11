@@ -3,14 +3,14 @@ import {useSyncExternalStore} from 'react';
 import type {VoteArticle,ArticleContentType} from '../../types';
 import {COMPANY_STAFF_DATABASE} from '../../utils/employeeDirectory';
 // Organization labels below are demonstration data, not an HR directory integration.
-export const policyStaff=COMPANY_STAFF_DATABASE.map((staff,index)=>({...staff,
+export const policyStaff=COMPANY_STAFF_DATABASE.map((staff,index)=>({...staff,company:'TVB',
  division:index<6?'節目及內容事業部':'企業服務事業部',
  businessUnit:index<6?'內容製作':'營運支援',
  office:index===2?'將軍澳新聞中心':index===8?'九龍灣辦公室':'將軍澳電視城'
 }));
 export const policyUser={...policyStaff.find(s=>s.employeeId==='EMP002')!,staffType:'S'};
 export type PolicyFile={name:string;ref:string};
-export type PolicyVersion={version:number;round:string;title:string;content:string;contentType?:ArticleContentType;richContent?:string;linkUrl?:string;videoFile?:PolicyFile;mode:'TEXT'|'PDF';pdf?:PolicyFile;attachments:PolicyFile[];signature:boolean;buttonText?:string;targets:string[];publishedAt:string};
+export type PolicyVersion={notifications?:PolicyNotificationSettings;version:number;round:string;title:string;content:string;contentType?:ArticleContentType;richContent?:string;linkUrl?:string;videoFile?:PolicyFile;mode:'TEXT'|'PDF';pdf?:PolicyFile;attachments:PolicyFile[];signature:boolean;buttonText?:string;targets:string[];publishedAt:string};
 export type PolicyConfig={notifications?:PolicyNotificationSettings;enabled:boolean;mode:'TEXT'|'PDF';pdf?:PolicyFile;attachments:PolicyFile[];signature:boolean;buttonText?:string;reconfirm:boolean;versions:PolicyVersion[];targets:string[];demoRecordsVersion?:number;push:boolean;email:boolean;remindAt:string;reminderEnabled?:boolean;reminderFrequency?:'ONCE'|'DAILY'|'WEEKLY';escalate:string[]};
 export const newPolicy=():PolicyConfig=>({enabled:true,buttonText:'已閱讀並同意',mode:'TEXT',attachments:[],signature:false,reconfirm:true,versions:[],targets:policyStaff.map(s=>s.employeeId),push:true,email:false,remindAt:'',escalate:[]});
 export type PolicyRecord={articleId:string;round:string;employeeId:string;openedAt:string;agreedAt?:string;version?:number;signature?:string};
@@ -28,7 +28,14 @@ export function publishPolicy(article:VoteArticle):VoteArticle{
  if(!changed)return article;
  const version=(last?.version||0)+1;
  const snapshot:PolicyVersion={version,round:!last||p.reconfirm?crypto.randomUUID():last.round,title:article.title,content:article.content,contentType:article.contentType,richContent:article.richContent,linkUrl:article.linkUrl,videoFile:article.videoFile,mode:p.mode,pdf:p.pdf,attachments:p.attachments,signature:p.signature,buttonText:p.buttonText?.trim()||'已閱讀並同意',targets:[...p.targets],publishedAt:new Date().toISOString()};
- return {...article,policy:{...p,versions:[...p.versions,snapshot]}};
+ let notifications=p.notifications;
+ const history=p.versions.map(v=>v===last?{...v,notifications:p.notifications}:v);
+ if(last&&p.reconfirm){
+  if(notifications)notifications={...notifications,...Object.fromEntries(['push','popup','email','escalation'].map(k=>[k,{...notifications![k as 'push'],enabled:false}]))};
+  const jobsKey='go-policy-notification-jobs';let jobs:any[]=[];try{jobs=JSON.parse(localStorage.getItem(jobsKey)||'[]')}catch{}
+  localStorage.setItem(jobsKey,JSON.stringify(jobs.map(j=>j.articleId===article.id&&j.template?.timing==='SCHEDULED'&&j.status!=='STOPPED'&&!j.sentAt?{...j,status:'STOPPED',stoppedAt:new Date().toISOString(),stopReason:'發布新版本並要求重新確認，舊排程已停止。'}:j)));
+ }
+ return {...article,policy:{...p,notifications,versions:[...history,{...snapshot,notifications}]}};
 }
 export const policyDemo:VoteArticle=publishPolicy({id:'ART-POLICY-DEMO',title:'集團政策與程序：員工行為守則（演示）',category:'政策同意書',titleEn:'Group Policy and Procedures: Employee Code of Conduct (Demo)',contentType:'TEXT',author:'人力資源部',coverImage:new URL('../../assets/banquet-banner.svg',import.meta.url).href,summary:'請閱讀本政策，並於閱讀完畢後確認已閱讀並同意。',content:'一、政策目的\n本演示政策用於展示員工閱讀確認及手寫簽名流程，並非正式公司政策。\n\n二、適用範圍\n所有獲指定的員工均須閱讀相關內容，了解工作中應遵守的要求。\n\n三、工作操守\n員工應以誠信及專業態度履行職責，尊重同事及合作夥伴，妥善處理工作資料。\n\n四、資料保護\n處理公司資料時，應依照公司適用程序及授權範圍使用。如有疑問，請向所屬部門或人力資源部查詢。\n\n五、政策更新\n政策更新後，管理員可要求員工再次確認。系統會保留各版本的確認時間。\n\n六、閱讀確認\n請閱讀至本頁底部，點擊「已閱讀並同意」，並完成手寫簽名。',linkedCampaignIds:[],status:'PUBLISHED',publishDate:'2026-11-05 09:00:00',viewCount:0,policy:{...newPolicy(),signature:true}});
 

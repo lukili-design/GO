@@ -27,3 +27,19 @@ test('staff categories support multiple selections and deny missing or unselecte
  assert.equal(articleIsVisible(scoped,employee),false);
  assert.equal(articleIsVisible({...scoped,visibility:{mode:'STAFF_TYPES',ids:[]}},{...employee,staffType:'S'}),false);
 });
+
+test('office restriction intersects staff type and defaults to all offices',()=>{
+ const scoped={...article,visibleOffice:'將軍澳電視城',visibility:{mode:'STAFF_TYPES' as const,ids:['S']}};
+ assert.equal(articleIsVisible(scoped,{...employee,staffType:'S',office:'將軍澳電視城'}),true);
+ assert.equal(articleIsVisible(scoped,{...employee,staffType:'E',office:'將軍澳電視城'}),false);
+ assert.equal(articleIsVisible(scoped,{...employee,staffType:'S',office:'九龍灣辦公室'}),false);
+ assert.equal(articleIsVisible(scoped,{...employee,staffType:'S'}),false);
+ assert.equal(articleIsVisible({...scoped,visibleOffice:''},{...employee,staffType:'S'}),true);
+});
+
+test('multiple offices allow either selected office and empty selection denies access',()=>{
+ const scoped={...article,visibleOffices:['將軍澳電視城','九龍灣辦公室']};
+ for(const office of scoped.visibleOffices)assert.equal(articleIsVisible(scoped,{...employee,office}),true);
+ assert.equal(articleIsVisible(scoped,{...employee,office:'將軍澳新聞中心'}),false);
+ assert.equal(articleIsVisible({...scoped,visibleOffices:[]},{...employee,office:'將軍澳電視城'}),false);
+});

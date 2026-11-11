@@ -15,6 +15,7 @@ export function PolicySettings({article,onChange,contentConfigured=false}:{artic
 </>}
  <label className="flex gap-2"><input type="checkbox" checked={p.signature} onChange={e=>change({signature:e.target.checked})}/>需要手機手寫簽名</label><p className="text-xs text-slate-500">開啟後，員工點擊確認按鈕時須完成手寫簽名並提交，才算完成確認。</p>
  {!!p.versions.length&&<label className="flex gap-2"><input type="checkbox" checked={p.reconfirm} onChange={e=>change({reconfirm:e.target.checked})}/>發布新版本時要求重新確認</label>}
+ {!!p.versions.length&&p.reconfirm&&<p className="text-xs text-amber-700">發布需重新確認的新版本後，舊版本尚未執行的排程將停止。請於新版本「提醒與跟進」確認設定後重新啟用。</p>}
  <p className="text-xs text-slate-500">發布後修改政策內容將建立新版本，保留舊版本及確認記錄。通知模板及排程可在文章列表的「提醒與跟進」設定。</p>
  <label className="block">可下載附件（選填）<input aria-label="上傳政策附件" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg" disabled={uploading} className={formControlClass} onChange={e=>{void upload(e.target.files?.[0],false);e.target.value=''}}/></label>
  {p.attachments.map((f,i)=><div className="flex justify-between gap-3" key={f.ref}><span>{f.name}</span><GoButton variant="secondary" onClick={()=>change({attachments:p.attachments.filter((_,n)=>n!==i)})}>移除</GoButton></div>)}

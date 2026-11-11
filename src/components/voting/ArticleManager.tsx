@@ -172,15 +172,16 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
     if(type==='LINK'&&!/^https?:\/\//i.test(finalArt.linkUrl||'')){alert('請填寫有效的 HTTP 或 HTTPS 鏈接。');return;}
     if(finalArt.policy)finalArt.policy={...finalArt.policy,enabled:finalArt.category==='政策同意書'&&finalArt.policy.enabled,mode:type==='PDF'?'PDF':'TEXT',pdf:finalArt.pdfFile||finalArt.policy.pdf};
     if(finalArt.policy?.enabled&&finalArt.policy.buttonText!==undefined&&!finalArt.policy.buttonText.trim()){alert('請填寫確認按鈕文案。');return;}
-    if(finalArt.category==='年度 COI 申報'){const c=finalArt.coi;if(!c||!/^\d{4}$/.test(c.year)||!c.deadline||!validLink(c.url)||!c.people.length){alert('請填寫申報年度、截止時間、有效外部連結及須申報名單。');return;}finalArt.coi={...c,name:finalArt.title,description:finalArt.content};}
+    if(finalArt.category==='COI申報'){const c=finalArt.coi;if(!c||!/^\d{4}$/.test(c.year)||!validLink(c.url)){alert('請填寫申報年度及有效外部連結。');return;}finalArt.coi={...c,name:finalArt.title,description:finalArt.content};}
+    if(finalArt.visibleOffices?.length===0){alert('請至少選擇一個辦公地點。');return;}
     onSaveArticle(publishPolicy(finalArt));
     setViewMode('LIST');
     setActionPanel(undefined);
     triggerSound(880, 'sine', 0.15);
   };
 
-  if(notificationId||policyId){const a=articles.find(a=>a.id===(notificationId||policyId));if(a?.category==='年度 COI 申報'&&a.coi)return <CoiManager initialItem={{...a.coi,name:a.title,description:a.content}} initialView={notificationId?'notify':'progress'} onSave={coi=>onSaveArticle({...a,coi})} onBack={()=>{setNotificationId(undefined);setPolicyId(undefined)}}/>;}
-  if(viewMode==='PREVIEW'&&previewArticle?.category==='年度 COI 申報'&&previewArticle.coi)return <div className="h-[700px] max-w-md mx-auto border rounded-2xl overflow-hidden"><AppCoi article={previewArticle} item={{...previewArticle.coi,name:previewArticle.title,description:previewArticle.content}} onBack={()=>setViewMode('LIST')}/></div>;
+  if(notificationId||policyId){const a=articles.find(a=>a.id===(notificationId||policyId));if(a?.category==='COI申報'&&a.coi)return <CoiManager initialItem={{...a.coi,name:a.title,description:a.content}} initialView={notificationId?'notify':'progress'} onSave={coi=>onSaveArticle({...a,coi})} onBack={()=>{setNotificationId(undefined);setPolicyId(undefined)}}/>;}
+  if(viewMode==='PREVIEW'&&previewArticle?.category==='COI申報'&&previewArticle.coi)return <div className="h-[700px] max-w-md mx-auto border rounded-2xl overflow-hidden"><AppCoi article={previewArticle} item={{...previewArticle.coi,name:previewArticle.title,description:previewArticle.content}} onBack={()=>setViewMode('LIST')}/></div>;
   if(notificationId){const article=articles.find(a=>a.id===notificationId);if(article?.policy)return <PolicyNotifications article={article} onSaveArticle={onSaveArticle} onBack={()=>setNotificationId(undefined)}/>;}
   if(policyId)return <PolicyManager articles={articles} onSaveArticle={onSaveArticle} initialId={policyId} onBack={()=>setPolicyId(undefined)}/>;
   if(viewMode==='PREVIEW'&&previewArticle?.policy?.enabled)return <div className="space-y-4"><GoBackButton onClick={()=>setViewMode('LIST')}/><div className="h-[700px] max-w-md mx-auto border rounded-2xl overflow-hidden"><PolicyReader key={previewArticle.id} article={previewArticle} onBack={()=>setViewMode('LIST')} preview/></div></div>;
@@ -192,7 +193,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
       {/* 視圖一：文章管理列表 (Article List) */}
       {/* ========================================================================= */}
       {actionPanel&&(()=>{const art=articles.find(a=>a.id===actionPanel.id);if(!art)return null;return <div className="fixed inset-0 z-[100] bg-black/50 p-5 flex items-center justify-center"><GoSurface className="go-type go-preview-scroll p-5 w-full max-w-3xl space-y-5"><div className="flex justify-between items-center"><h3>{{DETAILS:'文章詳情',REVIEW:'審核記錄',PUBLISH:'發佈文章'}[actionPanel.mode]}</h3><GoModalClose onClick={()=>setActionPanel(undefined)}/></div><p className="font-semibold">{art.pinned&&<span className="mr-1 text-xs text-amber-600">置頂</span>}{art.title}</p>
-      {actionPanel.mode==='DETAILS'&&<><dl className="grid grid-cols-2 gap-4 text-sm">{[['文章 ID',art.id],['英文標題',art.titleEn||'—'],['文章分類',art.category],['狀態',art.status==='PUBLISHED'?'已發佈':'草稿'],['作者',art.author],['是否重要',art.important?'是':'否'],['內容類型',art.contentType||'TEXT'],['可見範圍',art.visibility?.mode==='ALL'?'所有人':art.visibility?.ids.join('、')||'所有人'],['發佈時間',art.publishDate],['是否置頂',art.pinned?'是':'否'],['自動上下線',art.autoSchedule?`${art.onlineAt} 至 ${art.offlineAt}`:'未啟用'],['關聯活動',(art.linkedActivityIds||[]).join('、')||'—']].map(([label,value])=><div key={label}><dt className="text-slate-500">{label}</dt><dd className="break-words">{value}</dd></div>)}</dl><h3>文章內容</h3><ArticleBody article={art}/></>}
+      {actionPanel.mode==='DETAILS'&&<><dl className="grid grid-cols-2 gap-4 text-sm">{[['文章 ID',art.id],['英文標題',art.titleEn||'—'],['文章分類',art.category],['狀態',art.status==='PUBLISHED'?'已發佈':'草稿'],['作者',art.author],['是否重要',art.important?'是':'否'],['內容類型',art.contentType||'TEXT'],['可見範圍（員工類別）',art.visibility?.mode==='ALL'?'所有人':art.visibility?.ids.join('、')||'所有人'],['可見範圍（辦公地點）',art.visibleOffices?art.visibleOffices.join('、')||'未選擇':art.visibleOffice||'全部辦公地點'],['發佈時間',art.publishDate],['是否置頂',art.pinned?'是':'否'],['自動上下線',art.autoSchedule?`${art.onlineAt} 至 ${art.offlineAt}`:'未啟用'],['關聯活動',(art.linkedActivityIds||[]).join('、')||'—']].map(([label,value])=><div key={label}><dt className="text-slate-500">{label}</dt><dd className="break-words">{value}</dd></div>)}</dl><h3>文章內容</h3><ArticleBody article={art}/></>}
       {actionPanel.mode==='REVIEW'&&<GoCmsTable><thead><tr><th>審核時間</th><th>審核人員</th><th>結果</th><th>審核意見</th></tr></thead><tbody>{art.reviewRecords?.map((r,i)=><tr key={i}><td>{r.at}</td><td>{r.reviewer}</td><td>{r.result}</td><td>{r.comment}</td></tr>)}{!art.reviewRecords?.length&&<tr><td colSpan={4}>暫無審核記錄</td></tr>}</tbody></GoCmsTable>}
       {actionPanel.mode==='PUBLISH'&&<><p>確認發佈此文章？發佈後按可見範圍及上下線設定展示。</p><GoButton onClick={()=>handleSaveArticleSubmit({preventDefault(){}},{...art,status:'PUBLISHED',publishDate:new Date().toLocaleString('sv-SE',{timeZone:'Asia/Hong_Kong'})})}>確認發佈</GoButton></>}
       </GoSurface></div>})()}
@@ -300,8 +301,6 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                                 </div>
                                 <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5 font-mono">
                                   <span>{art.id}</span>
-                                  <span>•</span>
-                                  <span>作者：{art.author}</span>
                                 </div>
                               </div>
                             </div>
@@ -341,7 +340,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
                               <details className="shrink-0 text-left"><summary className="cursor-pointer list-none px-2.5 py-1 border border-slate-300 rounded-lg text-[11px] font-bold">更多</summary><div className="flex flex-col gap-1 mt-2 p-2 border border-slate-200 bg-white dark:bg-slate-900 rounded-lg">
                                 <button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setActionPanel({id:art.id,mode:'REVIEW'});}}>查看審核記錄</button>
                                 <button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');onSaveArticle({...art,pinned:!art.pinned});}}>{art.pinned?'取消置頂':'置頂'}</button>
-                                {(art.category==='政策同意書'||art.category==='年度 COI 申報')&&<><button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setPolicyId(art.id);}}>完成進度</button><button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setNotificationId(art.id);}}>提醒與跟進</button></>}
+                                {(art.category==='政策同意書'||art.category==='COI申報')&&<><button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setPolicyId(art.id);}}>完成進度</button><button type="button" className="text-left px-2 py-2 hover:bg-slate-100 dark:hover:bg-slate-800" onClick={event=>{event.currentTarget.closest('details')?.removeAttribute('open');setNotificationId(art.id);}}>提醒與跟進</button></>}
                               </div></details>
                             </div>
                           </td>

@@ -403,6 +403,8 @@ export interface VoteArticle {
   videoFile?: {name:string;ref:string};
   linkUrl?: string;
   coverImageEn?: string;
+  visibleOffice?: string;
+  visibleOffices?: string[];
   visibility?: {mode:'ALL'|'DEPARTMENTS'|'EMPLOYEES'|'STAFF_TYPES';ids:string[]};
   autoSchedule?: boolean;
   onlineAt?: string;

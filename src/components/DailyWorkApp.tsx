@@ -1,3 +1,4 @@
+import {ArticleUnavailable} from './voting/ArticleUnavailable';
 import {coiRows,coiStatusColors,statusLabels} from './coi/coiModel';
 import {AppCoi} from './coi/AppCoi';
 import {articleIsVisible} from '../utils/articleVisibility';
@@ -70,6 +71,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
 
   // Currently opened article for reading
   const [selectedArticle, setSelectedArticle] = useState<VoteArticle | null>(null);
+  const [previewUnavailable,setPreviewUnavailable]=useState(()=>new URLSearchParams(window.location.search).get('preview')==='article-unavailable');
 
   // Currently opened voting campaign for detail viewing/voting (Page 2 of Voting)
   const [selectedVotingCampaign, setSelectedVotingCampaign] = useState<VotingCampaign | null>(null);
@@ -98,7 +100,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                         </span>
                         <span className="text-[10px] text-slate-400 font-mono">{article.publishDate.substring(0, 10)}</span>
                       </div>
-                      {article.category==='年度 COI 申報'&&article.coi?(()=>{const status=coiRows(article.coi).find(r=>r.employeeId===policyUser.employeeId)?.status||'EXEMPT';return <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${coiStatusColors[status]}`}><span aria-hidden="true">●</span>{statusLabels[status]}</span>})():article.policy?.enabled&&<span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${policyComplete(article)?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}`}><span aria-hidden="true">●</span>{policyComplete(article)?'已確認':'未確認'}</span>}
+                      {article.category==='COI申報'&&article.coi?(()=>{const status=coiRows(article.coi).find(r=>r.employeeId===policyUser.employeeId)?.status||'EXEMPT';return <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${coiStatusColors[status]}`}><span aria-hidden="true">●</span>{statusLabels[status]}</span>})():article.policy?.enabled&&<span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full ${policyComplete(article)?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}`}><span aria-hidden="true">●</span>{policyComplete(article)?'已確認':'未確認'}</span>}
                       <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-slate-100 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                         {article.title}
                       </h4>
@@ -108,7 +110,7 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
                         </p>
                       )}
                       <div className="flex items-center justify-between text-[10px] text-blue-600 dark:text-blue-400 font-bold pt-1 border-t border-blue-100 dark:border-slate-800">
-                        <span>{article.category==='年度 COI 申報'?'查看年度申報 ➔':article.policy?.enabled?(policyComplete(article)?'查看政策 ➔':'閱讀政策並確認 ➔'):'閱讀全文 ➔'}</span>
+                        <span>{article.category==='COI申報'?'查看年度申報 ➔':article.policy?.enabled?(policyComplete(article)?'查看政策 ➔':'閱讀政策並確認 ➔'):'閱讀全文 ➔'}</span>
                         <span>{article.viewCount.toLocaleString()} 閱讀</span>
                       </div>
                     </div>
@@ -303,7 +305,8 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
   if (selectedActivity) {
     return <AppActivityDetail key={selectedActivity.id} activity={selectedActivity} campaigns={votingCampaigns} userVotes={userVotes} onVoteSubmit={onVoteSubmit} onBack={() => setSelectedActivityId(null)} />;
   }
-  if(selectedArticle?.category==='年度 COI 申報'&&selectedArticle.coi)return <AppCoi article={selectedArticle} item={{...selectedArticle.coi,name:selectedArticle.title,description:selectedArticle.content}} onBack={()=>setSelectedArticle(null)}/>;
+  if(previewUnavailable||(selectedArticle?.contentType&&!['TEXT','RICH','PDF','VIDEO','LINK'].includes(selectedArticle.contentType)))return <ArticleUnavailable onBack={()=>{setPreviewUnavailable(false);setSelectedArticle(null);setActiveBottomTab('NEWS');}}/>;
+  if(selectedArticle?.category==='COI申報'&&selectedArticle.coi)return <AppCoi article={selectedArticle} item={{...selectedArticle.coi,name:selectedArticle.title,description:selectedArticle.content}} onBack={()=>setSelectedArticle(null)}/>;
   if(selectedArticle?.policy?.enabled)return <PolicyReader key={selectedArticle.id} article={voteArticles.find(a=>a.id===selectedArticle.id)||selectedArticle} onBack={()=>setSelectedArticle(null)}/>;
   if (selectedArticle) {
     return (
@@ -564,13 +567,13 @@ export const DailyWorkApp: React.FC<DailyWorkAppProps> = ({
               <div className="space-y-2.5 pt-1">
                 {voteArticles
                   .filter(art => articleIsVisible(art,policyUser))
-                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告') || art.category.includes('政策') || art.category==='年度 COI 申報')) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門')))).filter(a=>a.pinned).sort((a,b)=>Number(policyComplete(a))-Number(policyComplete(b))).map(renderNewsArticle)}
-                {(newsTab === 'ALL' || newsTab === 'ACTIVITY') && visibleActivities.map(activity => <ActivityCard key={activity.id} activity={activity} campaigns={votingCampaigns} onOpen={() => setSelectedActivityId(activity.id)}/>)}
+                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告') || art.category.includes('政策') || art.category==='COI申報')) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門')))).filter(a=>a.pinned).sort((a,b)=>Number(policyComplete(a))-Number(policyComplete(b))).map(renderNewsArticle)}
+                {(newsTab === 'ALL' || newsTab === 'ACTIVITY') && visibleActivities.map((activity,index) => <React.Fragment key={activity.id}>{newsTab==='ALL'&&index===visibleActivities.findIndex(a=>a.title.includes('盆菜'))&&<button type="button" onClick={()=>setPreviewUnavailable(true)} className="w-full text-left p-3.5 rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-50/80 to-indigo-50/40 space-y-2 hover:border-blue-400"><span className="inline-block rounded-full bg-blue-600 px-2.5 py-0.5 text-xs text-white">公司公告</span><h4 className="text-sm font-semibold text-slate-900">TVB GO 最新版本功能介紹</h4><p className="text-sm text-slate-600">更新 TVB GO，查看最新功能及使用資訊。</p><span className="block border-t border-blue-100 pt-2 text-xs font-semibold text-blue-600">閱讀全文 →</span></button>}<ActivityCard activity={activity} campaigns={votingCampaigns} onOpen={() => setSelectedActivityId(activity.id)}/></React.Fragment>)}
                 {newsTab === 'ACTIVITY' && !visibleActivities.length && <div className="p-8 text-center text-sm text-slate-500">暫時沒有已發布的活動。</div>}
                 {/* 渲染專題與投票關聯文章 */}
                 {voteArticles
                   .filter(art => articleIsVisible(art,policyUser))
-                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告') || art.category.includes('政策') || art.category==='年度 COI 申報')) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門')))).filter(a=>!a.pinned).map(renderNewsArticle)}
+                  .filter(art => newsTab === 'ALL' || (newsTab === 'ANNOUNCEMENT' && (art.category.includes('投票') || art.category.includes('資訊') || art.category.includes('盛典') || art.category.includes('活動') || art.category.includes('公告') || art.category.includes('政策') || art.category==='COI申報')) || (newsTab === 'DEPT' && (art.category.includes('福利') || art.category.includes('部門')))).filter(a=>!a.pinned).map(renderNewsArticle)}
 
                 {/* 常規快訊公告 */}
                 {[
