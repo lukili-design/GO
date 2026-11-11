@@ -9,7 +9,7 @@ import {PolicySettings} from '../policies/PolicySettings';
 import {PolicyNotifications} from '../policies/PolicyNotifications';
 import {PolicyManager} from '../policies/PolicyManager';
 import {PolicyReader} from '../policies/PolicyReader';
-import {publishPolicy} from '../policies/policyModel';
+import {publishPolicy,policyVersionChanged,reminderDateErrors} from '../policies/policyModel';
 import {GoBackButton,GoCmsTable,GoSurface,GoButton,GoModalClose} from '../ui/GoUI';
 /**
  * @license
@@ -49,6 +49,9 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
   userVotes = {},
   triggerSound
 }) => {
+  const [publishCandidate,setPublishCandidate]=useState<VoteArticle|null>(null);
+  const [activateReminders,setActivateReminders]=useState(false);
+  const finishPublish=(article:VoteArticle,activate=false)=>{onSaveArticle(publishPolicy(article,activate));setPublishCandidate(null);setViewMode('LIST');setActionPanel(undefined);triggerSound(880,'sine',0.15);};
   // Mode: 'LIST' | 'FORM' | 'PREVIEW'
   const [uploadBusy,setUploadBusy]=useState(false);
   const [policyId,setPolicyId]=useState<string>();
@@ -174,6 +177,9 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
     if(finalArt.policy?.enabled&&finalArt.policy.buttonText!==undefined&&!finalArt.policy.buttonText.trim()){alert('請填寫確認按鈕文案。');return;}
     if(finalArt.category==='COI申報'){const c=finalArt.coi;if(!c||!/^\d{4}$/.test(c.year)||!validLink(c.url)){alert('請填寫申報年度及有效外部連結。');return;}finalArt.coi={...c,name:finalArt.title,description:finalArt.content};}
     if(finalArt.visibleOffices?.length===0){alert('請至少選擇一個辦公地點。');return;}
+    if(finalArt.policy?.reconfirm&&finalArt.policy.versions.length&&policyVersionChanged(finalArt)){
+      setActivateReminders(false);setPublishCandidate(finalArt);return;
+    }
     onSaveArticle(publishPolicy(finalArt));
     setViewMode('LIST');
     setActionPanel(undefined);
@@ -188,6 +194,16 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
   if(viewMode==='PREVIEW'&&previewArticle?.contentType)return <div className="space-y-4"><GoBackButton onClick={()=>setViewMode('LIST')}/><div className="h-[700px] max-w-md mx-auto border rounded-2xl overflow-hidden"><AppArticleDetailView article={previewArticle} campaigns={campaigns} activities={activities} onBack={()=>setViewMode('LIST')} triggerSound={triggerSound}/></div></div>;
   return (
     <div className="w-full space-y-6">
+      {publishCandidate&&<div className="fixed inset-0 z-[100] bg-black/50 p-5 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="發布新版本">
+        <GoSurface className="go-type p-6 w-full max-w-lg space-y-4">
+          <div className="flex items-center justify-between"><h3>發布新版本</h3><GoModalClose onClick={()=>setPublishCandidate(null)}/></div>
+          <p>新版本將沿用提醒內容、渠道、頻率及收件人設定。舊版本尚未執行的排程將停止，未確認名單按新版本重新計算。</p>
+          <label className="flex gap-2 items-center"><input type="checkbox" checked={activateReminders} onChange={e=>setActivateReminders(e.target.checked)}/>啟用原已開啟的提醒渠道</label>
+          <p className="text-sm text-slate-500">未勾選時，設定仍會保留，可於最新版本「提醒與跟進」啟用。啟用後，定時提醒將建立新版本排程；立即發送仍需於「提醒與跟進」操作。</p>
+          {!!reminderDateErrors(publishCandidate.policy?.notifications).length&&<p role="alert" className="text-amber-700">{reminderDateErrors(publishCandidate.policy?.notifications).join('、')}的發送日期已過期或無效。請先保留設定發布，再於「提醒與跟進」更新日期後啟用。</p>}
+          <div className="flex gap-2"><GoButton variant="secondary" onClick={()=>setPublishCandidate(null)}>取消</GoButton><GoButton disabled={activateReminders&&!!reminderDateErrors(publishCandidate.policy?.notifications).length} onClick={()=>finishPublish(publishCandidate,activateReminders)}>確認發布</GoButton></div>
+        </GoSurface>
+      </div>}
 
       {/* ========================================================================= */}
       {/* 視圖一：文章管理列表 (Article List) */}

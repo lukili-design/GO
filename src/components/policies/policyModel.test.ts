@@ -40,3 +40,21 @@ test('reconfirmation stops pending schedules and disables new reminders, retaini
  assert.equal(sameRound.policy!.notifications!.push.enabled,true);
  assert.deepEqual(JSON.parse(store.get('go-policy-notification-jobs')!),jobs);
 });
+
+test('confirmed inheritance enables valid schedules for new version and rejects expired dates',async()=>{
+ const {reminderDateErrors}=await import('./policyModel');
+ const first=structuredClone(policyDemo);first.policy!.notifications=defaultNotifications();
+ const c=first.policy!.notifications.push;c.enabled=true;c.timing='SCHEDULED';c.at='2099-12-01T09:00';
+ store.set('go-policy-notification-jobs','[]');
+ const next=publishPolicy({...first,content:first.content+' new'},true);
+ assert.equal(next.policy!.notifications!.push.enabled,true);
+ assert.equal(next.policy!.notifications!.push.title,c.title);
+ const jobs=JSON.parse(store.get('go-policy-notification-jobs')!);
+ assert.equal(jobs.length,1);assert.equal(jobs[0].version,2);
+ assert.deepEqual(jobs[0].employeeIds,first.policy!.targets);
+ c.at='2000-01-01T09:00';assert.equal(reminderDateErrors(first.policy!.notifications).length,1);
+ assert.throws(()=>publishPolicy({...first,content:'expired'},true));
+ const paused=publishPolicy({...first,content:'expired'},false);
+ assert.equal(paused.policy!.notifications!.push.at,c.at);
+ assert.equal(paused.policy!.notifications!.push.enabled,false);
+});
