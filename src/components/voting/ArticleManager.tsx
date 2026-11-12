@@ -175,6 +175,7 @@ export const ArticleManager: React.FC<ArticleManagerProps> = ({
     if(type==='LINK'&&!/^https?:\/\//i.test(finalArt.linkUrl||'')){alert('請填寫有效的 HTTP 或 HTTPS 鏈接。');return;}
     if(finalArt.policy)finalArt.policy={...finalArt.policy,enabled:finalArt.category==='政策同意書'&&finalArt.policy.enabled,mode:type==='PDF'?'PDF':'TEXT',pdf:finalArt.pdfFile||finalArt.policy.pdf};
     if(finalArt.policy?.enabled&&finalArt.policy.buttonText!==undefined&&!finalArt.policy.buttonText.trim()){alert('請填寫確認按鈕文案。');return;}
+    if(finalArt.policy?.enabled&&(!Number.isSafeInteger(finalArt.policy.readDelaySeconds??0)||(finalArt.policy.readDelaySeconds??0)<0)){alert('確認等待時間須為 0 或以上的整數。');return;}
     if(finalArt.category==='COI申報'){const c=finalArt.coi;if(!c||!/^\d{4}$/.test(c.year)||!validLink(c.url)){alert('請填寫申報年度及有效外部連結。');return;}finalArt.coi={...c,name:finalArt.title,description:finalArt.content};}
     if(finalArt.visibleOffices?.length===0){alert('請至少選擇一個辦公地點。');return;}
     if(finalArt.policy?.reconfirm&&finalArt.policy.versions.length&&policyVersionChanged(finalArt)){

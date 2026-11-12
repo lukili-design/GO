@@ -58,3 +58,12 @@ test('confirmed inheritance enables valid schedules for new version and rejects 
  assert.equal(paused.policy!.notifications!.push.at,c.at);
  assert.equal(paused.policy!.notifications!.push.enabled,false);
 });
+
+test('reading delay is versioned without changing historical requirements',()=>{
+ const first=structuredClone(policyDemo);
+ const next=publishPolicy({...first,policy:{...first.policy!,readDelaySeconds:15}});
+ assert.equal(next.policy!.versions.length,2);
+ assert.equal(next.policy!.versions[1].readDelaySeconds,15);
+ assert.equal(next.policy!.versions[0].readDelaySeconds||0,0);
+ assert.equal(publishPolicy(next).policy!.versions.length,2);
+});

@@ -10,9 +10,9 @@ export const policyStaff=COMPANY_STAFF_DATABASE.map((staff,index)=>({...staff,co
 }));
 export const policyUser={...policyStaff.find(s=>s.employeeId==='EMP002')!,staffType:'S'};
 export type PolicyFile={name:string;ref:string};
-export type PolicyVersion={notifications?:PolicyNotificationSettings;version:number;round:string;title:string;content:string;contentType?:ArticleContentType;richContent?:string;linkUrl?:string;videoFile?:PolicyFile;mode:'TEXT'|'PDF';pdf?:PolicyFile;attachments:PolicyFile[];signature:boolean;buttonText?:string;targets:string[];publishedAt:string};
-export type PolicyConfig={notifications?:PolicyNotificationSettings;enabled:boolean;mode:'TEXT'|'PDF';pdf?:PolicyFile;attachments:PolicyFile[];signature:boolean;buttonText?:string;reconfirm:boolean;versions:PolicyVersion[];targets:string[];demoRecordsVersion?:number;push:boolean;email:boolean;remindAt:string;reminderEnabled?:boolean;reminderFrequency?:'ONCE'|'DAILY'|'WEEKLY';escalate:string[]};
-export const newPolicy=():PolicyConfig=>({enabled:true,buttonText:'已閱讀並同意',mode:'TEXT',attachments:[],signature:false,reconfirm:true,versions:[],targets:policyStaff.map(s=>s.employeeId),push:true,email:false,remindAt:'',escalate:[]});
+export type PolicyVersion={notifications?:PolicyNotificationSettings;version:number;round:string;title:string;content:string;contentType?:ArticleContentType;richContent?:string;linkUrl?:string;videoFile?:PolicyFile;mode:'TEXT'|'PDF';pdf?:PolicyFile;attachments:PolicyFile[];signature:boolean;buttonText?:string;readDelaySeconds?:number;targets:string[];publishedAt:string};
+export type PolicyConfig={notifications?:PolicyNotificationSettings;enabled:boolean;mode:'TEXT'|'PDF';pdf?:PolicyFile;attachments:PolicyFile[];signature:boolean;buttonText?:string;readDelaySeconds?:number;reconfirm:boolean;versions:PolicyVersion[];targets:string[];demoRecordsVersion?:number;push:boolean;email:boolean;remindAt:string;reminderEnabled?:boolean;reminderFrequency?:'ONCE'|'DAILY'|'WEEKLY';escalate:string[]};
+export const newPolicy=():PolicyConfig=>({enabled:true,readDelaySeconds:0,buttonText:'已閱讀並同意',mode:'TEXT',attachments:[],signature:false,reconfirm:true,versions:[],targets:policyStaff.map(s=>s.employeeId),push:true,email:false,remindAt:'',escalate:[]});
 export type PolicyRecord={articleId:string;round:string;employeeId:string;openedAt:string;agreedAt?:string;version?:number;signature?:string};
 const key='go-policy-records-v1';
 let raw=localStorage.getItem(key)||'[]';
@@ -24,7 +24,7 @@ export function usePolicyRecords(){return useSyncExternalStore(cb=>{listeners.ad
 export function writePolicyRecord(record:PolicyRecord){const old=records.find(r=>r.articleId===record.articleId&&r.round===record.round&&r.employeeId===record.employeeId);if(old?.agreedAt)return;const next=[...records.filter(r=>r!==old),{...old,...record,openedAt:old?.openedAt||record.openedAt}];localStorage.setItem(key,JSON.stringify(next));records=next;emit();}
 export function policyVersionChanged(article:VoteArticle){
  const p=article.policy;if(!p?.enabled||article.status!=='PUBLISHED')return false;
- const last=p.versions.at(-1);return !last||(last.buttonText||'已閱讀並同意')!==(p.buttonText?.trim()||'已閱讀並同意')||last.contentType!==article.contentType||last.richContent!==article.richContent||last.linkUrl!==article.linkUrl||JSON.stringify(last.videoFile)!==JSON.stringify(article.videoFile)||last.title!==article.title||last.content!==article.content||last.mode!==p.mode||last.signature!==p.signature||JSON.stringify(last.pdf)!==JSON.stringify(p.pdf)||JSON.stringify(last.attachments)!==JSON.stringify(p.attachments);
+ const last=p.versions.at(-1);return !last||(last.readDelaySeconds||0)!==(p.readDelaySeconds||0)||(last.buttonText||'已閱讀並同意')!==(p.buttonText?.trim()||'已閱讀並同意')||last.contentType!==article.contentType||last.richContent!==article.richContent||last.linkUrl!==article.linkUrl||JSON.stringify(last.videoFile)!==JSON.stringify(article.videoFile)||last.title!==article.title||last.content!==article.content||last.mode!==p.mode||last.signature!==p.signature||JSON.stringify(last.pdf)!==JSON.stringify(p.pdf)||JSON.stringify(last.attachments)!==JSON.stringify(p.attachments);
 }
 export function reminderDateErrors(settings?:PolicyNotificationSettings,now=Date.now()){
  if(!settings)return [];
@@ -50,7 +50,7 @@ export function publishPolicy(article:VoteArticle,activateReminders=false):VoteA
  const last=p.versions.at(-1);const changed=policyVersionChanged(article);
  if(!changed)return article;
  const version=(last?.version||0)+1;
- const snapshot:PolicyVersion={version,round:!last||p.reconfirm?crypto.randomUUID():last.round,title:article.title,content:article.content,contentType:article.contentType,richContent:article.richContent,linkUrl:article.linkUrl,videoFile:article.videoFile,mode:p.mode,pdf:p.pdf,attachments:p.attachments,signature:p.signature,buttonText:p.buttonText?.trim()||'已閱讀並同意',targets:[...p.targets],publishedAt:new Date().toISOString()};
+ const snapshot:PolicyVersion={version,round:!last||p.reconfirm?crypto.randomUUID():last.round,title:article.title,content:article.content,contentType:article.contentType,richContent:article.richContent,linkUrl:article.linkUrl,videoFile:article.videoFile,mode:p.mode,pdf:p.pdf,attachments:p.attachments,signature:p.signature,buttonText:p.buttonText?.trim()||'已閱讀並同意',readDelaySeconds:p.readDelaySeconds||0,targets:[...p.targets],publishedAt:new Date().toISOString()};
  let notifications=p.notifications;
  const history=p.versions.map(v=>v===last?{...v,notifications:p.notifications}:v);
  if(last&&p.reconfirm){
